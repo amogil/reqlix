@@ -18,7 +18,7 @@ use std::path::PathBuf;
 
 const TOOL_DESCRIPTION: &str = r#"CALL THIS BEFORE ANY CODE OPERATION (reading or writing). Returns instructions on how to work with requirements. This MCP server is the single source of truth for everything related to requirements."#;
 
-const PLACEHOLDER_CONTENT: &str = r#"# Requirements Documentation
+const PLACEHOLDER_CONTENT: &str = r#"# Requirements
 
 ## General Rules
 
@@ -26,19 +26,28 @@ const PLACEHOLDER_CONTENT: &str = r#"# Requirements Documentation
 
 **R.2.** Requirement text must be formatted so that each line does not exceed 120 characters.
 
-## Requirements
+## Sections
 
-<!-- Add your requirements here -->
+Requirements are organized into the following sections:
+
+- General requirements (key: general)
+- Requirements change management (key: requirements_change_management)
+- Testing requirements (key: testing)
+- Code quality requirements (key: code_quality)
+- Code writing requirements (key: code_style)
+- Change validation requirements (key: change_validation)
+
 "#;
 
 /// Parameters for getting instructions
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct GetInstructionsParams {
-    /// Path to the project root directory
-    #[schemars(description = "Path to the project root directory")]
+    /// Path to the project root directory. Used to locate requirements and project source code.
+    #[schemars(description = "Path to the project root directory. Used to locate requirements and project source code.")]
     pub project_root: String,
-    /// Brief description of the operation that LLM intends to perform
-    #[schemars(description = "Brief description of the operation that LLM intends to perform")]
+    /// Brief description of the operation that LLM intends to perform.
+    /// Used to provide relevant instructions.
+    #[schemars(description = "Brief description of the operation that LLM intends to perform. Used to provide relevant instructions.")]
     pub operation_description: String,
 }
 

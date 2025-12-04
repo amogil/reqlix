@@ -44,7 +44,7 @@ proceed to next if file not found):
 **T.3.4.** Placeholder content for new requirements file:
 
 ```
-# Requirements Documentation
+# Requirements
 
 ## General Rules
 
@@ -52,7 +52,16 @@ proceed to next if file not found):
 
 **R.2.** Requirement text must be formatted so that each line does not exceed 120 characters.
 
-## Requirements
+## Sections
+
+Requirements are organized into the following sections:
+
+- General requirements (key: general)
+- Requirements change management (key: requirements_change_management)
+- Testing requirements (key: testing)
+- Code quality requirements (key: code_quality)
+- Code writing requirements (key: code_style)
+- Change validation requirements (key: change_validation)
 
 ```
 
