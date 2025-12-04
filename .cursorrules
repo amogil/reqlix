@@ -1,3 +1,4 @@
 - Do not commit changes to Git unless the user explicitly requests and approves it.
 - Always draft a plan, confirm it with the user, and only then modify code.
 - Always call `reqlix_get_instructions` before any code operation (reading or modifying).
+- Never read files in docs/development/requirements.
