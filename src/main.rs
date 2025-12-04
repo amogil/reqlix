@@ -1,5 +1,4 @@
 use anyhow::Result;
-use regex::Regex;
 use rmcp::{
     ServerHandler, ServiceExt,
     model::{
@@ -12,106 +11,180 @@ use rmcp::{
 };
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 use std::borrow::Cow;
 use std::env;
-use std::fs;
+use std::fs::{self, File};
+use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
 
-// Tool descriptions (T.1, G.1, S.1, D.1)
+// =============================================================================
+// Tool descriptions (G.GI.1, G.GC.1, G.GCH.1, G.GR.1, G.GRQ.1, G.IR.1, G.UR.1)
+// =============================================================================
+
 const GET_INSTRUCTIONS_DESC: &str = "CALL THIS BEFORE ANY CODE OPERATION (reading or writing). \
 Returns instructions on how to work with requirements. \
 This MCP server is the single source of truth for everything related to requirements.";
 
-const GET_REQUIREMENTS_DESC: &str = "Returns all requirements in the specified section.";
+const GET_CATEGORIES_DESC: &str = "Returns a list of all available requirement categories.";
 
-const SET_REQUIREMENTS_DESC: &str = "Modifies a requirement in a section. \
-To add a new requirement, specify a new index number. \
-Returns the added/modified requirement (text or index may be adjusted according to policies).";
+const GET_CHAPTERS_DESC: &str = "Returns a list of all chapters in the specified category.";
 
-const DELETE_REQUIREMENTS_DESC: &str = "Deletes a requirement with the specified index from a section. \
-Returns the deleted requirement text, or an error if not found.";
+const GET_REQUIREMENTS_DESC: &str =
+    "Returns a list of all requirement titles in the specified category and chapter.";
 
-// Placeholder content (T.3.4)
-const PLACEHOLDER_CONTENT: &str = r#"# Requirements
+const GET_REQUIREMENT_DESC: &str = "Returns the full content of a requirement by its index.";
 
-## General Rules
+const INSERT_REQUIREMENT_DESC: &str = "Inserts a new requirement into the specified category \
+and chapter. Returns the generated requirement with index and title.";
 
-**R.1.** All requirements must be written in English.
+const UPDATE_REQUIREMENT_DESC: &str = "Updates an existing requirement by its index with new text. \
+Returns the updated requirement with regenerated title.";
 
-## Sections
+// =============================================================================
+// Placeholder content (G.GI.6)
+// =============================================================================
 
-Requirements are organized into the following sections:
+const PLACEHOLDER_CONTENT: &str = r#"# Instructions
 
-- General requirements (key: general)
-- Requirements change management (key: requirements_change_management)
-- Testing requirements (key: testing)
-- Code quality requirements (key: code_quality)
-- Code writing requirements (key: code_style)
-- Change validation requirements (key: change_validation)
+These instructions are mandatory for all code operations:
+
+1. Always verify that code matches requirements. If there are discrepancies, propose to the user
+   to fix either the code or the requirements.
+
+2. Make maximum effort to find relevant requirements for the code being modified and apply changes
+   according to those requirements.
+
+3. Document code thoroughly by leaving references to requirement indices in comments.
+   Requirement index format: `{CATEGORY}.{CHAPTER}.{NUMBER}` (e.g., `G.GI.1`, `T.U.2`).
+
+4. All requirements must be written in English.
+
+5. Never edit files in {requirements_directory} directly. Always use this MCP server for all
+   requirements operations.
 
 "#;
 
-// Parameter constraints (P.1)
+// =============================================================================
+// Parameter constraints (G.P.1)
+// =============================================================================
+
 const MAX_PROJECT_ROOT_LEN: usize = 1000;
 const MAX_OPERATION_DESC_LEN: usize = 10000;
-const MAX_SECTION_LEN: usize = 100;
+const MAX_CATEGORY_LEN: usize = 100;
+const MAX_CHAPTER_LEN: usize = 100;
 const MAX_INDEX_LEN: usize = 10;
 const MAX_TEXT_LEN: usize = 10000;
 
-/// Parameters for getting instructions (T.2)
+// =============================================================================
+// Parameter structures (G.GI.2, G.GC.2, G.GCH.2, G.GR.2, G.GRQ.2, G.IR.2, G.UR.2)
+// =============================================================================
+
+/// Parameters for reqlix_get_instructions (G.GI.2)
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct GetInstructionsParams {
-    /// Path to the project root directory. Used to locate requirements and project source code.
+    /// Path to the project root directory.
     pub project_root: String,
     /// Brief description of the operation that LLM intends to perform.
     pub operation_description: String,
 }
 
-/// Parameters for getting requirements (G.2)
+/// Parameters for reqlix_get_categories (G.GC.2)
+#[derive(Debug, Serialize, Deserialize, JsonSchema)]
+pub struct GetCategoriesParams {
+    /// Path to the project root directory.
+    pub project_root: String,
+    /// Brief description of the operation that LLM intends to perform.
+    pub operation_description: String,
+}
+
+/// Parameters for reqlix_get_chapters (G.GCH.2)
+#[derive(Debug, Serialize, Deserialize, JsonSchema)]
+pub struct GetChaptersParams {
+    /// Path to the project root directory.
+    pub project_root: String,
+    /// Brief description of the operation that LLM intends to perform.
+    pub operation_description: String,
+    /// Category key (e.g., "general", "testing").
+    pub category: String,
+}
+
+/// Parameters for reqlix_get_requirements (G.GR.2)
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct GetRequirementsParams {
-    /// Path to the project root directory. Used to locate requirements and project source code.
+    /// Path to the project root directory.
     pub project_root: String,
     /// Brief description of the operation that LLM intends to perform.
     pub operation_description: String,
-    /// Section key (e.g., "general", "testing", "code_quality").
-    pub section: String,
+    /// Category key (e.g., "general", "testing").
+    pub category: String,
+    /// Chapter name (e.g., "General Requirements", "Unit Tests").
+    pub chapter: String,
 }
 
-/// Parameters for setting requirements (S.2)
+/// Parameters for reqlix_get_requirement (G.GRQ.2)
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
-pub struct SetRequirementsParams {
-    /// Path to the project root directory. Used to locate requirements and project source code.
+pub struct GetRequirementParams {
+    /// Path to the project root directory.
     pub project_root: String,
     /// Brief description of the operation that LLM intends to perform.
     pub operation_description: String,
-    /// Section key (e.g., "general", "testing", "code_quality").
-    pub section: String,
-    /// Requirement index (e.g., "1", "2.1", "3").
+    /// Requirement index (e.g., "G.G.1", "T.U.2").
     pub index: String,
-    /// Requirement text.
+}
+
+/// Parameters for reqlix_insert_requirement (G.IR.2)
+#[derive(Debug, Serialize, Deserialize, JsonSchema)]
+pub struct InsertRequirementParams {
+    /// Path to the project root directory.
+    pub project_root: String,
+    /// Brief description of the operation that LLM intends to perform.
+    pub operation_description: String,
+    /// Category key (e.g., "general", "testing").
+    pub category: String,
+    /// Chapter name (e.g., "General Requirements", "Unit Tests").
+    pub chapter: String,
+    /// Requirement text (body content).
     pub text: String,
 }
 
-/// Parameters for deleting requirements (D.2)
+/// Parameters for reqlix_update_requirement (G.UR.2)
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
-pub struct DeleteRequirementsParams {
-    /// Path to the project root directory. Used to locate requirements and project source code.
+pub struct UpdateRequirementParams {
+    /// Path to the project root directory.
     pub project_root: String,
     /// Brief description of the operation that LLM intends to perform.
     pub operation_description: String,
-    /// Section key (e.g., "general", "testing", "code_quality").
-    pub section: String,
-    /// Requirement index to delete (e.g., "1", "2.1", "3").
+    /// Requirement index (e.g., "G.G.1", "T.U.2").
     pub index: String,
+    /// New requirement text (body content).
+    pub text: String,
 }
 
-/// A parsed requirement
-#[derive(Debug, Clone)]
-struct Requirement {
+// =============================================================================
+// Data structures for requirements
+// =============================================================================
+
+/// A requirement with index and title (for listing)
+#[derive(Debug, Clone, Serialize)]
+struct RequirementSummary {
     index: String,
-    text: String,
+    title: String,
 }
+
+/// A full requirement with all data
+#[derive(Debug, Clone, Serialize)]
+struct RequirementFull {
+    index: String,
+    title: String,
+    text: String,
+    category: String,
+    chapter: String,
+}
+
+// =============================================================================
+// Main server struct
+// =============================================================================
 
 #[derive(Debug, Clone, Default)]
 pub struct RequirementsServer;
@@ -121,7 +194,30 @@ impl RequirementsServer {
         Self
     }
 
-    // Parameter validation (P.2)
+    // =========================================================================
+    // JSON response helpers (G.C.5, G.C.6)
+    // =========================================================================
+
+    fn json_success<T: Serialize>(data: T) -> String {
+        serde_json::to_string_pretty(&json!({
+            "success": true,
+            "data": data
+        }))
+        .unwrap_or_else(|_| r#"{"success": false, "error": "Failed to serialize response"}"#.to_string())
+    }
+
+    fn json_error(message: &str) -> String {
+        serde_json::to_string_pretty(&json!({
+            "success": false,
+            "error": message
+        }))
+        .unwrap_or_else(|_| format!(r#"{{"success": false, "error": "{}"}}"#, message))
+    }
+
+    // =========================================================================
+    // Parameter validation (G.P.2)
+    // =========================================================================
+
     fn validate_project_root(value: &str) -> Result<(), String> {
         if value.is_empty() {
             return Err("project_root is required".to_string());
@@ -148,14 +244,27 @@ impl RequirementsServer {
         Ok(())
     }
 
-    fn validate_section(value: &str) -> Result<(), String> {
+    fn validate_category(value: &str) -> Result<(), String> {
         if value.is_empty() {
-            return Err("section is required".to_string());
+            return Err("category is required".to_string());
         }
-        if value.len() > MAX_SECTION_LEN {
+        if value.len() > MAX_CATEGORY_LEN {
             return Err(format!(
-                "section exceeds maximum length of {} characters",
-                MAX_SECTION_LEN
+                "category exceeds maximum length of {} characters",
+                MAX_CATEGORY_LEN
+            ));
+        }
+        Ok(())
+    }
+
+    fn validate_chapter(value: &str) -> Result<(), String> {
+        if value.is_empty() {
+            return Err("chapter is required".to_string());
+        }
+        if value.len() > MAX_CHAPTER_LEN {
+            return Err(format!(
+                "chapter exceeds maximum length of {} characters",
+                MAX_CHAPTER_LEN
             ));
         }
         Ok(())
@@ -187,7 +296,11 @@ impl RequirementsServer {
         Ok(())
     }
 
-    // T.3.1: Search paths for AGENTS.md
+    // =========================================================================
+    // File system helpers (G.GI.3, G.GI.4, G.C.1, G.C.2)
+    // =========================================================================
+
+    /// Get search paths for AGENTS.md (G.GI.3)
     fn get_search_paths(project_root: &str) -> Vec<PathBuf> {
         let root = PathBuf::from(project_root);
         let mut paths = Vec::new();
@@ -202,7 +315,7 @@ impl RequirementsServer {
         paths
     }
 
-    // T.3.2: Path for creating AGENTS.md
+    /// Get path for creating AGENTS.md (G.GI.4)
     fn get_create_path(project_root: &str) -> PathBuf {
         let root = PathBuf::from(project_root);
 
@@ -213,28 +326,38 @@ impl RequirementsServer {
         }
     }
 
-    // C.1, T.3.1-T.3.3: Find or create requirements file
+    /// Find or create requirements file (G.GI.3, G.GI.4, G.GI.5)
     fn find_or_create_requirements_file(project_root: &str) -> Result<PathBuf, String> {
+        // Search for existing file
         for path in Self::get_search_paths(project_root) {
             if path.exists() {
                 return Ok(path);
             }
         }
 
+        // Create new file with placeholder content
         let create_path = Self::get_create_path(project_root);
 
+        // Create parent directories (G.C.2)
         if let Some(parent) = create_path.parent() {
             fs::create_dir_all(parent)
                 .map_err(|e| format!("Failed to create directories: {}", e))?;
         }
 
-        fs::write(&create_path, PLACEHOLDER_CONTENT)
+        // Replace {requirements_directory} placeholder (G.GI.6)
+        let requirements_dir = create_path
+            .parent()
+            .map(|p| p.to_string_lossy().to_string())
+            .unwrap_or_default();
+        let content = PLACEHOLDER_CONTENT.replace("{requirements_directory}", &requirements_dir);
+
+        fs::write(&create_path, content)
             .map_err(|e| format!("Failed to create requirements file: {}", e))?;
 
         Ok(create_path)
     }
 
-    // G.3.1: Get requirements directory
+    /// Get requirements directory (G.C.1)
     fn get_requirements_dir(project_root: &str) -> Result<PathBuf, String> {
         let agents_path = Self::find_or_create_requirements_file(project_root)?;
         agents_path
@@ -243,129 +366,349 @@ impl RequirementsServer {
             .ok_or_else(|| "Could not determine requirements directory".to_string())
     }
 
-    // C.2: Parse requirements from section file content
-    fn parse_requirements(content: &str) -> Vec<Requirement> {
-        let re = Regex::new(r"\*\*([^*]+)\.\*\*\s*(.+)").unwrap();
-        let mut requirements = Vec::new();
+    // =========================================================================
+    // Category helpers (G.C.7, G.F.4)
+    // =========================================================================
 
-        for line in content.lines() {
-            if let Some(caps) = re.captures(line) {
-                requirements.push(Requirement {
-                    index: caps[1].to_string(),
-                    text: caps[2].to_string(),
-                });
-            }
-        }
-
-        requirements
-    }
-
-    // C.2: Format requirements to section file content
-    fn format_requirements(requirements: &[Requirement]) -> String {
-        requirements
-            .iter()
-            .map(|r| format!("**{}.** {}", r.index, r.text))
-            .collect::<Vec<_>>()
-            .join("\n\n")
-    }
-
-    // S.3.4: Compare indices for sorting
-    fn compare_indices(a: &str, b: &str) -> std::cmp::Ordering {
-        let a_parts: Vec<u32> = a.split('.').filter_map(|s| s.parse().ok()).collect();
-        let b_parts: Vec<u32> = b.split('.').filter_map(|s| s.parse().ok()).collect();
-
-        for (ap, bp) in a_parts.iter().zip(b_parts.iter()) {
-            match ap.cmp(bp) {
-                std::cmp::Ordering::Equal => continue,
-                other => return other,
-            }
-        }
-
-        a_parts.len().cmp(&b_parts.len())
-    }
-
-    // S.3.5, D.3.5: Rebuild sections list in AGENTS.md
-    fn rebuild_sections(requirements_dir: &PathBuf) -> Result<(), String> {
-        let agents_path = requirements_dir.join("AGENTS.md");
-
-        // Find all .md files except AGENTS.md
-        let mut sections: Vec<String> = Vec::new();
+    /// List all category files (excluding AGENTS.md)
+    fn list_categories(requirements_dir: &PathBuf) -> Result<Vec<String>, String> {
         let entries = fs::read_dir(requirements_dir)
             .map_err(|e| format!("Failed to read requirements directory: {}", e))?;
 
-        for entry in entries.flatten() {
-            let path = entry.path();
-            if let Some(ext) = path.extension() {
-                if ext == "md" {
-                    if let Some(stem) = path.file_stem() {
-                        let name = stem.to_string_lossy().to_string();
-                        if name != "AGENTS" {
-                            sections.push(name);
+        let mut categories: Vec<String> = entries
+            .flatten()
+            .filter_map(|entry| {
+                let path = entry.path();
+                if path.extension()? == "md" {
+                    let stem = path.file_stem()?.to_string_lossy().to_string();
+                    if stem != "AGENTS" {
+                        return Some(stem);
+                    }
+                }
+                None
+            })
+            .collect();
+
+        categories.sort();
+        Ok(categories)
+    }
+
+    /// Calculate unique prefix for a name among a list of names (G.F.4)
+    fn calculate_unique_prefix(name: &str, all_names: &[String]) -> String {
+        // For tool names like reqlix_xxx, use part after reqlix_
+        let effective_name = name.strip_prefix("reqlix_").unwrap_or(name);
+
+        let chars: Vec<char> = effective_name.chars().collect();
+        let mut prefix_len = 1;
+
+        loop {
+            let prefix: String = chars
+                .iter()
+                .take(prefix_len)
+                .collect::<String>()
+                .to_uppercase();
+
+            // Check if this prefix is unique
+            let mut conflicts = 0;
+            for other in all_names {
+                if other == name {
+                    continue;
+                }
+                let other_effective = other.strip_prefix("reqlix_").unwrap_or(other.as_str());
+                let other_prefix: String = other_effective
+                    .chars()
+                    .take(prefix_len)
+                    .collect::<String>()
+                    .to_uppercase();
+                if other_prefix == prefix {
+                    conflicts += 1;
+                }
+            }
+
+            if conflicts == 0 || prefix_len >= chars.len() {
+                return prefix;
+            }
+            prefix_len += 1;
+        }
+    }
+
+    /// Find category by prefix (G.C.7)
+    fn find_category_by_prefix(
+        requirements_dir: &PathBuf,
+        search_prefix: &str,
+    ) -> Result<String, String> {
+        let categories = Self::list_categories(requirements_dir)?;
+
+        for category in &categories {
+            let prefix = Self::calculate_unique_prefix(category, &categories);
+            if prefix == search_prefix {
+                return Ok(category.clone());
+            }
+        }
+
+        Err("Category not found".to_string())
+    }
+
+    // =========================================================================
+    // Chapter helpers (G.GCH.3)
+    // =========================================================================
+
+    /// Read chapters from a category file (streaming) (G.GCH.3)
+    fn read_chapters_streaming(category_path: &PathBuf) -> Result<Vec<String>, String> {
+        let file =
+            File::open(category_path).map_err(|e| format!("Failed to open category file: {}", e))?;
+        let reader = BufReader::new(file);
+        let mut chapters = Vec::new();
+
+        for line in reader.lines() {
+            let line = line.map_err(|e| format!("Failed to read line: {}", e))?;
+            if line.starts_with("# ") && !line.starts_with("## ") {
+                chapters.push(line[2..].to_string());
+            }
+        }
+
+        Ok(chapters)
+    }
+
+    // =========================================================================
+    // Requirement helpers (G.GR.3, G.GRQ.3, G.GRQ.4)
+    // =========================================================================
+
+    /// Read requirements from a chapter (streaming) (G.GR.3)
+    fn read_requirements_streaming(
+        category_path: &PathBuf,
+        chapter: &str,
+    ) -> Result<Vec<RequirementSummary>, String> {
+        let file =
+            File::open(category_path).map_err(|e| format!("Failed to open category file: {}", e))?;
+        let reader = BufReader::new(file);
+        let mut requirements = Vec::new();
+        let mut in_target_chapter = false;
+
+        for line in reader.lines() {
+            let line = line.map_err(|e| format!("Failed to read line: {}", e))?;
+
+            // Check for chapter heading
+            if line.starts_with("# ") && !line.starts_with("## ") {
+                let chapter_name = &line[2..];
+                in_target_chapter = chapter_name == chapter;
+                continue;
+            }
+
+            // If in target chapter, look for requirements
+            if in_target_chapter && line.starts_with("## ") {
+                // Parse ## {index}: {title}
+                if let Some(colon_pos) = line.find(':') {
+                    let index = line[3..colon_pos].trim().to_string();
+                    let title = line[colon_pos + 1..].trim().to_string();
+                    requirements.push(RequirementSummary { index, title });
+                }
+            }
+        }
+
+        Ok(requirements)
+    }
+
+    /// Find requirement by index (streaming) (G.GRQ.3, G.GRQ.4)
+    fn find_requirement_streaming(
+        category_path: &PathBuf,
+        category_name: &str,
+        search_index: &str,
+    ) -> Result<RequirementFull, String> {
+        let file =
+            File::open(category_path).map_err(|e| format!("Failed to open category file: {}", e))?;
+        let reader = BufReader::new(file);
+
+        let mut current_chapter = String::new();
+        let mut found_requirement: Option<(String, String)> = None; // (title, chapter)
+        let mut collecting_text = false;
+        let mut text_lines: Vec<String> = Vec::new();
+
+        for line in reader.lines() {
+            let line = line.map_err(|e| format!("Failed to read line: {}", e))?;
+
+            // Check for chapter heading
+            if line.starts_with("# ") && !line.starts_with("## ") {
+                current_chapter = line[2..].to_string();
+                continue;
+            }
+
+            // Check for requirement heading
+            if line.starts_with("## ") {
+                // If we were collecting text for found requirement, we're done
+                if collecting_text {
+                    let (title, chapter) = found_requirement.unwrap();
+                    return Ok(RequirementFull {
+                        index: search_index.to_string(),
+                        title,
+                        text: text_lines.join("\n").trim().to_string(),
+                        category: category_name.to_string(),
+                        chapter,
+                    });
+                }
+
+                // Check if this is the requirement we're looking for
+                if let Some(colon_pos) = line.find(':') {
+                    let index = line[3..colon_pos].trim();
+                    if index == search_index {
+                        let title = line[colon_pos + 1..].trim().to_string();
+                        found_requirement = Some((title, current_chapter.clone()));
+                        collecting_text = true;
+                        text_lines.clear();
+                    }
+                }
+                continue;
+            }
+
+            // Collect text lines if we found the requirement
+            if collecting_text {
+                text_lines.push(line);
+            }
+        }
+
+        // Handle case where requirement is at end of file
+        if collecting_text {
+            let (title, chapter) = found_requirement.unwrap();
+            return Ok(RequirementFull {
+                index: search_index.to_string(),
+                title,
+                text: text_lines.join("\n").trim().to_string(),
+                category: category_name.to_string(),
+                chapter,
+            });
+        }
+
+        Err("Requirement not found".to_string())
+    }
+
+    /// Parse index into parts (G.GRQ.3)
+    fn parse_index(index: &str) -> Result<(String, String, String), String> {
+        let parts: Vec<&str> = index.split('.').collect();
+        if parts.len() != 3 {
+            return Err(format!("Invalid index format: {}", index));
+        }
+        Ok((
+            parts[0].to_string(),
+            parts[1].to_string(),
+            parts[2].to_string(),
+        ))
+    }
+
+    // =========================================================================
+    // Insert/Update helpers (G.IR.3, G.IR.4, G.IR.5, G.UR.3, G.UR.4)
+    // =========================================================================
+
+    /// Get existing category prefix from requirements, or calculate new one
+    fn get_or_calculate_category_prefix(
+        category_path: &PathBuf,
+        category_name: &str,
+        all_categories: &[String],
+    ) -> Result<String, String> {
+        // Try to find existing prefix from requirements in the file
+        if category_path.exists() {
+            let file = File::open(category_path)
+                .map_err(|e| format!("Failed to open category file: {}", e))?;
+            let reader = BufReader::new(file);
+
+            for line in reader.lines() {
+                let line = line.map_err(|e| format!("Failed to read line: {}", e))?;
+                if line.starts_with("## ") {
+                    if let Some(colon_pos) = line.find(':') {
+                        let index = line[3..colon_pos].trim();
+                        let parts: Vec<&str> = index.split('.').collect();
+                        if !parts.is_empty() {
+                            return Ok(parts[0].to_string());
                         }
                     }
                 }
             }
         }
 
-        sections.sort();
-
-        // Read current AGENTS.md
-        let content = fs::read_to_string(&agents_path)
-            .map_err(|e| format!("Failed to read AGENTS.md: {}", e))?;
-
-        // Build new sections list
-        let sections_text = if sections.is_empty() {
-            "No sections defined yet.".to_string()
-        } else {
-            sections
-                .iter()
-                .map(|s| format!("- {} (key: {})", Self::section_key_to_name(s), s))
-                .collect::<Vec<_>>()
-                .join("\n")
-        };
-
-        // Replace sections in AGENTS.md
-        let new_content = Self::replace_sections_in_agents_md(&content, &sections_text);
-
-        fs::write(&agents_path, new_content)
-            .map_err(|e| format!("Failed to write AGENTS.md: {}", e))?;
-
-        Ok(())
+        // Calculate new prefix
+        Ok(Self::calculate_unique_prefix(category_name, all_categories))
     }
 
-    // Helper: Convert section key to human-readable name
-    fn section_key_to_name(key: &str) -> String {
-        key.split('_')
-            .map(|word| {
-                let mut chars: Vec<char> = word.chars().collect();
-                if let Some(first) = chars.first_mut() {
-                    *first = first.to_uppercase().next().unwrap_or(*first);
+    /// Get existing chapter prefix from requirements, or calculate new one
+    fn get_or_calculate_chapter_prefix(
+        category_path: &PathBuf,
+        chapter_name: &str,
+    ) -> Result<String, String> {
+        let chapters = Self::read_chapters_streaming(category_path)?;
+
+        // Try to find existing prefix from requirements in this chapter
+        if category_path.exists() {
+            let file = File::open(category_path)
+                .map_err(|e| format!("Failed to open category file: {}", e))?;
+            let reader = BufReader::new(file);
+            let mut in_target_chapter = false;
+
+            for line in reader.lines() {
+                let line = line.map_err(|e| format!("Failed to read line: {}", e))?;
+
+                if line.starts_with("# ") && !line.starts_with("## ") {
+                    in_target_chapter = &line[2..] == chapter_name;
+                    continue;
                 }
-                chars.into_iter().collect::<String>()
-            })
-            .collect::<Vec<_>>()
-            .join(" ")
+
+                if in_target_chapter && line.starts_with("## ") {
+                    if let Some(colon_pos) = line.find(':') {
+                        let index = line[3..colon_pos].trim();
+                        let parts: Vec<&str> = index.split('.').collect();
+                        if parts.len() >= 2 {
+                            return Ok(parts[1].to_string());
+                        }
+                    }
+                }
+            }
+        }
+
+        // Calculate new prefix
+        Ok(Self::calculate_unique_prefix(chapter_name, &chapters))
     }
 
-    // Helper: Replace ## Sections content in AGENTS.md
-    fn replace_sections_in_agents_md(content: &str, new_sections: &str) -> String {
-        let re = Regex::new(r"(?ms)(## Sections\s*\n\s*Requirements are organized into the following sections:\s*\n).*?(\n\n|$)").unwrap();
-        
-        if re.is_match(content) {
-            re.replace(
-                content,
-                format!("$1\n{}\n\n", new_sections).as_str(),
-            )
-            .to_string()
-        } else {
-            // If ## Sections doesn't exist, append it
-            format!(
-                "{}\n## Sections\n\nRequirements are organized into the following sections:\n\n{}\n",
-                content.trim_end(),
-                new_sections
-            )
+    /// Get next requirement number in a chapter
+    fn get_next_requirement_number(category_path: &PathBuf, chapter_name: &str) -> Result<u32, String> {
+        let requirements = Self::read_requirements_streaming(category_path, chapter_name)?;
+        let mut max_num: u32 = 0;
+
+        for req in &requirements {
+            let parts: Vec<&str> = req.index.split('.').collect();
+            if parts.len() == 3 {
+                if let Ok(num) = parts[2].parse::<u32>() {
+                    max_num = max_num.max(num);
+                }
+            }
         }
+
+        Ok(max_num + 1)
     }
+
+    /// Check if title exists in chapter
+    fn title_exists_in_chapter(
+        category_path: &PathBuf,
+        chapter_name: &str,
+        title: &str,
+        exclude_index: Option<&str>,
+    ) -> Result<bool, String> {
+        let requirements = Self::read_requirements_streaming(category_path, chapter_name)?;
+
+        for req in &requirements {
+            if let Some(exclude) = exclude_index {
+                if req.index == exclude {
+                    continue;
+                }
+            }
+            if req.title == title {
+                return Ok(true);
+            }
+        }
+
+        Ok(false)
+    }
+
+    // =========================================================================
+    // Tool schema builder
+    // =========================================================================
 
     fn build_tool_schema<T: JsonSchema>(name: &str, description: &'static str) -> Tool {
         let schema = schemars::schema_for!(T);
@@ -383,141 +726,485 @@ impl RequirementsServer {
         }
     }
 
-    // Tool implementations
+    // =========================================================================
+    // Tool handlers
+    // =========================================================================
 
-    // T.3: reqlix_get_instructions
-    fn handle_get_instructions(params: GetInstructionsParams) -> Result<String, String> {
-        Self::validate_project_root(&params.project_root)?;
-        Self::validate_operation_description(&params.operation_description)?;
-
-        let path = Self::find_or_create_requirements_file(&params.project_root)?;
-
-        fs::read_to_string(&path)
-            .map_err(|e| format!("Failed to read requirements file: {}", e))
-    }
-
-    // G.3: reqlix_get_requirements
-    fn handle_get_requirements(params: GetRequirementsParams) -> Result<String, String> {
-        Self::validate_project_root(&params.project_root)?;
-        Self::validate_operation_description(&params.operation_description)?;
-        Self::validate_section(&params.section)?;
-
-        let requirements_dir = Self::get_requirements_dir(&params.project_root)?;
-        let section_path = requirements_dir.join(format!("{}.md", params.section));
-
-        if section_path.exists() {
-            fs::read_to_string(&section_path)
-                .map_err(|e| format!("Failed to read section file: {}", e))
-        } else {
-            Ok("No requirements in this section.".to_string())
+    /// reqlix_get_instructions (G.GI)
+    fn handle_get_instructions(params: GetInstructionsParams) -> String {
+        // Validate parameters
+        if let Err(e) = Self::validate_project_root(&params.project_root) {
+            return Self::json_error(&e);
         }
-    }
+        if let Err(e) = Self::validate_operation_description(&params.operation_description) {
+            return Self::json_error(&e);
+        }
 
-    // S.3: reqlix_set_requirements
-    fn handle_set_requirements(params: SetRequirementsParams) -> Result<String, String> {
-        Self::validate_project_root(&params.project_root)?;
-        Self::validate_operation_description(&params.operation_description)?;
-        Self::validate_section(&params.section)?;
-        Self::validate_index(&params.index)?;
-        Self::validate_text(&params.text)?;
-
-        let requirements_dir = Self::get_requirements_dir(&params.project_root)?;
-        let section_path = requirements_dir.join(format!("{}.md", params.section));
-
-        // S.3.1: Read or create section file
-        let mut requirements = if section_path.exists() {
-            let content = fs::read_to_string(&section_path)
-                .map_err(|e| format!("Failed to read section file: {}", e))?;
-            Self::parse_requirements(&content)
-        } else {
-            Vec::new()
+        // Find or create AGENTS.md
+        let agents_path = match Self::find_or_create_requirements_file(&params.project_root) {
+            Ok(p) => p,
+            Err(e) => return Self::json_error(&e),
         };
 
-        // S.3.2, S.3.3: Update or add requirement
-        let mut found = false;
-        for req in &mut requirements {
-            if req.index == params.index {
-                req.text = params.text.clone();
-                found = true;
-                break;
+        // Read AGENTS.md content
+        let mut content = match fs::read_to_string(&agents_path) {
+            Ok(c) => c,
+            Err(e) => return Self::json_error(&format!("Failed to read requirements file: {}", e)),
+        };
+
+        // Get requirements directory
+        let requirements_dir = match agents_path.parent() {
+            Some(p) => p.to_path_buf(),
+            None => return Self::json_error("Could not determine requirements directory"),
+        };
+
+        // Generate Categories chapter (G.GI.7)
+        let categories = match Self::list_categories(&requirements_dir) {
+            Ok(c) => c,
+            Err(e) => return Self::json_error(&e),
+        };
+
+        let categories_chapter = if categories.is_empty() {
+            "\n# Categories\n\nNo categories defined yet.\n".to_string()
+        } else {
+            let list = categories
+                .iter()
+                .map(|c| format!("- {}", c))
+                .collect::<Vec<_>>()
+                .join("\n");
+            format!("\n# Categories\n\n{}\n", list)
+        };
+
+        content.push_str(&categories_chapter);
+
+        // Return JSON response (G.GI.8)
+        Self::json_success(json!({ "content": content }))
+    }
+
+    /// reqlix_get_categories (G.GC)
+    fn handle_get_categories(params: GetCategoriesParams) -> String {
+        // Validate parameters
+        if let Err(e) = Self::validate_project_root(&params.project_root) {
+            return Self::json_error(&e);
+        }
+        if let Err(e) = Self::validate_operation_description(&params.operation_description) {
+            return Self::json_error(&e);
+        }
+
+        // Get requirements directory
+        let requirements_dir = match Self::get_requirements_dir(&params.project_root) {
+            Ok(d) => d,
+            Err(e) => return Self::json_error(&e),
+        };
+
+        // List categories (G.GC.3)
+        let categories = match Self::list_categories(&requirements_dir) {
+            Ok(c) => c,
+            Err(e) => return Self::json_error(&e),
+        };
+
+        // Return JSON response (G.GC.4)
+        Self::json_success(json!({ "categories": categories }))
+    }
+
+    /// reqlix_get_chapters (G.GCH)
+    fn handle_get_chapters(params: GetChaptersParams) -> String {
+        // Validate parameters
+        if let Err(e) = Self::validate_project_root(&params.project_root) {
+            return Self::json_error(&e);
+        }
+        if let Err(e) = Self::validate_operation_description(&params.operation_description) {
+            return Self::json_error(&e);
+        }
+        if let Err(e) = Self::validate_category(&params.category) {
+            return Self::json_error(&e);
+        }
+
+        // Get requirements directory
+        let requirements_dir = match Self::get_requirements_dir(&params.project_root) {
+            Ok(d) => d,
+            Err(e) => return Self::json_error(&e),
+        };
+
+        // Check if category file exists
+        let category_path = requirements_dir.join(format!("{}.md", params.category));
+        if !category_path.exists() {
+            return Self::json_error("Category not found");
+        }
+
+        // Read chapters (G.GCH.3)
+        let chapters = match Self::read_chapters_streaming(&category_path) {
+            Ok(c) => c,
+            Err(e) => return Self::json_error(&e),
+        };
+
+        // Return JSON response (G.GCH.4)
+        Self::json_success(json!({
+            "category": params.category,
+            "chapters": chapters
+        }))
+    }
+
+    /// reqlix_get_requirements (G.GR)
+    fn handle_get_requirements(params: GetRequirementsParams) -> String {
+        // Validate parameters
+        if let Err(e) = Self::validate_project_root(&params.project_root) {
+            return Self::json_error(&e);
+        }
+        if let Err(e) = Self::validate_operation_description(&params.operation_description) {
+            return Self::json_error(&e);
+        }
+        if let Err(e) = Self::validate_category(&params.category) {
+            return Self::json_error(&e);
+        }
+        if let Err(e) = Self::validate_chapter(&params.chapter) {
+            return Self::json_error(&e);
+        }
+
+        // Get requirements directory
+        let requirements_dir = match Self::get_requirements_dir(&params.project_root) {
+            Ok(d) => d,
+            Err(e) => return Self::json_error(&e),
+        };
+
+        // Check if category file exists
+        let category_path = requirements_dir.join(format!("{}.md", params.category));
+        if !category_path.exists() {
+            return Self::json_error("Category not found");
+        }
+
+        // Check if chapter exists
+        let chapters = match Self::read_chapters_streaming(&category_path) {
+            Ok(c) => c,
+            Err(e) => return Self::json_error(&e),
+        };
+        if !chapters.contains(&params.chapter) {
+            return Self::json_error("Chapter not found");
+        }
+
+        // Read requirements (G.GR.3)
+        let requirements = match Self::read_requirements_streaming(&category_path, &params.chapter) {
+            Ok(r) => r,
+            Err(e) => return Self::json_error(&e),
+        };
+
+        // Return JSON response (G.GR.4)
+        Self::json_success(json!({
+            "category": params.category,
+            "chapter": params.chapter,
+            "requirements": requirements
+        }))
+    }
+
+    /// reqlix_get_requirement (G.GRQ)
+    fn handle_get_requirement(params: GetRequirementParams) -> String {
+        // Validate parameters
+        if let Err(e) = Self::validate_project_root(&params.project_root) {
+            return Self::json_error(&e);
+        }
+        if let Err(e) = Self::validate_operation_description(&params.operation_description) {
+            return Self::json_error(&e);
+        }
+        if let Err(e) = Self::validate_index(&params.index) {
+            return Self::json_error(&e);
+        }
+
+        // Parse index (G.GRQ.3)
+        let (category_prefix, _chapter_prefix, _number) = match Self::parse_index(&params.index) {
+            Ok(p) => p,
+            Err(e) => return Self::json_error(&e),
+        };
+
+        // Get requirements directory
+        let requirements_dir = match Self::get_requirements_dir(&params.project_root) {
+            Ok(d) => d,
+            Err(e) => return Self::json_error(&e),
+        };
+
+        // Find category by prefix (G.C.7)
+        let category_name = match Self::find_category_by_prefix(&requirements_dir, &category_prefix) {
+            Ok(c) => c,
+            Err(e) => return Self::json_error(&e),
+        };
+
+        let category_path = requirements_dir.join(format!("{}.md", category_name));
+
+        // Find requirement (G.GRQ.4)
+        let requirement = match Self::find_requirement_streaming(&category_path, &category_name, &params.index) {
+            Ok(r) => r,
+            Err(e) => return Self::json_error(&e),
+        };
+
+        // Return JSON response (G.GRQ.5)
+        Self::json_success(requirement)
+    }
+
+    /// reqlix_insert_requirement (G.IR)
+    /// Note: MCP Sampling for title generation is required (G.IR.4).
+    /// Currently using simple title generation as fallback until MCP Sampling is integrated.
+    /// TODO: Integrate MCP Sampling when available in rmcp SDK.
+    fn handle_insert_requirement(params: InsertRequirementParams) -> String {
+        // Validate parameters
+        if let Err(e) = Self::validate_project_root(&params.project_root) {
+            return Self::json_error(&e);
+        }
+        if let Err(e) = Self::validate_operation_description(&params.operation_description) {
+            return Self::json_error(&e);
+        }
+        if let Err(e) = Self::validate_category(&params.category) {
+            return Self::json_error(&e);
+        }
+        if let Err(e) = Self::validate_chapter(&params.chapter) {
+            return Self::json_error(&e);
+        }
+        if let Err(e) = Self::validate_text(&params.text) {
+            return Self::json_error(&e);
+        }
+
+        // Get requirements directory
+        let requirements_dir = match Self::get_requirements_dir(&params.project_root) {
+            Ok(d) => d,
+            Err(e) => return Self::json_error(&e),
+        };
+
+        let category_path = requirements_dir.join(format!("{}.md", params.category));
+
+        // Step 1: Find or create category (G.IR.3 step 1)
+        if !category_path.exists() {
+            if let Err(e) = fs::write(&category_path, "") {
+                return Self::json_error(&format!("Failed to create category file: {}", e));
             }
         }
 
-        if !found {
-            requirements.push(Requirement {
-                index: params.index.clone(),
-                text: params.text.clone(),
-            });
-        }
-
-        // S.3.4: Sort by index
-        requirements.sort_by(|a, b| Self::compare_indices(&a.index, &b.index));
-
-        // Write section file
-        let content = Self::format_requirements(&requirements);
-        fs::write(&section_path, &content)
-            .map_err(|e| format!("Failed to write section file: {}", e))?;
-
-        // S.3.5: Rebuild sections in AGENTS.md
-        Self::rebuild_sections(&requirements_dir)?;
-
-        // S.3.6: Return final requirement
-        let final_req = requirements
-            .iter()
-            .find(|r| r.index == params.index)
-            .map(|r| format!("**{}.** {}", r.index, r.text))
-            .unwrap_or_else(|| format!("**{}.** {}", params.index, params.text));
-
-        Ok(final_req)
-    }
-
-    // D.3: reqlix_delete_requirements
-    fn handle_delete_requirements(params: DeleteRequirementsParams) -> Result<String, String> {
-        Self::validate_project_root(&params.project_root)?;
-        Self::validate_operation_description(&params.operation_description)?;
-        Self::validate_section(&params.section)?;
-        Self::validate_index(&params.index)?;
-
-        let requirements_dir = Self::get_requirements_dir(&params.project_root)?;
-        let section_path = requirements_dir.join(format!("{}.md", params.section));
-
-        // D.3.1: Check if section exists
-        if !section_path.exists() {
-            return Err("Section not found.".to_string());
-        }
-
-        let content = fs::read_to_string(&section_path)
-            .map_err(|e| format!("Failed to read section file: {}", e))?;
-
-        let mut requirements = Self::parse_requirements(&content);
-
-        // D.3.2: Find requirement
-        let position = requirements.iter().position(|r| r.index == params.index);
-
-        let deleted_req = match position {
-            Some(pos) => requirements.remove(pos),
-            None => return Err("Requirement not found.".to_string()),
+        // Step 2: Find or create chapter (G.IR.3 step 2)
+        let chapters = match Self::read_chapters_streaming(&category_path) {
+            Ok(c) => c,
+            Err(e) => return Self::json_error(&e),
         };
 
-        // D.3.3: Return deleted content
-        let deleted_text = format!("**{}.** {}", deleted_req.index, deleted_req.text);
-
-        // D.3.4: Delete file if empty, otherwise write updated content
-        if requirements.is_empty() {
-            fs::remove_file(&section_path)
-                .map_err(|e| format!("Failed to delete section file: {}", e))?;
-        } else {
-            let new_content = Self::format_requirements(&requirements);
-            fs::write(&section_path, &new_content)
-                .map_err(|e| format!("Failed to write section file: {}", e))?;
+        if !chapters.contains(&params.chapter) {
+            // Append chapter heading
+            let mut content = match fs::read_to_string(&category_path) {
+                Ok(c) => c,
+                Err(e) => return Self::json_error(&format!("Failed to read category file: {}", e)),
+            };
+            if !content.is_empty() && !content.ends_with('\n') {
+                content.push('\n');
+            }
+            content.push_str(&format!("\n# {}\n", params.chapter));
+            if let Err(e) = fs::write(&category_path, &content) {
+                return Self::json_error(&format!("Failed to write category file: {}", e));
+            }
         }
 
-        // D.3.5: Rebuild sections in AGENTS.md
-        Self::rebuild_sections(&requirements_dir)?;
+        // Step 3: Generate title (G.IR.3 step 3)
+        // TODO: Use MCP Sampling when available (G.IR.4)
+        // For now, generate simple title from first few words
+        let title = Self::generate_simple_title(&params.text);
 
-        Ok(deleted_text)
+        // Check title uniqueness
+        match Self::title_exists_in_chapter(&category_path, &params.chapter, &title, None) {
+            Ok(true) => {
+                return Self::json_error(
+                    "MCP Sampling required for title generation but not available. \
+                     Generated title already exists in chapter.",
+                );
+            }
+            Err(e) => return Self::json_error(&e),
+            _ => {}
+        }
+
+        // Step 4: Generate index (G.IR.3 step 4)
+        let all_categories = match Self::list_categories(&requirements_dir) {
+            Ok(c) => c,
+            Err(e) => return Self::json_error(&e),
+        };
+
+        let category_prefix =
+            match Self::get_or_calculate_category_prefix(&category_path, &params.category, &all_categories) {
+                Ok(p) => p,
+                Err(e) => return Self::json_error(&e),
+            };
+
+        let chapter_prefix = match Self::get_or_calculate_chapter_prefix(&category_path, &params.chapter) {
+            Ok(p) => p,
+            Err(e) => return Self::json_error(&e),
+        };
+
+        let number = match Self::get_next_requirement_number(&category_path, &params.chapter) {
+            Ok(n) => n,
+            Err(e) => return Self::json_error(&e),
+        };
+
+        let index = format!("{}.{}.{}", category_prefix, chapter_prefix, number);
+
+        // Step 5: Insert requirement (G.IR.3 step 5)
+        let mut content = match fs::read_to_string(&category_path) {
+            Ok(c) => c,
+            Err(e) => return Self::json_error(&format!("Failed to read category file: {}", e)),
+        };
+
+        // Find position to insert (after chapter heading or at end of chapter)
+        let chapter_heading = format!("# {}", params.chapter);
+        if let Some(chapter_pos) = content.find(&chapter_heading) {
+            // Find end of chapter (next # heading or end of file)
+            let after_chapter = chapter_pos + chapter_heading.len();
+            let insert_pos = content[after_chapter..]
+                .find("\n# ")
+                .map(|p| after_chapter + p)
+                .unwrap_or(content.len());
+
+            let requirement_text = format!("\n## {}: {}\n\n{}\n", index, title, params.text);
+            content.insert_str(insert_pos, &requirement_text);
+        } else {
+            return Self::json_error("Chapter not found after creation");
+        }
+
+        if let Err(e) = fs::write(&category_path, &content) {
+            return Self::json_error(&format!("Failed to write category file: {}", e));
+        }
+
+        // Step 6: Return result (G.IR.3 step 6, G.IR.6)
+        Self::json_success(RequirementFull {
+            index,
+            title,
+            text: params.text,
+            category: params.category,
+            chapter: params.chapter,
+        })
+    }
+
+    /// Generate simple title from text (fallback when MCP Sampling not available)
+    fn generate_simple_title(text: &str) -> String {
+        let words: Vec<&str> = text.split_whitespace().take(5).collect();
+        let mut title = words.join(" ");
+        if title.len() > 50 {
+            title = title[..50].to_string();
+        }
+        // Capitalize first letter
+        let mut chars: Vec<char> = title.chars().collect();
+        if let Some(first) = chars.first_mut() {
+            *first = first.to_uppercase().next().unwrap_or(*first);
+        }
+        chars.into_iter().collect()
+    }
+
+    /// reqlix_update_requirement (G.UR)
+    /// Note: MCP Sampling for title generation is required (G.UR.3).
+    /// Currently using simple title generation as fallback until MCP Sampling is integrated.
+    /// TODO: Integrate MCP Sampling when available in rmcp SDK.
+    fn handle_update_requirement(params: UpdateRequirementParams) -> String {
+        // Validate parameters
+        if let Err(e) = Self::validate_project_root(&params.project_root) {
+            return Self::json_error(&e);
+        }
+        if let Err(e) = Self::validate_operation_description(&params.operation_description) {
+            return Self::json_error(&e);
+        }
+        if let Err(e) = Self::validate_index(&params.index) {
+            return Self::json_error(&e);
+        }
+        if let Err(e) = Self::validate_text(&params.text) {
+            return Self::json_error(&e);
+        }
+
+        // Step 1: Parse index (G.UR.3 step 1)
+        let (category_prefix, _chapter_prefix, _number) = match Self::parse_index(&params.index) {
+            Ok(p) => p,
+            Err(e) => return Self::json_error(&e),
+        };
+
+        // Get requirements directory
+        let requirements_dir = match Self::get_requirements_dir(&params.project_root) {
+            Ok(d) => d,
+            Err(e) => return Self::json_error(&e),
+        };
+
+        // Find category by prefix
+        let category_name = match Self::find_category_by_prefix(&requirements_dir, &category_prefix) {
+            Ok(c) => c,
+            Err(e) => return Self::json_error(&e),
+        };
+
+        let category_path = requirements_dir.join(format!("{}.md", category_name));
+
+        // Step 2: Find requirement (G.UR.3 step 2)
+        let existing = match Self::find_requirement_streaming(&category_path, &category_name, &params.index) {
+            Ok(r) => r,
+            Err(e) => return Self::json_error(&e),
+        };
+
+        // Step 3: Generate new title (G.UR.3 step 3)
+        // TODO: Use MCP Sampling when available
+        let new_title = Self::generate_simple_title(&params.text);
+
+        // Check title uniqueness (excluding current requirement)
+        match Self::title_exists_in_chapter(
+            &category_path,
+            &existing.chapter,
+            &new_title,
+            Some(&params.index),
+        ) {
+            Ok(true) => {
+                return Self::json_error(
+                    "MCP Sampling required for title generation but not available. \
+                     Generated title already exists in chapter.",
+                );
+            }
+            Err(e) => return Self::json_error(&e),
+            _ => {}
+        }
+
+        // Step 4: Update requirement (G.UR.3 step 4, G.UR.4)
+        let content = match fs::read_to_string(&category_path) {
+            Ok(c) => c,
+            Err(e) => return Self::json_error(&format!("Failed to read category file: {}", e)),
+        };
+
+        // Find and replace the requirement
+        let old_heading = format!("## {}: {}", params.index, existing.title);
+        let new_heading = format!("## {}: {}", params.index, new_title);
+
+        // Find the requirement section
+        if let Some(heading_start) = content.find(&old_heading) {
+            let after_heading = heading_start + old_heading.len();
+
+            // Find the end of this requirement (next ## or EOF)
+            let req_end = content[after_heading..]
+                .find("\n## ")
+                .map(|p| after_heading + p)
+                .unwrap_or(content.len());
+
+            // Build new content
+            let mut new_content = String::new();
+            new_content.push_str(&content[..heading_start]);
+            new_content.push_str(&new_heading);
+            new_content.push_str("\n\n");
+            new_content.push_str(&params.text);
+            new_content.push('\n');
+            new_content.push_str(&content[req_end..]);
+
+            if let Err(e) = fs::write(&category_path, &new_content) {
+                return Self::json_error(&format!("Failed to write category file: {}", e));
+            }
+        } else {
+            return Self::json_error("Could not find requirement to update");
+        }
+
+        // Step 5: Return result (G.UR.3 step 5, G.UR.5)
+        Self::json_success(RequirementFull {
+            index: params.index,
+            title: new_title,
+            text: params.text,
+            category: category_name,
+            chapter: existing.chapter,
+        })
     }
 }
+
+// =============================================================================
+// ServerHandler implementation
+// =============================================================================
 
 #[allow(clippy::manual_async_fn)]
 impl ServerHandler for RequirementsServer {
@@ -548,17 +1235,29 @@ impl ServerHandler for RequirementsServer {
                     "reqlix_get_instructions",
                     GET_INSTRUCTIONS_DESC,
                 ),
+                Self::build_tool_schema::<GetCategoriesParams>(
+                    "reqlix_get_categories",
+                    GET_CATEGORIES_DESC,
+                ),
+                Self::build_tool_schema::<GetChaptersParams>(
+                    "reqlix_get_chapters",
+                    GET_CHAPTERS_DESC,
+                ),
                 Self::build_tool_schema::<GetRequirementsParams>(
                     "reqlix_get_requirements",
                     GET_REQUIREMENTS_DESC,
                 ),
-                Self::build_tool_schema::<SetRequirementsParams>(
-                    "reqlix_set_requirements",
-                    SET_REQUIREMENTS_DESC,
+                Self::build_tool_schema::<GetRequirementParams>(
+                    "reqlix_get_requirement",
+                    GET_REQUIREMENT_DESC,
                 ),
-                Self::build_tool_schema::<DeleteRequirementsParams>(
-                    "reqlix_delete_requirements",
-                    DELETE_REQUIREMENTS_DESC,
+                Self::build_tool_schema::<InsertRequirementParams>(
+                    "reqlix_insert_requirement",
+                    INSERT_REQUIREMENT_DESC,
+                ),
+                Self::build_tool_schema::<UpdateRequirementParams>(
+                    "reqlix_update_requirement",
+                    UPDATE_REQUIREMENT_DESC,
                 ),
             ];
 
@@ -584,36 +1283,49 @@ impl ServerHandler for RequirementsServer {
                         request.arguments.unwrap_or_default().into(),
                     )
                     .map_err(|e| rmcp::model::ErrorData::invalid_params(e.to_string(), None))?;
-
                     Self::handle_get_instructions(params)
-                        .map_err(|e| rmcp::model::ErrorData::internal_error(e, None))?
+                }
+                "reqlix_get_categories" => {
+                    let params: GetCategoriesParams = serde_json::from_value(
+                        request.arguments.unwrap_or_default().into(),
+                    )
+                    .map_err(|e| rmcp::model::ErrorData::invalid_params(e.to_string(), None))?;
+                    Self::handle_get_categories(params)
+                }
+                "reqlix_get_chapters" => {
+                    let params: GetChaptersParams = serde_json::from_value(
+                        request.arguments.unwrap_or_default().into(),
+                    )
+                    .map_err(|e| rmcp::model::ErrorData::invalid_params(e.to_string(), None))?;
+                    Self::handle_get_chapters(params)
                 }
                 "reqlix_get_requirements" => {
                     let params: GetRequirementsParams = serde_json::from_value(
                         request.arguments.unwrap_or_default().into(),
                     )
                     .map_err(|e| rmcp::model::ErrorData::invalid_params(e.to_string(), None))?;
-
                     Self::handle_get_requirements(params)
-                        .map_err(|e| rmcp::model::ErrorData::internal_error(e, None))?
                 }
-                "reqlix_set_requirements" => {
-                    let params: SetRequirementsParams = serde_json::from_value(
+                "reqlix_get_requirement" => {
+                    let params: GetRequirementParams = serde_json::from_value(
                         request.arguments.unwrap_or_default().into(),
                     )
                     .map_err(|e| rmcp::model::ErrorData::invalid_params(e.to_string(), None))?;
-
-                    Self::handle_set_requirements(params)
-                        .map_err(|e| rmcp::model::ErrorData::internal_error(e, None))?
+                    Self::handle_get_requirement(params)
                 }
-                "reqlix_delete_requirements" => {
-                    let params: DeleteRequirementsParams = serde_json::from_value(
+                "reqlix_insert_requirement" => {
+                    let params: InsertRequirementParams = serde_json::from_value(
                         request.arguments.unwrap_or_default().into(),
                     )
                     .map_err(|e| rmcp::model::ErrorData::invalid_params(e.to_string(), None))?;
-
-                    Self::handle_delete_requirements(params)
-                        .map_err(|e| rmcp::model::ErrorData::internal_error(e, None))?
+                    Self::handle_insert_requirement(params)
+                }
+                "reqlix_update_requirement" => {
+                    let params: UpdateRequirementParams = serde_json::from_value(
+                        request.arguments.unwrap_or_default().into(),
+                    )
+                    .map_err(|e| rmcp::model::ErrorData::invalid_params(e.to_string(), None))?;
+                    Self::handle_update_requirement(params)
                 }
                 _ => {
                     return Err(rmcp::model::ErrorData::invalid_params(
@@ -632,6 +1344,10 @@ impl ServerHandler for RequirementsServer {
         }
     }
 }
+
+// =============================================================================
+// Main entry point
+// =============================================================================
 
 #[tokio::main]
 async fn main() -> Result<()> {

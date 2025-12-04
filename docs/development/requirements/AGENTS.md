@@ -164,6 +164,7 @@ These instructions are mandatory for all code operations:
    according to those requirements.
 
 3. Document code thoroughly by leaving references to requirement indices in comments.
+   Requirement index format: `{CATEGORY}.{CHAPTER}.{NUMBER}` (e.g., `G.GI.1`, `T.U.2`).
 
 4. All requirements must be written in English.
 
