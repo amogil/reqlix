@@ -19,6 +19,7 @@ All tool parameters must satisfy the following constraints:
 - `category` - required, max 100 characters
 - `chapter` - required, max 100 characters
 - `index` - required, max 10 characters
+- `text` - required, max 10000 characters
 
 ## G.P.2: Constraint violation error
 
@@ -43,6 +44,8 @@ The requirement body follows the heading and continues until the next `##` headi
 
 Requirement index format: `{category_prefix}.{chapter_prefix}.{number}`
 
+The dot (`.`) is the delimiter between parts. Each part is parsed by splitting the index on dots.
+
 - `{category_prefix}` - First letter(s) of the category name (uppercase). If another category has the same
   first letter, add more letters until the prefix is unique among all categories.
 - `{chapter_prefix}` - First letter(s) of the chapter name (uppercase). If another chapter in the same
@@ -51,6 +54,7 @@ Requirement index format: `{category_prefix}.{chapter_prefix}.{number}`
 - `{number}` - Sequential number of the requirement within the chapter (1, 2, 3, ...).
 
 Examples:
+
 - Category `general`, chapter `General Requirements` → G.G.1, G.G.2, ...
 - Category `general`, chapter `reqlix_get_instructions` → G.GI.1, G.GI.2, ... (from "get_instructions")
 - Category `testing`, chapter `Unit Tests` → T.U.1, T.U.2, ...
@@ -63,14 +67,43 @@ All tools must locate the requirements directory using the same algorithm as def
 [G.GI.3](#ggi3-requirements-file-search-order) for `reqlix_get_instructions`. If AGENTS.md is not found,
 it must be created as defined in [G.GI.4](#ggi4-requirements-file-creation).
 
-## G.C.2: AGENTS.md exclusive access
+## G.C.2: Directory creation
+
+If the requirements directory does not exist, it must be created automatically (including parent directories).
+
+## G.C.3: AGENTS.md exclusive access
 
 The file AGENTS.md is used exclusively by `reqlix_get_instructions`. Other tools must not read or modify
 AGENTS.md. The LLM/model cannot modify AGENTS.md directly.
 
-## G.C.3: AGENTS.md protection
+## G.C.4: AGENTS.md protection
 
 The file AGENTS.md must never be deleted.
+
+## G.C.5: JSON response format
+
+All tool responses must be in JSON format. This includes both successful responses and errors.
+
+## G.C.6: Error response format
+
+Error responses must use the following JSON format:
+
+```json
+{
+  "success": false,
+  "error": "Human-readable error message"
+}
+```
+
+## G.C.7: Category lookup by prefix
+
+To find a category file by prefix:
+
+1. List all `*.md` files in the requirements directory (excluding AGENTS.md)
+2. For each file, extract category name from filename (without `.md`)
+3. Calculate what prefix this category would have using the algorithm in [G.F.4](#gf4-index-format)
+4. Return the category whose calculated prefix matches the search prefix
+5. If no category matches the prefix, return an error "Category not found"
 
 # reqlix_get_instructions
 
@@ -88,10 +121,8 @@ This MCP server is the single source of truth for everything related to requirem
 
 Parameters:
 
-- `project_root` (string, required) - Path to the project root directory. Used to locate requirements and
-  project source code.
+- `project_root` (string, required) - Path to the project root directory.
 - `operation_description` (string, required) - Brief description of the operation that LLM intends to perform.
-  Used to provide relevant instructions.
 
 ## G.GI.3: Requirements file search order
 
@@ -116,14 +147,28 @@ If file creation fails or a permission error occurs at any stage, the tool must 
 ## G.GI.6: Placeholder content
 
 Placeholder content for new requirements file (note: "# Categories" is not included as it is generated
-dynamically per [G.GI.7](#ggi7-return-value)):
+dynamically per [G.GI.7](#ggi7-return-value)).
+
+The placeholder `{requirements_directory}` must be replaced with the actual path to the requirements
+directory at runtime:
 
 ```
-# General Requirements
+# Instructions
 
-## G.G.1: Language requirement
+These instructions are mandatory for all code operations:
 
-All requirements must be written in English.
+1. Always verify that code matches requirements. If there are discrepancies, propose to the user
+   to fix either the code or the requirements.
+
+2. Make maximum effort to find relevant requirements for the code being modified and apply changes
+   according to those requirements.
+
+3. Document code thoroughly by leaving references to requirement indices in comments.
+
+4. All requirements must be written in English.
+
+5. Never edit files in {requirements_directory} directly. Always use this MCP server for all
+   requirements operations.
 
 ```
 
@@ -132,10 +177,31 @@ All requirements must be written in English.
 The tool must return the combined content:
 
 1. Content of the AGENTS.md file that was found or created
-2. Automatically generated "# Categories" chapter listing all `*.md` files in the requirements directory
-   (excluding AGENTS.md), sorted alphabetically
+2. Automatically generated "# Categories" chapter with a markdown list of all `*.md` files in the
+   requirements directory (excluding AGENTS.md), sorted alphabetically
 
 The categories list is generated dynamically at runtime, not stored in AGENTS.md.
+
+Format of generated Categories chapter:
+
+```
+# Categories
+
+- general
+- testing
+- code_quality
+```
+
+## G.GI.8: Response format
+
+```json
+{
+  "success": true,
+  "data": {
+    "content": "# Instructions\n\nThese instructions are mandatory...\n\n# Categories\n\n- general\n- testing"
+  }
+}
+```
 
 # reqlix_get_categories
 
@@ -151,8 +217,7 @@ Returns a list of all available requirement categories.
 
 Parameters:
 
-- `project_root` (string, required) - Path to the project root directory. Used to locate requirements and
-  project source code.
+- `project_root` (string, required) - Path to the project root directory.
 - `operation_description` (string, required) - Brief description of the operation that LLM intends to perform.
 
 ## G.GC.3: Return value
@@ -160,9 +225,22 @@ Parameters:
 Returns a list of category names derived from `*.md` file names in the requirements directory
 (excluding AGENTS.md), sorted alphabetically.
 
-## G.GC.4: Empty result
+## G.GC.4: Response format
 
-If no category files exist, return an empty list.
+```json
+{
+  "success": true,
+  "data": {
+    "categories": [
+      "general",
+      "testing",
+      "code_quality"
+    ]
+  }
+}
+```
+
+If no category files exist, return empty array: `"categories": []`
 
 # reqlix_get_chapters
 
@@ -178,23 +256,36 @@ Returns a list of all chapters in the specified category.
 
 Parameters:
 
-- `project_root` (string, required) - Path to the project root directory. Used to locate requirements and
-  project source code.
+- `project_root` (string, required) - Path to the project root directory.
 - `operation_description` (string, required) - Brief description of the operation that LLM intends to perform.
-- `category` (string, required) - Category key (e.g., "general", "testing", "code_quality").
+- `category` (string, required) - Category key (e.g., "general", "testing").
 
-## G.GCH.3: Return value
-
-Returns a list of chapter names (level-1 headings `#`) from the category file, in order of appearance.
-
-## G.GCH.4: Implementation details
+## G.GCH.3: Implementation details
 
 The tool must read the category file line by line (streaming) and parse only the level-1 headings (`# `).
 Do not load the entire file into memory. Extract chapter names by removing the `# ` prefix from matching lines.
 
-## G.GCH.5: Category not found error
+## G.GCH.4: Response format
 
-If the category file does not exist, return an error: "Category not found."
+Success:
+
+```json
+{
+  "success": true,
+  "data": {
+    "category": "general",
+    "chapters": [
+      "General Requirements",
+      "Parameter Constraints",
+      "reqlix_get_instructions"
+    ]
+  }
+}
+```
+
+If category has no chapters, return empty array: `"chapters": []`
+
+Error (category not found): Use error format from [G.C.6](#gc6-error-response-format).
 
 # reqlix_get_requirements
 
@@ -210,30 +301,44 @@ Returns a list of all requirement titles in the specified category and chapter.
 
 Parameters:
 
-- `project_root` (string, required) - Path to the project root directory. Used to locate requirements and
-  project source code.
+- `project_root` (string, required) - Path to the project root directory.
 - `operation_description` (string, required) - Brief description of the operation that LLM intends to perform.
-- `category` (string, required) - Category key (e.g., "general", "testing", "code_quality").
+- `category` (string, required) - Category key (e.g., "general", "testing").
 - `chapter` (string, required) - Chapter name (e.g., "General Requirements", "Unit Tests").
 
-## G.GR.3: Return value
-
-Returns a list of requirement titles (format: `{index}: {title}`) from the specified chapter,
-in order of appearance.
-
-## G.GR.4: Implementation details
+## G.GR.3: Implementation details
 
 The tool must read the category file line by line (streaming) and parse only the level-2 headings (`## `)
 within the specified chapter. Do not load the entire file into memory. Start collecting requirements after
 finding the matching chapter heading (`# {chapter}`) and stop when reaching the next chapter heading or EOF.
 
-## G.GR.5: Category not found error
+## G.GR.4: Response format
 
-If the category file does not exist, return an error: "Category not found."
+Success:
 
-## G.GR.6: Chapter not found error
+```json
+{
+  "success": true,
+  "data": {
+    "category": "general",
+    "chapter": "General Requirements",
+    "requirements": [
+      {
+        "index": "G.G.1",
+        "title": "Language requirement"
+      },
+      {
+        "index": "G.G.2",
+        "title": "Line length requirement"
+      }
+    ]
+  }
+}
+```
 
-If the chapter does not exist in the category file, return an error: "Chapter not found."
+If chapter has no requirements, return empty array: `"requirements": []`
+
+Errors (category/chapter not found): Use error format from [G.C.6](#gc6-error-response-format).
 
 # reqlix_get_requirement
 
@@ -249,14 +354,27 @@ Returns the full content of a requirement by its index.
 
 Parameters:
 
-- `project_root` (string, required) - Path to the project root directory. Used to locate requirements and
-  project source code.
+- `project_root` (string, required) - Path to the project root directory.
 - `operation_description` (string, required) - Brief description of the operation that LLM intends to perform.
 - `index` (string, required) - Requirement index (e.g., "G.G.1", "T.U.2").
 
-## G.GRQ.3: Return value
+## G.GRQ.3: Index parsing and file lookup
 
-Returns the full requirement content including title and body text.
+The tool must parse the index by splitting on dots (`.`):
+
+- First part → category prefix
+- Second part → chapter prefix
+- Third part → requirement number
+
+To find the requirement:
+
+1. Use algorithm from [G.C.7](#gc7-category-lookup-by-prefix) to find category by prefix
+2. Scan the category file to find a chapter containing a requirement with matching chapter prefix:
+   - Read file line by line, tracking current chapter (last seen `#` heading)
+   - For each `## X.Y.Z: title` line, extract `Y` (chapter prefix from index)
+   - If `Y` matches the search chapter prefix, the current chapter is the target
+3. If no chapter contains requirements with this chapter prefix, return error "Requirement not found"
+4. Find the requirement by full index within the chapter
 
 ## G.GRQ.4: Implementation details
 
@@ -264,21 +382,163 @@ The tool must read the category file line by line (streaming). Do not load the e
 Find the requirement heading (`## {index}: {title}`) and collect all following lines until the next
 `##` heading or EOF. Return both the title and body text.
 
-## G.GRQ.5: Requirement not found error
+## G.GRQ.5: Response format
 
-If a requirement with the specified index does not exist, return an error: "Requirement not found."
+Success:
 
-## G.GRQ.6: Index parsing
+```json
+{
+  "success": true,
+  "data": {
+    "index": "G.G.1",
+    "title": "Language requirement",
+    "text": "All requirements must be written in English.",
+    "category": "general",
+    "chapter": "General Requirements"
+  }
+}
+```
 
-The tool must parse the index to determine the category and chapter:
-- First part (before first `.`) → category prefix → find matching category file
-- Second part (between `.`) → chapter prefix → find matching chapter in category
-- Third part (after second `.`) → requirement number
+Error (requirement not found): Use error format from [G.C.6](#gc6-error-response-format).
 
-# Categories
+# reqlix_insert_requirement
 
-## G.CA.1: Requirement indexing
+## G.IR.1: Description
 
-Requirements are indexed using format `{category}.{chapter}.{number}`
-(see [G.F.4](#gf4-index-format) for details).
-The index is automatically generated based on category name, chapter name, and sequential number.
+Description (shown to LLM in tool list):
+
+```
+Inserts a new requirement into the specified category and chapter.
+Returns the generated requirement with index and title.
+```
+
+## G.IR.2: Parameters
+
+Parameters:
+
+- `project_root` (string, required) - Path to the project root directory.
+- `operation_description` (string, required) - Brief description of the operation that LLM intends to perform.
+- `category` (string, required) - Category key (e.g., "general", "testing").
+- `chapter` (string, required) - Chapter name (e.g., "General Requirements", "Unit Tests").
+- `text` (string, required) - Requirement text (body content).
+
+## G.IR.3: Algorithm
+
+The tool must execute the following steps:
+
+1. **Find or create category**: Locate the category file `{category}.md`. If not found, create a new empty file.
+
+2. **Find or create chapter**: Search for the chapter heading (`# {chapter}`) in the category file.
+   If not found, append the chapter heading to the end of the file.
+
+3. **Generate title**: Use MCP Sampling to generate a concise requirement title from the text.
+   Check uniqueness within the chapter. If not unique, use Sampling to regenerate until unique.
+
+4. **Generate index**: Create the requirement index `{category_prefix}.{chapter_prefix}.{number}`:
+    - If first requirement in category: determine `{category_prefix}` using the unique prefix algorithm
+      (see [G.F.4](#gf4-index-format))
+    - If not first: reuse existing category prefix from other requirements
+    - If first requirement in chapter: determine `{chapter_prefix}` from chapter name using unique prefix algorithm
+    - If not first: reuse existing chapter prefix from other requirements in this chapter
+    - `{number}`: next sequential number ensuring uniqueness within the chapter
+
+5. **Insert requirement**: Append the requirement (`## {index}: {title}` followed by text) to the chapter.
+
+6. **Return result**: Return the full requirement data.
+
+## G.IR.4: MCP Sampling for title generation
+
+Use MCP Sampling capability to request title generation from the connected LLM:
+
+- Prompt: "Generate a concise 3-5 word title for this requirement: {text}"
+- If generated title already exists in chapter, request regeneration with prompt:
+  "Generate a different title, '{previous_title}' is already used: {text}"
+- If MCP Sampling is unavailable or returns an error, the tool must return an error to the model
+
+## G.IR.5: Implementation details
+
+The tool must read the category file to check existing requirements and prefixes, then append new content.
+When creating a new chapter, ensure proper markdown formatting with blank lines before and after headings.
+
+## G.IR.6: Response format
+
+Success:
+
+```json
+{
+  "success": true,
+  "data": {
+    "index": "G.G.3",
+    "title": "Generated title",
+    "text": "Requirement text content...",
+    "category": "general",
+    "chapter": "General Requirements"
+  }
+}
+```
+
+Errors (file system error, MCP Sampling error): Use error format from [G.C.6](#gc6-error-response-format).
+
+# reqlix_update_requirement
+
+## G.UR.1: Description
+
+Description (shown to LLM in tool list):
+
+```
+Updates an existing requirement by its index with new text.
+Returns the updated requirement with regenerated title.
+```
+
+## G.UR.2: Parameters
+
+Parameters:
+
+- `project_root` (string, required) - Path to the project root directory.
+- `operation_description` (string, required) - Brief description of the operation that LLM intends to perform.
+- `index` (string, required) - Requirement index (e.g., "G.G.1", "T.U.2").
+- `text` (string, required) - New requirement text (body content).
+
+## G.UR.3: Algorithm
+
+The tool must execute the following steps:
+
+1. **Parse index**: Extract category prefix, chapter prefix, and requirement number from the index
+   (see [G.GRQ.3](#ggrq3-index-parsing-and-file-lookup)).
+
+2. **Find requirement**: Locate the requirement by its index. If not found, return error.
+
+3. **Generate new title**: Use MCP Sampling to generate a new concise requirement title from the new text.
+   Check uniqueness within the chapter (excluding the current requirement). If not unique, use Sampling to
+   regenerate until unique.
+
+4. **Update requirement**: Replace the existing requirement heading and body with the new title and text.
+   Keep the same index.
+
+5. **Return result**: Return the full updated requirement data.
+
+## G.UR.4: Implementation details
+
+The tool must read the category file, locate the requirement, replace its content in place, and write
+the updated file. Preserve all other content unchanged.
+
+## G.UR.5: Response format
+
+Success:
+
+```json
+{
+  "success": true,
+  "data": {
+    "index": "G.G.1",
+    "title": "Updated title",
+    "text": "Updated requirement text...",
+    "category": "general",
+    "chapter": "General Requirements"
+  }
+}
+```
+
+Errors (requirement not found, file system error, MCP Sampling error): Use error format from
+[G.C.6](#gc6-error-response-format).
+
