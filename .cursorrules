@@ -1,12 +1,3 @@
-# Fluxgate Cursor Rules
-
-**ALWAYS start with the requirements documentation:**
-
-- Read `docs/development/requirements/AGENTS.md` - this is the single source of truth for all requirements-related information
-- It contains everything you need: how requirements are structured, how to find them, how to update them, how to write tests, and how to validate changes
-- Follow the workflows and use the automated commands provided in that file
-
-## General Rules
-
 - Do not commit changes to Git unless the user explicitly requests and approves it.
 - Always draft a plan, confirm it with the user, and only then modify code.
+- Always call `reqlix_get_instructions` before any code operation (reading or modifying).
