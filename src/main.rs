@@ -28,9 +28,8 @@ This MCP server is the single source of truth for everything related to requirem
 Returns JSON with \"success\": true and \"data\": {\"content\": \"...\"} containing instructions and categories list. \
 On error, returns JSON with \"success\": false and \"error\": \"error message\".";
 
-const GET_CATEGORIES_DESC: &str = "Returns a list of all available requirement categories \
-(category file names without .md extension). Use this to discover what categories exist before \
-querying chapters or requirements. \
+const GET_CATEGORIES_DESC: &str = "Returns a list of all available requirement categories. \
+Use this to discover what categories exist before querying chapters or requirements. \
 Returns JSON with \"success\": true and \"data\": {\"categories\": [...]} (alphabetically sorted). \
 If no categories exist, returns empty array: \"categories\": []. \
 On error, returns JSON with \"success\": false and \"error\": \"error message\".";
@@ -1029,7 +1028,7 @@ impl RequirementsServer {
             Err(e) => return Self::json_error(&e),
         };
 
-        // Return JSON response (G.REQLIX_GET_CA.4)
+        // Return JSON response (G.REQLIX_GET_CA.3)
         Self::json_success(json!({ "categories": categories }))
     }
 
@@ -1161,7 +1160,7 @@ impl RequirementsServer {
             Err(e) => return Self::json_error(&e),
         };
 
-        // Return JSON response (G.REQLIX_GET_REQUIREMENT.5)
+        // Return JSON response (G.REQLIX_GET_REQUIREMENT.4)
         Self::json_success(requirement)
     }
 
@@ -1425,7 +1424,7 @@ impl RequirementsServer {
             return Self::json_error("Could not find requirement to update");
         }
 
-        // Step 7: Return result (G.REQLIX_U.3 step 7, G.REQLIX_U.5)
+        // Step 7: Return result (G.REQLIX_U.3 step 7, G.REQLIX_U.4)
         Self::json_success(RequirementFull {
             index: params.index,
             title: new_title,

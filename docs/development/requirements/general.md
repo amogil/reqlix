@@ -31,7 +31,7 @@ If any parameter does not satisfy the constraints, the tool must return an error
 
 ## G.R.1: Category definition
 
-Category: a file `{category}.md` in the requirements directory (e.g., `general.md`, `testing.md`). File's format is markdown.
+Category: a file `{category}.md` in the requirements directory (e.g., `general.md`, `testing.md`). The file format is markdown.
 
 ## G.R.2: Chapter definition
 
@@ -246,12 +246,12 @@ Parameters:
 - `project_root` (string, required) - Path to the project root directory.
 - `operation_description` (string, required) - Brief description of the operation that LLM intends to perform.
 
-## G.REQLIX_GET_CA.3: Return value
+## G.REQLIX_GET_CA.3: Response format
 
 Returns a list of category names derived from `*.md` file names in the requirements directory
 (excluding AGENTS.md), sorted alphabetically.
 
-## G.REQLIX_GET_CA.4: Response format
+Success:
 
 ```json
 {
@@ -267,6 +267,8 @@ Returns a list of category names derived from `*.md` file names in the requireme
 ```
 
 If no category files exist, return empty array: `"categories": []`
+
+Error: Use error format from [G.C.6](#gc6-error-response-format).
 
 # Tool: reqlix_get_chapters
 
@@ -343,7 +345,7 @@ Parameters:
 
 ## G.REQLIX_GET_REQUIREMENTS.3: Implementation details
 
-The tool must parse level-2 ATX-style headings according to [G.R.3](#gr3-requirement-definition) within the specified chapter (see [G.R.2](#gr2-chapter-definition)). The markdown parser automatically determines chapter boundaries (see [G.R.5](#gr5-requirement-parsing-boundaries)).
+The tool must parse requirements according to [G.R.3](#gr3-requirement-definition) within the specified chapter (see [G.R.2](#gr2-chapter-definition), [G.R.5](#gr5-requirement-parsing-boundaries)).
 
 ## G.REQLIX_GET_REQUIREMENTS.4: Response format
 
@@ -400,10 +402,10 @@ Parameters:
 The tool must parse the index according to [G.R.4](#gr4-index-format) by splitting on dots (`.`). To find the requirement:
 
 1. Use algorithm from [G.C.7](#gc7-category-lookup-by-prefix) to find category by prefix
-2. Find the requirement by full index in the category file: parse level-2 ATX-style headings according to [G.R.3](#gr3-requirement-definition) and match the index. When found, collect the requirement body according to [G.R.5](#gr5-requirement-parsing-boundaries). Return both the title (extracted from the heading content) and body text.
+2. Find the requirement by full index in the category file (see [G.R.3](#gr3-requirement-definition), [G.R.5](#gr5-requirement-parsing-boundaries)). Return both the title (extracted from the heading content) and body text.
 3. If requirement not found, return error "Requirement not found"
 
-## G.REQLIX_GET_REQUIREMENT.5: Response format
+## G.REQLIX_GET_REQUIREMENT.4: Response format
 
 Success:
 
@@ -523,27 +525,22 @@ The tool must execute the following steps:
 1. **Validate parameters**: Validate all input parameters according to [G.REQLIX_U.6](#greqlix_u6-parameter-validation).
 
 2. **Parse index**: Extract category prefix, chapter prefix, and requirement number from the index
-   (see [G.REQLIX_GET_REQUIREMENT.3](#greqlix_get_requirement3-index-parsing-and-file-lookup)).
+   (see [G.R.4](#gr4-index-format)).
 
 3. **Find requirement**: Locate the requirement by its index (see [G.REQLIX_GET_REQUIREMENT.3](#greqlix_get_requirement3-index-parsing-and-file-lookup)). If not found, return error.
 
 4. **Determine new title**: If `title` parameter is provided, use it. Otherwise, keep the existing title.
 
 5. **Validate title uniqueness**: If a new title was provided, check that it is unique within the chapter
-   (excluding the current requirement). Parse all requirements in the chapter using proper markdown parsing (see [G.R.3](#gr3-requirement-definition)). If a requirement with the same title already exists, return an error
+   (excluding the current requirement) (see [G.R.3](#gr3-requirement-definition)). If a requirement with the same title already exists, return an error
    "Title already exists in chapter".
 
-6. **Update requirement**: Replace the existing level-2 ATX-style requirement heading and body with the new title (or keep existing)
-   and new text. Keep the same index.
+6. **Update requirement**: Replace the existing requirement heading and body with the new title (or keep existing)
+   and new text (see [G.R.3](#gr3-requirement-definition)). Keep the same index.
 
 7. **Return result**: Return the full updated requirement data.
 
-## G.REQLIX_U.4: Implementation details
-
-The tool must read the category file, locate the requirement, replace its content in place, and write
-the updated file. Preserve all other content unchanged.
-
-## G.REQLIX_U.5: Response format
+## G.REQLIX_U.4: Response format
 
 Success:
 
@@ -568,5 +565,3 @@ Errors (requirement not found, file system error, title already exists): Use err
 Before executing the update algorithm, the tool must validate all input parameters according to the constraints defined in [G.P.1](#gp1-parameter-constraints). If any parameter violates these constraints, the tool must return an error as specified in [G.P.2](#gp2-constraint-violation-error).
 
 This validation must occur before any file system operations or requirement processing.
-nt processing.
-ing.

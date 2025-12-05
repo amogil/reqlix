@@ -21,3 +21,6 @@ mod requirement_parsing_tests;
 
 #[path = "unit/category_helpers_tests.rs"]
 mod category_helpers_tests;
+
+#[path = "unit/integration_tests.rs"]
+mod integration_tests;
