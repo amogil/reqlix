@@ -35,13 +35,33 @@ Category: a file `{category}.md` in the requirements directory (e.g., `general.m
 
 ## G.R.2: Chapter definition
 
-Chapter: a level-1 heading (`#`) in markdown within a category file.
+Chapter: a level-1 ATX-style heading in markdown within a category file that is not inside a code block.
+
+Markdown level-1 heading format: the line must start with exactly one `#` character followed by a space, then the chapter name. Example: `# Chapter Name`
+
+The heading must be parsed according to markdown syntax rules:
+- The line must start with `#` (optionally preceded by up to 3 spaces, which are ignored)
+- After `#` there must be a space
+- The rest of the line (after the space) is the chapter name
+- Trailing `#` characters, if present, are part of the heading text
+- The heading must not be inside a code block (fenced with ```)
+
+Code blocks are fenced with triple backticks (```). Any level-1 heading that appears between opening ``` and closing ``` is not considered a chapter heading.
 
 ## G.R.3: Requirement definition
 
-Requirement: a level-2 heading (`##`) in markdown. Format: `## {index}: {title}`
+Requirement: a level-2 ATX-style heading in markdown. Format: `## {index}: {title}`
 
-The requirement body follows the heading and continues until the next `##` heading or end of file.
+The requirement body follows the heading and continues until the next level-2 heading (`##`) or end of file.
+
+Markdown level-2 heading format: the line must start with exactly two `#` characters followed by a space, then the requirement index, a colon, a space, and the title. Example: `## G.G.1: Requirement title`
+
+The heading must be parsed according to markdown syntax rules:
+- The line must start with `##` (optionally preceded by up to 3 spaces, which are ignored)
+- After `##` there must be a space
+- The rest of the line follows the format `{index}: {title}` where `{index}` is the requirement index and `{title}` is the requirement title
+- Trailing `#` characters, if present, are part of the heading text
+- The heading must not be inside a code block (fenced with ```)
 
 ## G.R.4: Index format
 
@@ -54,45 +74,53 @@ The dot (`.`) is the delimiter between parts. Each part is parsed by splitting t
 - `{chapter_prefix}` - First letter(s) of the chapter name (uppercase). If another chapter in the same
   category has the same first letter, add more letters until the prefix is unique within the category.
   For tool chapters (prefixed with `reqlix_`), use the part after `reqlix_` for prefix calculation.
+  The prefix is formed by taking the first letter(s) of each word in the function name, using uppercase.
+  If multiple chapters would have the same prefix, add more letters from subsequent words until unique.
 - `{number}` - Sequential number of the requirement within the chapter (1, 2, 3, ...).
 
 Examples:
 
 - Category `general`, chapter `General Requirements` → G.G.1, G.G.2, ...
-- Category `general`, chapter `reqlix_get_instructions` → G.GI.1, G.GI.2, ... (from "get_instructions")
+- Category `general`, chapter `reqlix_get_instructions` → G.GET.1, G.GET.2, ... (from "get_instructions": GET)
+- Category `general`, chapter `reqlix_get_categories` → G.GET_C.1, G.GET_C.2, ... (from "get_categories": GET_C)
+- Category `general`, chapter `reqlix_get_chapters` → G.GET_CH.1, G.GET_CH.2, ... (from "get_chapters": GET_CH)
+- Category `general`, chapter `reqlix_get_requirements` → G.GET_R.1, G.GET_R.2, ... (from "get_requirements": GET_R)
+- Category `general`, chapter `reqlix_get_requirement` → G.GRQ.1, G.GRQ.2, ... (from "get_requirement": GRQ)
+- Category `general`, chapter `reqlix_insert_requirement` → G.INSE.1, G.INSE.2, ... (from "insert_requirement": INSE)
+- Category `general`, chapter `reqlix_update_requirement` → G.U.1, G.U.2, ... (from "update_requirement": U)
 - Category `testing`, chapter `Unit Tests` → T.U.1, T.U.2, ...
 
 ## G.R.5: Requirement parsing boundaries
 
-When parsing requirements from markdown files, tools must correctly identify requirement boundaries:
+When parsing requirements from markdown files, tools must correctly identify requirement boundaries using proper markdown parsing:
 
-1. A requirement starts with a level-2 heading (`## {index}: {title}`) and includes all following lines until:
-   - The next level-2 heading (`##`) is encountered, OR
+1. A requirement starts with a markdown level-2 heading (`## {index}: {title}`) parsed according to markdown syntax rules (see [G.R.3](#gr3-requirement-definition)) and includes all following lines until:
+   - The next markdown level-2 heading (`##`) is encountered (outside code blocks), OR
    - The end of file is reached
 
 2. Code blocks (fenced with ```) must be parsed correctly:
    - All content within a code block (between opening ``` and closing ```) is part of the requirement body
    - Code block boundaries must be identified by matching opening and closing fences
    - Multi-line code blocks must be handled correctly
+   - Headings inside code blocks must not be treated as requirement or chapter boundaries
 
-3. Level-1 headings (`#`) within a requirement body are still part of that requirement and should not be treated as chapter boundaries when parsing requirement content
+3. Level-1 headings (`#`) within a requirement body are still part of that requirement and should not be treated as chapter boundaries when parsing requirement content. These headings must be parsed according to markdown syntax rules but are treated as regular content, not chapter boundaries.
 
-4. When reading a requirement, the parser must collect:
-   - The requirement heading line (`## {index}: {title}`)
-   - All body text until the next `##` heading or EOF
+4. When reading a requirement, the parser must:
+   - Parse markdown level-2 headings correctly (not just search for lines starting with `## `)
+   - Collect the requirement heading line (`## {index}: {title}`)
+   - Collect all body text until the next markdown level-2 heading (outside code blocks) or EOF
    - Preserve original formatting including line breaks and indentation
 
 5. Examples and code snippets within requirements are part of the requirement text and must be included in full
 
-This ensures that requirements with complex formatting, code examples, or nested structures are parsed correctly and completely.
-
-# Common Implementation Requirements
+The parser must correctly handle markdown syntax for all headings, not just search for string prefixes. This ensures that requirements with complex formatting, code examples, or nested structures are parsed correctly and completely.
 
 ## G.C.1: Requirements directory location
 
 All tools must locate the requirements directory using the same algorithm as defined in
-[G.GI.3](#ggi3-requirements-file-search-order) for `reqlix_get_instructions`. If AGENTS.md is not found,
-it must be created as defined in [G.GI.4](#ggi4-requirements-file-creation).
+[G.GET.3](#gget3-requirements-file-search-order) for `reqlix_get_instructions`. If AGENTS.md is not found,
+it must be created as defined in [G.GET.4](#gget4-requirements-file-creation).
 
 ## G.C.2: Directory creation
 
@@ -128,7 +156,7 @@ To find a category file by prefix:
 
 1. List all `*.md` files in the requirements directory (excluding AGENTS.md)
 2. For each file, extract category name from filename (without `.md`)
-3. Calculate what prefix this category would have using the algorithm in [G.F.4](#gf4-index-format)
+3. Calculate what prefix this category would have using the algorithm in [G.R.4](#gr4-index-format)
 4. Return the category whose calculated prefix matches the search prefix
 5. If no category matches the prefix, return an error "Category not found"
 
@@ -174,13 +202,12 @@ If file creation fails or a permission error occurs at any stage, the tool must 
 ## G.GET.6: Placeholder content
 
 Placeholder content for new requirements file (note: "# Categories" is not included as it is generated
-dynamically per [G.GI.7](#ggi7-return-value)).
+dynamically per [G.GET.7](#gget7-return-value)).
 
 The placeholder `{requirements_directory}` must be replaced with the actual path to the requirements
 directory at runtime:
 
 ```
-# Instructions
 
 These instructions are mandatory for all code operations:
 
@@ -191,7 +218,7 @@ These instructions are mandatory for all code operations:
    according to those requirements.
 
 3. Document code thoroughly by leaving references to requirement indices in comments.
-   Requirement index format: `{CATEGORY}.{CHAPTER}.{NUMBER}` (e.g., `G.GI.1`, `T.U.2`).
+   Requirement index format: `{CATEGORY}.{CHAPTER}.{NUMBER}` (e.g., `G.GET.1`, `T.U.2`).
 
 4. All requirements must be written in English.
 
@@ -292,8 +319,21 @@ Parameters:
 
 ## G.GET_CH.3: Implementation details
 
-The tool must read the category file line by line (streaming) and parse only the level-1 headings (`# `).
-Do not load the entire file into memory. Extract chapter names by removing the `# ` prefix from matching lines.
+The tool must read the category file line by line (streaming) and parse markdown level-1 headings that are not inside code blocks. Do not load the entire file into memory.
+
+When parsing markdown headings:
+1. Track whether the current line is inside a code block (fenced with ```)
+2. For each line, check if it is a valid markdown level-1 heading:
+   - The line may start with up to 3 spaces (indentation, which is ignored)
+   - The line must start with exactly one `#` character
+   - After `#` there must be a space
+   - The rest of the line (after the space) is the chapter name
+3. Ignore level-1 headings that appear inside code blocks
+4. Extract chapter names by parsing the markdown heading syntax correctly, not just by string prefix matching
+
+Code block boundaries must be identified by matching opening and closing fences (```). All content between opening ``` and closing ``` is considered inside a code block and should not be parsed as chapter headings.
+
+The parser must correctly handle markdown syntax, not just search for lines starting with `# `.
 
 ## G.GET_CH.4: Response format
 
@@ -339,9 +379,20 @@ Parameters:
 
 ## G.GET_R.3: Implementation details
 
-The tool must read the category file line by line (streaming) and parse only the level-2 headings (`## `)
-within the specified chapter. Do not load the entire file into memory. Start collecting requirements after
-finding the matching chapter heading (`# {chapter}`) and stop when reaching the next chapter heading or EOF.
+The tool must read the category file line by line (streaming) and parse markdown level-2 headings within the specified chapter. Do not load the entire file into memory.
+
+When parsing markdown headings:
+1. Track whether the current line is inside a code block (fenced with ```)
+2. Start collecting requirements after finding the matching chapter heading (`# {chapter}`) and stop when reaching the next chapter heading or EOF
+3. For each line within the target chapter, check if it is a valid markdown level-2 heading:
+   - The line may start with up to 3 spaces (indentation, which is ignored)
+   - The line must start with exactly two `#` characters
+   - After `##` there must be a space
+   - The rest of the line follows the format `{index}: {title}` where `{index}` is the requirement index and `{title}` is the requirement title
+4. Ignore level-2 headings that appear inside code blocks
+5. Extract requirement indices and titles by parsing the markdown heading syntax correctly, not just by string prefix matching
+
+The parser must correctly handle markdown syntax, not just search for lines starting with `## `.
 
 ## G.GET_R.4: Response format
 
@@ -373,17 +424,17 @@ Errors (category/chapter not found): Use error format from [G.C.6](#gc6-error-re
 
 # reqlix_get_requirement
 
-## G.GET_REQUIREMENT.1: Description
+## G.GRQ.1: Description
 
 Description (shown to LLM in tool list):
 
 ```
 Returns the full content (title and text) of a requirement by its index.
-Index format: {CATEGORY}.{CHAPTER}.{NUMBER} (e.g., G.GI.1, T.U.2).
+Index format: {CATEGORY}.{CHAPTER}.{NUMBER} (e.g., G.GET.1, T.U.2).
 Use this to read a specific requirement when you know its index.
 ```
 
-## G.GET_REQUIREMENT.1: Parameters
+## G.GRQ.2: Parameters
 
 Parameters:
 
@@ -391,7 +442,7 @@ Parameters:
 - `operation_description` (string, required) - Brief description of the operation that LLM intends to perform.
 - `index` (string, required) - Requirement index (e.g., "G.G.1", "T.U.2").
 
-## G.GET_REQUIREMENT.1: Index parsing and file lookup
+## G.GRQ.3: Index parsing and file lookup
 
 The tool must parse the index by splitting on dots (`.`):
 
@@ -403,19 +454,32 @@ To find the requirement:
 
 1. Use algorithm from [G.C.7](#gc7-category-lookup-by-prefix) to find category by prefix
 2. Scan the category file to find a chapter containing a requirement with matching chapter prefix:
-   - Read file line by line, tracking current chapter (last seen `#` heading)
-   - For each `## X.Y.Z: title` line, extract `Y` (chapter prefix from index)
+   - Read file line by line, tracking current chapter (last seen markdown level-1 heading `#`, parsed according to [G.R.2](#gr2-chapter-definition))
+   - For each markdown level-2 heading (`## X.Y.Z: title`), parse it according to [G.R.3](#gr3-requirement-definition) and extract `Y` (chapter prefix from index)
    - If `Y` matches the search chapter prefix, the current chapter is the target
+   - Ignore headings inside code blocks
 3. If no chapter contains requirements with this chapter prefix, return error "Requirement not found"
-4. Find the requirement by full index within the chapter
+4. Find the requirement by full index within the chapter using proper markdown parsing (see [G.GRQ.4](#ggrq4-implementation-details))
 
-## G.GET_REQUIREMENT.1: Implementation details
+## G.GRQ.4: Implementation details
 
 The tool must read the category file line by line (streaming). Do not load the entire file into memory.
-Find the requirement heading (`## {index}: {title}`) and collect all following lines until the next
-`##` heading or EOF. Return both the title and body text.
 
-## G.GET_REQUIREMENT.1: Response format
+When finding and reading a requirement:
+1. Track whether the current line is inside a code block (fenced with ```)
+2. Parse markdown level-2 headings to find the requirement heading (`## {index}: {title}`):
+   - The line may start with up to 3 spaces (indentation, which is ignored)
+   - The line must start with exactly two `#` characters
+   - After `##` there must be a space
+   - The rest of the line follows the format `{index}: {title}`
+3. When the matching requirement heading is found, collect all following lines until:
+   - The next markdown level-2 heading (`##`) is encountered (outside code blocks), OR
+   - The end of file is reached
+4. Return both the title (extracted from the heading) and body text (all lines after the heading until the next heading or EOF)
+
+The parser must correctly handle markdown syntax, not just search for lines starting with `## `.
+
+## G.GRQ.5: Response format
 
 Success:
 
@@ -462,17 +526,17 @@ Parameters:
 
 The tool must execute the following steps:
 
+0. **Validate parameters**: Validate all input parameters according to [G.INSE.6](#ginse6-parameter-validation).
+
 1. **Find or create category**: Locate the category file `{category}.md`. If not found, create a new empty file.
 
-2. **Find or create chapter**: Search for the chapter heading (`# {chapter}`) in the category file.
-   If not found, append the chapter heading to the end of the file.
+2. **Find or create chapter**: Search for the chapter heading (`# {chapter}`) in the category file using proper markdown parsing (see [G.R.2](#gr2-chapter-definition)). If not found, append the chapter heading to the end of the file.
 
-3. **Validate title uniqueness**: Check that the title is unique within the chapter. If a requirement with the
-   same title already exists, return an error "Title already exists in chapter".
+3. **Validate title uniqueness**: Check that the title is unique within the chapter. Parse all requirements in the chapter using proper markdown parsing (see [G.R.3](#gr3-requirement-definition)). If a requirement with the same title already exists, return an error "Title already exists in chapter".
 
 4. **Generate index**: Create the requirement index `{category_prefix}.{chapter_prefix}.{number}`:
     - If first requirement in category: determine `{category_prefix}` using the unique prefix algorithm
-      (see [G.F.4](#gf4-index-format))
+      (see [G.R.4](#gr4-index-format))
     - If not first: reuse existing category prefix from other requirements
     - If first requirement in chapter: determine `{chapter_prefix}` from chapter name using unique prefix algorithm
     - If not first: reuse existing chapter prefix from other requirements in this chapter
@@ -506,6 +570,12 @@ Success:
 
 Errors (file system error, title already exists): Use error format from [G.C.6](#gc6-error-response-format).
 
+## G.INSE.6: Parameter validation
+
+Before executing the insertion algorithm, the tool must validate all input parameters according to the constraints defined in [G.P.1](#gp1-parameter-constraints). If any parameter violates these constraints, the tool must return an error as specified in [G.P.2](#gp2-constraint-violation-error).
+
+This validation must occur before any file system operations or requirement processing.
+
 # reqlix_update_requirement
 
 ## G.U.1: Description
@@ -532,15 +602,17 @@ Parameters:
 
 The tool must execute the following steps:
 
+0. **Validate parameters**: Validate all input parameters according to [G.U.6](#gu6-parameter-validation).
+
 1. **Parse index**: Extract category prefix, chapter prefix, and requirement number from the index
    (see [G.GRQ.3](#ggrq3-index-parsing-and-file-lookup)).
 
-2. **Find requirement**: Locate the requirement by its index. If not found, return error.
+2. **Find requirement**: Locate the requirement by its index using proper markdown parsing (see [G.GRQ.4](#ggrq4-implementation-details)). If not found, return error.
 
 3. **Determine new title**: If `title` parameter is provided, use it. Otherwise, keep the existing title.
 
 4. **Validate title uniqueness**: If a new title was provided, check that it is unique within the chapter
-   (excluding the current requirement). If a requirement with the same title already exists, return an error
+   (excluding the current requirement). Parse all requirements in the chapter using proper markdown parsing (see [G.R.3](#gr3-requirement-definition)). If a requirement with the same title already exists, return an error
    "Title already exists in chapter".
 
 5. **Update requirement**: Replace the existing requirement heading and body with the new title (or keep existing)
@@ -572,3 +644,9 @@ Success:
 
 Errors (requirement not found, file system error, title already exists): Use error format from
 [G.C.6](#gc6-error-response-format).
+
+## G.U.6: Parameter validation
+
+Before executing the update algorithm, the tool must validate all input parameters according to the constraints defined in [G.P.1](#gp1-parameter-constraints). If any parameter violates these constraints, the tool must return an error as specified in [G.P.2](#gp2-constraint-violation-error).
+
+This validation must occur before any file system operations or requirement processing.

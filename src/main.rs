@@ -19,7 +19,7 @@ use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
 
 // =============================================================================
-// Tool descriptions (G.GI.1, G.GC.1, G.GCH.1, G.GR.1, G.GRQ.1, G.IR.1, G.UR.1)
+// Tool descriptions (G.GET.1, G.GET_C.1, G.GET_CH.1, G.GET_R.1, G.GRQ.1, G.INSE.1, G.U.1)
 // =============================================================================
 
 const GET_INSTRUCTIONS_DESC: &str = "CALL THIS BEFORE ANY CODE OPERATION (reading or writing). \
@@ -38,7 +38,7 @@ in the specified category and chapter. Use this to browse requirements in a chap
 To get full requirement content, use reqlix_get_requirement.";
 
 const GET_REQUIREMENT_DESC: &str = "Returns the full content (title and text) of a requirement \
-by its index. Index format: {CATEGORY}.{CHAPTER}.{NUMBER} (e.g., G.GI.1, T.U.2). \
+by its index. Index format: {CATEGORY}.{CHAPTER}.{NUMBER} (e.g., G.GET.1, T.U.2). \
 Use this to read a specific requirement when you know its index.";
 
 const INSERT_REQUIREMENT_DESC: &str = "Inserts a new requirement into the specified category \
@@ -50,7 +50,7 @@ and optional new title. If title is provided, it must be unique within the chapt
 If not provided, the existing title is kept.";
 
 // =============================================================================
-// Placeholder content (G.GI.6)
+// Placeholder content (G.GET.6)
 // =============================================================================
 
 const PLACEHOLDER_CONTENT: &str = r#"# Instructions
@@ -64,7 +64,7 @@ These instructions are mandatory for all code operations:
    according to those requirements.
 
 3. Document code thoroughly by leaving references to requirement indices in comments.
-   Requirement index format: `{CATEGORY}.{CHAPTER}.{NUMBER}` (e.g., `G.GI.1`, `T.U.2`).
+   Requirement index format: `{CATEGORY}.{CHAPTER}.{NUMBER}` (e.g., `G.GET.1`, `T.U.2`).
 
 4. All requirements must be written in English.
 
@@ -86,10 +86,10 @@ const MAX_TEXT_LEN: usize = 10000;
 const MAX_TITLE_LEN: usize = 100;
 
 // =============================================================================
-// Parameter structures (G.GI.2, G.GC.2, G.GCH.2, G.GR.2, G.GRQ.2, G.IR.2, G.UR.2)
+// Parameter structures (G.GET.2, G.GET_C.2, G.GET_CH.2, G.GET_R.2, G.GRQ.2, G.INSE.2, G.U.2)
 // =============================================================================
 
-/// Parameters for reqlix_get_instructions (G.GI.2)
+/// Parameters for reqlix_get_instructions (G.GET.2)
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct GetInstructionsParams {
     /// Path to the project root directory.
@@ -325,10 +325,10 @@ impl RequirementsServer {
     }
 
     // =========================================================================
-    // File system helpers (G.GI.3, G.GI.4, G.C.1, G.C.2)
+    // File system helpers (G.GET.3, G.GET.4, G.C.1, G.C.2)
     // =========================================================================
 
-    /// Get search paths for AGENTS.md (G.GI.3)
+    /// Get search paths for AGENTS.md (G.GET.3)
     fn get_search_paths(project_root: &str) -> Vec<PathBuf> {
         let root = PathBuf::from(project_root);
         let mut paths = Vec::new();
@@ -343,7 +343,7 @@ impl RequirementsServer {
         paths
     }
 
-    /// Get path for creating AGENTS.md (G.GI.4)
+    /// Get path for creating AGENTS.md (G.GET.4)
     fn get_create_path(project_root: &str) -> PathBuf {
         let root = PathBuf::from(project_root);
 
@@ -354,7 +354,7 @@ impl RequirementsServer {
         }
     }
 
-    /// Find or create requirements file (G.GI.3, G.GI.4, G.GI.5)
+    /// Find or create requirements file (G.GET.3, G.GET.4, G.GET.5)
     fn find_or_create_requirements_file(project_root: &str) -> Result<PathBuf, String> {
         // Search for existing file
         for path in Self::get_search_paths(project_root) {
@@ -372,7 +372,7 @@ impl RequirementsServer {
                 .map_err(|e| format!("Failed to create directories: {}", e))?;
         }
 
-        // Replace {requirements_directory} placeholder (G.GI.6)
+        // Replace {requirements_directory} placeholder (G.GET.6)
         let requirements_dir = create_path
             .parent()
             .map(|p| p.to_string_lossy().to_string())
@@ -478,20 +478,103 @@ impl RequirementsServer {
     }
 
     // =========================================================================
+    // Markdown parsing helpers (G.R.2, G.R.3)
+    // =========================================================================
+
+    /// Parse markdown level-1 heading according to G.R.2
+    /// Returns Some(chapter_name) if line is a valid level-1 heading, None otherwise
+    fn parse_level1_heading(line: &str) -> Option<String> {
+        // Remove up to 3 leading spaces (indentation) - G.R.2
+        let space_count = line.chars().take_while(|&c| c == ' ').count();
+        let trimmed = if space_count > 0 && space_count <= 3 {
+            &line[space_count..]
+        } else {
+            line
+        };
+
+        // Must start with exactly one `#` followed by space - G.R.2
+        if !trimmed.starts_with("# ") {
+            return None;
+        }
+        // Must not be level-2 or higher
+        if trimmed.starts_with("##") {
+            return None;
+        }
+
+        // Extract chapter name (everything after "# ") - G.R.2
+        Some(trimmed[2..].trim_end().to_string())
+    }
+
+    /// Parse markdown level-2 heading according to G.R.3
+    /// Returns Some((index, title)) if line is a valid level-2 requirement heading, None otherwise
+    fn parse_level2_heading(line: &str) -> Option<(String, String)> {
+        // Remove up to 3 leading spaces (indentation) - G.R.3
+        let space_count = line.chars().take_while(|&c| c == ' ').count();
+        let trimmed = if space_count > 0 && space_count <= 3 {
+            &line[space_count..]
+        } else {
+            line
+        };
+
+        // Must start with exactly two `##` followed by space - G.R.3
+        if !trimmed.starts_with("## ") {
+            return None;
+        }
+        // Must not be level-3 or higher
+        if trimmed.starts_with("###") {
+            return None;
+        }
+
+        // Extract content after "## " - G.R.3
+        let content = &trimmed[3..];
+        // Parse format: {index}: {title}
+        if let Some(colon_pos) = content.find(':') {
+            let index = content[..colon_pos].trim().to_string();
+            let title = content[colon_pos + 1..].trim().to_string();
+            if !index.is_empty() && !title.is_empty() {
+                return Some((index, title));
+            }
+        }
+        None
+    }
+
+    // =========================================================================
     // Chapter helpers (G.GCH.3)
     // =========================================================================
 
-    /// Read chapters from a category file (streaming) (G.GCH.3)
+    /// Read chapters from a category file (streaming) (G.GET_CH.3, G.R.2)
+    /// Parses markdown level-1 headings correctly, ignoring those inside code blocks
     fn read_chapters_streaming(category_path: &PathBuf) -> Result<Vec<String>, String> {
         let file =
             File::open(category_path).map_err(|e| format!("Failed to open category file: {}", e))?;
         let reader = BufReader::new(file);
         let mut chapters = Vec::new();
+        let mut in_code_block = false;
 
         for line in reader.lines() {
             let line = line.map_err(|e| format!("Failed to read line: {}", e))?;
-            if line.starts_with("# ") && !line.starts_with("## ") {
-                chapters.push(line[2..].to_string());
+            let trimmed = line.trim();
+
+            // Track code block boundaries (G.GET_CH.3, G.R.2)
+            // Code blocks are fenced with triple backticks (```)
+            // Can have optional language identifier (e.g., ```json)
+            if trimmed.starts_with("```") {
+                // Toggle code block state when we encounter a fence
+                in_code_block = !in_code_block;
+                // Skip the fence line itself
+                continue;
+            }
+
+            // Ignore headings inside code blocks (G.GET_CH.3, G.R.2)
+            // All content between opening ``` and closing ``` is inside a code block
+            if in_code_block {
+                continue;
+            }
+
+            // Parse markdown level-1 heading (G.GET_CH.3, G.R.2)
+            // Only parse headings that are NOT inside code blocks
+            if let Some(chapter_name) = Self::parse_level1_heading(&line) {
+                chapters.push(chapter_name);
             }
         }
 
@@ -502,8 +585,8 @@ impl RequirementsServer {
     // Requirement helpers (G.GR.3, G.GRQ.3, G.GRQ.4, G.R.5)
     // =========================================================================
 
-    /// Read requirements from a chapter (streaming) (G.GR.3)
-    /// Parses requirement headings correctly according to G.R.5
+    /// Read requirements from a chapter (streaming) (G.GET_R.3, G.R.3, G.R.5)
+    /// Parses markdown level-2 headings correctly, ignoring those inside code blocks
     fn read_requirements_streaming(
         category_path: &PathBuf,
         chapter: &str,
@@ -513,23 +596,35 @@ impl RequirementsServer {
         let reader = BufReader::new(file);
         let mut requirements = Vec::new();
         let mut in_target_chapter = false;
+        let mut in_code_block = false;
 
         for line in reader.lines() {
             let line = line.map_err(|e| format!("Failed to read line: {}", e))?;
+            let trimmed = line.trim();
 
-            // Check for chapter heading
-            if line.starts_with("# ") && !line.starts_with("## ") {
-                let chapter_name = &line[2..];
-                in_target_chapter = chapter_name == chapter;
+            // Track code block boundaries (G.GET_R.3, G.R.5.2)
+            // Code blocks are fenced with triple backticks (```)
+            // Can have optional language identifier (e.g., ```json)
+            if trimmed.starts_with("```") {
+                // Toggle code block state when we encounter a fence
+                in_code_block = !in_code_block;
+                // Skip the fence line itself
                 continue;
             }
 
-            // If in target chapter, look for requirements
-            if in_target_chapter && line.starts_with("## ") {
-                // Parse ## {index}: {title}
-                if let Some(colon_pos) = line.find(':') {
-                    let index = line[3..colon_pos].trim().to_string();
-                    let title = line[colon_pos + 1..].trim().to_string();
+            // Check for chapter heading (G.GET_R.3, G.R.2)
+            // Only parse headings that are NOT inside code blocks
+            if !in_code_block {
+                if let Some(chapter_name) = Self::parse_level1_heading(&line) {
+                    in_target_chapter = chapter_name == chapter;
+                    continue;
+                }
+            }
+
+            // If in target chapter, look for requirements (G.GET_R.3, G.R.3)
+            // Only parse requirement headings that are NOT inside code blocks
+            if in_target_chapter && !in_code_block {
+                if let Some((index, title)) = Self::parse_level2_heading(&line) {
                     requirements.push(RequirementSummary { index, title });
                 }
             }
@@ -540,7 +635,7 @@ impl RequirementsServer {
 
     /// Find requirement by index (streaming) (G.GRQ.3, G.GRQ.4, G.R.5)
     /// Parses requirement boundaries correctly according to G.R.5:
-    /// - Requirement starts with ## and includes all lines until next ## or EOF
+    /// - Requirement starts with markdown level-2 heading and includes all lines until next level-2 heading or EOF
     /// - Code blocks are handled correctly (content within ``` is part of requirement)
     /// - Level-1 headings within requirement body are still part of the requirement
     fn find_requirement_streaming(
@@ -560,50 +655,59 @@ impl RequirementsServer {
 
         for line in reader.lines() {
             let line = line.map_err(|e| format!("Failed to read line: {}", e))?;
+            let trimmed = line.trim();
 
-            // Check for chapter heading (only when not collecting requirement text) (G.R.5.3)
-            if !collecting_text && line.starts_with("# ") && !line.starts_with("## ") {
-                current_chapter = line[2..].to_string();
+            // Track code block boundaries (G.R.5.2)
+            // Code blocks are fenced with triple backticks (```)
+            // Can have optional language identifier (e.g., ```json)
+            if trimmed.starts_with("```") {
+                // Toggle code block state when we encounter a fence
+                in_code_block = !in_code_block;
+                // Code block boundaries are part of requirement text
+                if collecting_text {
+                    text_lines.push(line);
+                }
+                // Skip the fence line itself for further processing
                 continue;
             }
 
-            // Track code block boundaries (G.R.5.2)
-            // Code blocks start and end with ``` (can have language identifier)
-            if line.trim().starts_with("```") {
-                in_code_block = !in_code_block;
+            // Check for chapter heading (only when not collecting requirement text) (G.R.5.3, G.R.2)
+            if !collecting_text && !in_code_block {
+                if let Some(chapter_name) = Self::parse_level1_heading(&line) {
+                    current_chapter = chapter_name;
+                    continue;
+                }
             }
 
-            // Check for requirement heading (G.R.5.1)
+            // Check for requirement heading (G.R.5.1, G.R.3)
             // Only stop collecting if we encounter a new requirement heading AND we're not in a code block
-            if line.starts_with("## ") && !in_code_block {
-                // If we were collecting text for found requirement, we're done
-                if collecting_text {
-                    let (title, chapter) = found_requirement.unwrap();
-                    return Ok(RequirementFull {
-                        index: search_index.to_string(),
-                        title,
-                        text: text_lines.join("\n").trim().to_string(),
-                        category: category_name.to_string(),
-                        chapter,
-                    });
-                }
+            if !in_code_block {
+                if let Some((index, title)) = Self::parse_level2_heading(&line) {
+                    // If we were collecting text for found requirement, we're done
+                    if collecting_text {
+                        let (title, chapter) = found_requirement.unwrap();
+                        return Ok(RequirementFull {
+                            index: search_index.to_string(),
+                            title,
+                            text: text_lines.join("\n").trim().to_string(),
+                            category: category_name.to_string(),
+                            chapter,
+                        });
+                    }
 
-                // Check if this is the requirement we're looking for
-                if let Some(colon_pos) = line.find(':') {
-                    let index = line[3..colon_pos].trim();
+                    // Check if this is the requirement we're looking for
                     if index == search_index {
-                        let title = line[colon_pos + 1..].trim().to_string();
                         found_requirement = Some((title, current_chapter.clone()));
                         collecting_text = true;
                         text_lines.clear();
                         in_code_block = false; // Reset code block state
+                        continue;
                     }
                 }
-                continue;
             }
 
             // Collect text lines if we found the requirement (G.R.5.4)
-            // Include all lines until next ## heading (even if they look like headings)
+            // Include all lines until next level-2 heading (even if they look like headings)
             if collecting_text {
                 text_lines.push(line);
             }
@@ -652,12 +756,23 @@ impl RequirementsServer {
             let file = File::open(category_path)
                 .map_err(|e| format!("Failed to open category file: {}", e))?;
             let reader = BufReader::new(file);
+            let mut in_code_block = false;
 
             for line in reader.lines() {
                 let line = line.map_err(|e| format!("Failed to read line: {}", e))?;
-                if line.starts_with("## ") {
-                    if let Some(colon_pos) = line.find(':') {
-                        let index = line[3..colon_pos].trim();
+                let trimmed = line.trim();
+
+                // Track code block boundaries (G.R.5.2)
+                // Code blocks are fenced with triple backticks (```)
+                if trimmed.starts_with("```") {
+                    in_code_block = !in_code_block;
+                    continue;
+                }
+
+                // Parse markdown level-2 heading (G.R.3)
+                // Only parse headings that are NOT inside code blocks
+                if !in_code_block {
+                    if let Some((index, _)) = Self::parse_level2_heading(&line) {
                         let parts: Vec<&str> = index.split('.').collect();
                         if !parts.is_empty() {
                             return Ok(parts[0].to_string());
@@ -684,18 +799,32 @@ impl RequirementsServer {
                 .map_err(|e| format!("Failed to open category file: {}", e))?;
             let reader = BufReader::new(file);
             let mut in_target_chapter = false;
+            let mut in_code_block = false;
 
             for line in reader.lines() {
                 let line = line.map_err(|e| format!("Failed to read line: {}", e))?;
+                let trimmed = line.trim();
 
-                if line.starts_with("# ") && !line.starts_with("## ") {
-                    in_target_chapter = &line[2..] == chapter_name;
+                // Track code block boundaries (G.R.5.2)
+                // Code blocks are fenced with triple backticks (```)
+                if trimmed.starts_with("```") {
+                    in_code_block = !in_code_block;
                     continue;
                 }
 
-                if in_target_chapter && line.starts_with("## ") {
-                    if let Some(colon_pos) = line.find(':') {
-                        let index = line[3..colon_pos].trim();
+                // Check for chapter heading (G.R.2)
+                // Only parse headings that are NOT inside code blocks
+                if !in_code_block {
+                    if let Some(ch_name) = Self::parse_level1_heading(&line) {
+                        in_target_chapter = ch_name == chapter_name;
+                        continue;
+                    }
+                }
+
+                // Parse requirement heading in target chapter (G.R.3)
+                // Only parse headings that are NOT inside code blocks
+                if in_target_chapter && !in_code_block {
+                    if let Some((index, _)) = Self::parse_level2_heading(&line) {
                         let parts: Vec<&str> = index.split('.').collect();
                         if parts.len() >= 2 {
                             return Ok(parts[1].to_string());
@@ -801,7 +930,7 @@ impl RequirementsServer {
             None => return Self::json_error("Could not determine requirements directory"),
         };
 
-        // Generate Categories chapter (G.GI.7)
+        // Generate Categories chapter (G.GET.7)
         let categories = match Self::list_categories(&requirements_dir) {
             Ok(c) => c,
             Err(e) => return Self::json_error(&e),
@@ -820,7 +949,7 @@ impl RequirementsServer {
 
         content.push_str(&categories_chapter);
 
-        // Return JSON response (G.GI.8)
+        // Return JSON response (G.GET.8)
         Self::json_success(json!({ "content": content }))
     }
 
@@ -982,10 +1111,10 @@ impl RequirementsServer {
         Self::json_success(requirement)
     }
 
-    /// reqlix_insert_requirement (G.IR)
-    /// Title must be generated by the LLM and provided as parameter. Must be unique within chapter (G.IR.3).
+    /// reqlix_insert_requirement (G.INSE)
+    /// Title must be generated by the LLM and provided as parameter. Must be unique within chapter (G.INSE.3).
     fn handle_insert_requirement(params: InsertRequirementParams) -> String {
-        // Validate parameters
+        // Step 0: Validate parameters (G.INSE.6, G.INSE.3 step 0)
         if let Err(e) = Self::validate_project_root(&params.project_root) {
             return Self::json_error(&e);
         }
@@ -1110,10 +1239,10 @@ impl RequirementsServer {
         })
     }
 
-    /// reqlix_update_requirement (G.UR)
-    /// Title is optional. If provided, must be unique within chapter. If not provided, existing title is kept (G.UR.3).
+    /// reqlix_update_requirement (G.U)
+    /// Title is optional. If provided, must be unique within chapter. If not provided, existing title is kept (G.U.3).
     fn handle_update_requirement(params: UpdateRequirementParams) -> String {
-        // Validate parameters
+        // Step 0: Validate parameters (G.U.6, G.U.3 step 0)
         if let Err(e) = Self::validate_project_root(&params.project_root) {
             return Self::json_error(&e);
         }
@@ -1186,7 +1315,7 @@ impl RequirementsServer {
             Err(e) => return Self::json_error(&format!("Failed to read category file: {}", e)),
         };
 
-        // Find and replace the requirement using line-by-line parsing to handle code blocks correctly (G.R.5)
+        // Find and replace the requirement using line-by-line parsing to handle code blocks correctly (G.R.5, G.R.3)
         let new_heading = format!("## {}: {}", params.index, new_title);
         let lines: Vec<&str> = content.lines().collect();
 
@@ -1204,11 +1333,10 @@ impl RequirementsServer {
                 in_code_block = !in_code_block;
             }
 
-            // Check for requirement heading (G.R.5.1)
-            // Only consider ## headings that are not inside code blocks
-            if line.starts_with("## ") && !in_code_block {
-                if let Some(colon_pos) = line.find(':') {
-                    let index = line[3..colon_pos].trim();
+            // Check for requirement heading (G.R.5.1, G.R.3)
+            // Only consider markdown level-2 headings that are not inside code blocks
+            if !in_code_block {
+                if let Some((index, _)) = Self::parse_level2_heading(line) {
                     if index == params.index {
                         // Found the requirement we're updating
                         heading_start = Some(line_start);
