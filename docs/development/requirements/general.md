@@ -62,6 +62,30 @@ Examples:
 - Category `general`, chapter `reqlix_get_instructions` → G.GI.1, G.GI.2, ... (from "get_instructions")
 - Category `testing`, chapter `Unit Tests` → T.U.1, T.U.2, ...
 
+## G.R.5: Requirement parsing boundaries
+
+When parsing requirements from markdown files, tools must correctly identify requirement boundaries:
+
+1. A requirement starts with a level-2 heading (`## {index}: {title}`) and includes all following lines until:
+   - The next level-2 heading (`##`) is encountered, OR
+   - The end of file is reached
+
+2. Code blocks (fenced with ```) must be parsed correctly:
+   - All content within a code block (between opening ``` and closing ```) is part of the requirement body
+   - Code block boundaries must be identified by matching opening and closing fences
+   - Multi-line code blocks must be handled correctly
+
+3. Level-1 headings (`#`) within a requirement body are still part of that requirement and should not be treated as chapter boundaries when parsing requirement content
+
+4. When reading a requirement, the parser must collect:
+   - The requirement heading line (`## {index}: {title}`)
+   - All body text until the next `##` heading or EOF
+   - Preserve original formatting including line breaks and indentation
+
+5. Examples and code snippets within requirements are part of the requirement text and must be included in full
+
+This ensures that requirements with complex formatting, code examples, or nested structures are parsed correctly and completely.
+
 # Common Implementation Requirements
 
 ## G.C.1: Requirements directory location
@@ -156,37 +180,6 @@ The placeholder `{requirements_directory}` must be replaced with the actual path
 directory at runtime:
 
 ```
-## G.GET.7: Return value
-
-The tool must return the combined content:
-
-1. Content of the AGENTS.md file that was found or created
-2. Automatically generated "# Categories" chapter with a markdown list of all `*.md` files in the
-   requirements directory (excluding AGENTS.md), sorted alphabetically
-
-The categories list is generated dynamically at runtime, not stored in AGENTS.md.
-
-Format of generated Categories chapter:
-
-```
-## G.GET.8: Response format
-
-```json
-{
-  "success": true,
-  "data": {
-    "content": "# Instructions\n\nThese instructions are mandatory...\n\n# Categories\n\n- general\n- testing"
-  }
-}
-```
-
-# Categories
-
-- general
-- testing
-- code_quality
-```
-
 # Instructions
 
 These instructions are mandatory for all code operations:
@@ -205,6 +198,37 @@ These instructions are mandatory for all code operations:
 5. Never edit files in {requirements_directory} directly. Always use this MCP server for all
    requirements operations.
 
+```
+
+## G.GET.7: Return value
+
+The tool must return the combined content:
+
+1. Content of the AGENTS.md file that was found or created
+2. Automatically generated "# Categories" chapter with a markdown list of all `*.md` files in the
+   requirements directory (excluding AGENTS.md), sorted alphabetically
+
+The categories list is generated dynamically at runtime, not stored in AGENTS.md.
+
+Format of generated Categories chapter:
+
+```
+# Categories
+
+- general
+- testing
+- code_quality
+```
+
+## G.GET.8: Response format
+
+```json
+{
+  "success": true,
+  "data": {
+    "content": "# Instructions\n\nThese instructions are mandatory...\n\n# Categories\n\n- general\n- testing"
+  }
+}
 ```
 
 # reqlix_get_categories
@@ -347,6 +371,8 @@ If chapter has no requirements, return empty array: `"requirements": []`
 
 Errors (category/chapter not found): Use error format from [G.C.6](#gc6-error-response-format).
 
+# reqlix_get_requirement
+
 ## G.GET_REQUIREMENT.1: Description
 
 Description (shown to LLM in tool list):
@@ -407,8 +433,6 @@ Success:
 ```
 
 Error (requirement not found): Use error format from [G.C.6](#gc6-error-response-format).
-
-# reqlix_get_requirement
 
 # reqlix_insert_requirement
 

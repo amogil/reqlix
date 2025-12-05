@@ -499,10 +499,11 @@ impl RequirementsServer {
     }
 
     // =========================================================================
-    // Requirement helpers (G.GR.3, G.GRQ.3, G.GRQ.4)
+    // Requirement helpers (G.GR.3, G.GRQ.3, G.GRQ.4, G.R.5)
     // =========================================================================
 
     /// Read requirements from a chapter (streaming) (G.GR.3)
+    /// Parses requirement headings correctly according to G.R.5
     fn read_requirements_streaming(
         category_path: &PathBuf,
         chapter: &str,
@@ -537,7 +538,11 @@ impl RequirementsServer {
         Ok(requirements)
     }
 
-    /// Find requirement by index (streaming) (G.GRQ.3, G.GRQ.4)
+    /// Find requirement by index (streaming) (G.GRQ.3, G.GRQ.4, G.R.5)
+    /// Parses requirement boundaries correctly according to G.R.5:
+    /// - Requirement starts with ## and includes all lines until next ## or EOF
+    /// - Code blocks are handled correctly (content within ``` is part of requirement)
+    /// - Level-1 headings within requirement body are still part of the requirement
     fn find_requirement_streaming(
         category_path: &PathBuf,
         category_name: &str,
@@ -551,18 +556,26 @@ impl RequirementsServer {
         let mut found_requirement: Option<(String, String)> = None; // (title, chapter)
         let mut collecting_text = false;
         let mut text_lines: Vec<String> = Vec::new();
+        let mut in_code_block = false; // Track if we're inside a code block (G.R.5.2)
 
         for line in reader.lines() {
             let line = line.map_err(|e| format!("Failed to read line: {}", e))?;
 
-            // Check for chapter heading
-            if line.starts_with("# ") && !line.starts_with("## ") {
+            // Check for chapter heading (only when not collecting requirement text) (G.R.5.3)
+            if !collecting_text && line.starts_with("# ") && !line.starts_with("## ") {
                 current_chapter = line[2..].to_string();
                 continue;
             }
 
-            // Check for requirement heading
-            if line.starts_with("## ") {
+            // Track code block boundaries (G.R.5.2)
+            // Code blocks start and end with ``` (can have language identifier)
+            if line.trim().starts_with("```") {
+                in_code_block = !in_code_block;
+            }
+
+            // Check for requirement heading (G.R.5.1)
+            // Only stop collecting if we encounter a new requirement heading AND we're not in a code block
+            if line.starts_with("## ") && !in_code_block {
                 // If we were collecting text for found requirement, we're done
                 if collecting_text {
                     let (title, chapter) = found_requirement.unwrap();
@@ -583,18 +596,20 @@ impl RequirementsServer {
                         found_requirement = Some((title, current_chapter.clone()));
                         collecting_text = true;
                         text_lines.clear();
+                        in_code_block = false; // Reset code block state
                     }
                 }
                 continue;
             }
 
-            // Collect text lines if we found the requirement
+            // Collect text lines if we found the requirement (G.R.5.4)
+            // Include all lines until next ## heading (even if they look like headings)
             if collecting_text {
                 text_lines.push(line);
             }
         }
 
-        // Handle case where requirement is at end of file
+        // Handle case where requirement is at end of file (G.R.5.1)
         if collecting_text {
             let (title, chapter) = found_requirement.unwrap();
             return Ok(RequirementFull {
@@ -1165,34 +1180,61 @@ impl RequirementsServer {
             }
         }
 
-        // Step 5: Update requirement (G.UR.3 step 5, G.UR.4)
+        // Step 5: Update requirement (G.UR.3 step 5, G.UR.4, G.R.5)
         let content = match fs::read_to_string(&category_path) {
             Ok(c) => c,
             Err(e) => return Self::json_error(&format!("Failed to read category file: {}", e)),
         };
 
-        // Find and replace the requirement
-        let old_heading = format!("## {}: {}", params.index, existing.title);
+        // Find and replace the requirement using line-by-line parsing to handle code blocks correctly (G.R.5)
         let new_heading = format!("## {}: {}", params.index, new_title);
+        let lines: Vec<&str> = content.lines().collect();
 
-        // Find the requirement section
-        if let Some(heading_start) = content.find(&old_heading) {
-            let after_heading = heading_start + old_heading.len();
+        let mut heading_start: Option<usize> = None;
+        let mut req_end: Option<usize> = None;
+        let mut in_code_block = false;
+        let mut char_offset = 0;
 
-            // Find the end of this requirement (next ## or EOF)
-            let req_end = content[after_heading..]
-                .find("\n## ")
-                .map(|p| after_heading + p)
-                .unwrap_or(content.len());
+        for line in &lines {
+            let line_start = char_offset;
+            let line_end = char_offset + line.len() + 1; // +1 for newline
+
+            // Track code block boundaries (G.R.5.2)
+            if line.trim().starts_with("```") {
+                in_code_block = !in_code_block;
+            }
+
+            // Check for requirement heading (G.R.5.1)
+            // Only consider ## headings that are not inside code blocks
+            if line.starts_with("## ") && !in_code_block {
+                if let Some(colon_pos) = line.find(':') {
+                    let index = line[3..colon_pos].trim();
+                    if index == params.index {
+                        // Found the requirement we're updating
+                        heading_start = Some(line_start);
+                        // Continue to find the end
+                    } else if heading_start.is_some() {
+                        // Found next requirement, this is the end
+                        req_end = Some(line_start);
+                        break;
+                    }
+                }
+            }
+
+            char_offset = line_end;
+        }
+
+        if let Some(start) = heading_start {
+            let end = req_end.unwrap_or(content.len());
 
             // Build new content
             let mut new_content = String::new();
-            new_content.push_str(&content[..heading_start]);
+            new_content.push_str(&content[..start]);
             new_content.push_str(&new_heading);
             new_content.push_str("\n\n");
             new_content.push_str(&params.text);
             new_content.push('\n');
-            new_content.push_str(&content[req_end..]);
+            new_content.push_str(&content[end..]);
 
             if let Err(e) = fs::write(&category_path, &new_content) {
                 return Self::json_error(&format!("Failed to write category file: {}", e));
