@@ -282,7 +282,7 @@ Parameters:
 
 ## G.REQLIX_GET_CH.3: Implementation details
 
-The tool must parse level-1 ATX-style headings according to [G.R.2](#gr2-chapter-definition), ignoring those inside fenced code blocks.
+The tool must parse level-1 ATX-style headings according to [G.R.2](#gr2-chapter-definition).
 
 ## G.REQLIX_GET_CH.4: Response format
 
@@ -306,7 +306,7 @@ If category has no chapters, return empty array: `"chapters": []`
 
 Error (category not found): Use error format from [G.C.6](#gc6-error-response-format).
 
-# reqlix_get_requirements
+# Tool: reqlix_get_requirements
 
 ## G.REQLIX_GET_REQUIREMENTS.1: Description
 
@@ -328,19 +328,7 @@ Parameters:
 
 ## G.REQLIX_GET_REQUIREMENTS.3: Implementation details
 
-The tool must parse level-2 ATX-style headings within the specified chapter.
-
-When parsing markdown headings:
-1. Track whether the current position is inside a fenced code block (delimited by ```)
-2. Start collecting requirements after finding the matching chapter heading (level-1 ATX-style heading with content matching the chapter name) and stop when reaching the next level-1 ATX-style heading or EOF
-3. For each ATX-style heading encountered within the target chapter, check if it is a level-2 heading:
-   - The heading must be an ATX-style heading of level 2 (exactly two `#` characters)
-   - The heading may be indented with up to 3 spaces (indentation is ignored in markdown)
-   - The heading content must follow the format `{index}: {title}` where `{index}` is the requirement index and `{title}` is the requirement title
-4. Ignore level-2 ATX-style headings that appear inside fenced code blocks
-5. Extract requirement indices and titles from the heading content by parsing the markdown heading syntax correctly, not just by string prefix matching
-
-The parser must correctly handle markdown syntax, not just search for lines starting with `## `.
+The tool must parse level-2 ATX-style headings according to [G.R.3](#gr3-requirement-definition) within the specified chapter (see [G.R.2](#gr2-chapter-definition)). The markdown parser automatically determines chapter boundaries (see [G.R.5](#gr5-requirement-parsing-boundaries)).
 
 ## G.REQLIX_GET_REQUIREMENTS.4: Response format
 
@@ -370,7 +358,7 @@ If chapter has no requirements, return empty array: `"requirements": []`
 
 Errors (category/chapter not found): Use error format from [G.C.6](#gc6-error-response-format).
 
-# reqlix_get_requirement
+# Tool: reqlix_get_requirement
 
 ## G.REQLIX_GET_REQUIREMENT.1: Description
 
@@ -378,7 +366,6 @@ Description (shown to LLM in tool list):
 
 ```
 Returns the full content (title and text) of a requirement by its index.
-Index format: {CATEGORY}.{CHAPTER}.{NUMBER} (e.g., G.REQLIX_GET_I.1, T.U.2).
 Use this to read a specific requirement when you know its index.
 ```
 
@@ -392,37 +379,11 @@ Parameters:
 
 ## G.REQLIX_GET_REQUIREMENT.3: Index parsing and file lookup
 
-The tool must parse the index by splitting on dots (`.`):
-
-- First part → category prefix
-- Second part → chapter prefix
-- Third part → requirement number
-
-To find the requirement:
+The tool must parse the index according to [G.R.4](#gr4-index-format) by splitting on dots (`.`). To find the requirement:
 
 1. Use algorithm from [G.C.7](#gc7-category-lookup-by-prefix) to find category by prefix
-2. Scan the category file to find a chapter containing a requirement with matching chapter prefix:
-   - Track current chapter (last seen level-1 ATX-style heading, parsed according to [G.R.2](#gr2-chapter-definition))
-   - For each level-2 ATX-style heading encountered, parse it according to [G.R.3](#gr3-requirement-definition) and extract the chapter prefix `Y` from the index in the heading content
-   - If `Y` matches the search chapter prefix, the current chapter is the target
-   - Ignore headings inside fenced code blocks
-3. If no chapter contains requirements with this chapter prefix, return error "Requirement not found"
-4. Find the requirement by full index within the chapter using proper markdown parsing (see [G.REQLIX_GET_REQUIREMENT.4](#greqlix_get_requirement4-implementation-details))
-
-## G.REQLIX_GET_REQUIREMENT.4: Implementation details
-
-When finding and reading a requirement:
-1. Track whether the current position is inside a fenced code block (delimited by ```)
-2. Parse level-2 ATX-style headings to find the requirement heading:
-   - The heading must be an ATX-style heading of level 2 (exactly two `#` characters)
-   - The heading may be indented with up to 3 spaces (indentation is ignored in markdown)
-   - The heading content must follow the format `{index}: {title}` where `{index}` matches the search index
-3. When the matching requirement heading is found, collect all following content until:
-   - The next level-2 ATX-style heading is encountered (outside fenced code blocks), OR
-   - The end of file is reached
-4. Return both the title (extracted from the heading content) and body text (all content after the heading until the next level-2 heading or EOF)
-
-The parser must correctly handle markdown syntax, not just search for lines starting with `## `.
+2. Find the requirement by full index in the category file: parse level-2 ATX-style headings according to [G.R.3](#gr3-requirement-definition) and match the index. When found, collect the requirement body according to [G.R.5](#gr5-requirement-parsing-boundaries). Return both the title (extracted from the heading content) and body text.
+3. If requirement not found, return error "Requirement not found"
 
 ## G.REQLIX_GET_REQUIREMENT.5: Response format
 
@@ -443,7 +404,7 @@ Success:
 
 Error (requirement not found): Use error format from [G.C.6](#gc6-error-response-format).
 
-# reqlix_insert_requirement
+# Tool: reqlix_insert_requirement
 
 ## G.REQLIX_I.1: Description
 
@@ -552,7 +513,7 @@ The tool must execute the following steps:
 1. **Parse index**: Extract category prefix, chapter prefix, and requirement number from the index
    (see [G.REQLIX_GET_REQUIREMENT.3](#greqlix_get_requirement3-index-parsing-and-file-lookup)).
 
-2. **Find requirement**: Locate the requirement by its index using proper markdown parsing (see [G.REQLIX_GET_REQUIREMENT.4](#greqlix_get_requirement4-implementation-details)). If not found, return error.
+2. **Find requirement**: Locate the requirement by its index (see [G.REQLIX_GET_REQUIREMENT.3](#greqlix_get_requirement3-index-parsing-and-file-lookup)). If not found, return error.
 
 3. **Determine new title**: If `title` parameter is provided, use it. Otherwise, keep the existing title.
 
