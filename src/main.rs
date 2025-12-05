@@ -796,7 +796,7 @@ impl RequirementsServer {
     }
 
     // =========================================================================
-    // Insert/Update helpers (G.REQLIX_I.3, G.REQLIX_I.4, G.REQLIX_I.5, G.REQLIX_U.3, G.REQLIX_U.4)
+    // Insert/Update helpers (G.REQLIX_I.3, G.REQLIX_I.5, G.REQLIX_U.3, G.REQLIX_U.4)
     // =========================================================================
 
     /// Get existing category prefix from requirements, or calculate new one
@@ -1296,7 +1296,7 @@ impl RequirementsServer {
     /// reqlix_update_requirement (G.REQLIX_U)
     /// Title is optional. If provided, must be unique within chapter. If not provided, existing title is kept (G.REQLIX_U.3).
     fn handle_update_requirement(params: UpdateRequirementParams) -> String {
-        // Step 0: Validate parameters (G.REQLIX_U.6, G.REQLIX_U.3 step 0)
+        // Step 1: Validate parameters (G.REQLIX_U.6, G.REQLIX_U.3 step 1)
         if let Err(e) = Self::validate_project_root(&params.project_root) {
             return Self::json_error(&e);
         }
@@ -1315,7 +1315,7 @@ impl RequirementsServer {
             }
         }
 
-        // Step 1: Parse index (G.REQLIX_U.3 step 1)
+        // Step 2: Parse index (G.REQLIX_U.3 step 2)
         let (category_prefix, _chapter_prefix, _number) = match Self::parse_index(&params.index) {
             Ok(p) => p,
             Err(e) => return Self::json_error(&e),
@@ -1335,18 +1335,18 @@ impl RequirementsServer {
 
         let category_path = requirements_dir.join(format!("{}.md", category_name));
 
-        // Step 2: Find requirement (G.REQLIX_U.3 step 2)
+        // Step 3: Find requirement (G.REQLIX_U.3 step 3)
         let existing = match Self::find_requirement_streaming(&category_path, &category_name, &params.index) {
             Ok(r) => r,
             Err(e) => return Self::json_error(&e),
         };
 
-        // Step 3: Determine new title (G.REQLIX_U.3 step 3)
+        // Step 4: Determine new title (G.REQLIX_U.3 step 4)
         // Use provided title or keep existing
         let title_provided = params.title.is_some();
         let new_title = params.title.unwrap_or(existing.title.clone());
 
-        // Step 4: Validate title uniqueness (G.REQLIX_U.3 step 4)
+        // Step 5: Validate title uniqueness (G.REQLIX_U.3 step 5)
         // If new title was provided, check uniqueness (excluding current requirement)
         if title_provided {
             match Self::title_exists_in_chapter(
@@ -1363,7 +1363,7 @@ impl RequirementsServer {
             }
         }
 
-        // Step 5: Update requirement (G.REQLIX_U.3 step 5, G.REQLIX_U.4, G.R.5)
+        // Step 6: Update requirement (G.REQLIX_U.3 step 6, G.REQLIX_U.4, G.R.5)
         let content = match fs::read_to_string(&category_path) {
             Ok(c) => c,
             Err(e) => return Self::json_error(&format!("Failed to read category file: {}", e)),
@@ -1425,7 +1425,7 @@ impl RequirementsServer {
             return Self::json_error("Could not find requirement to update");
         }
 
-        // Step 6: Return result (G.REQLIX_U.3 step 6, G.REQLIX_U.5)
+        // Step 7: Return result (G.REQLIX_U.3 step 7, G.REQLIX_U.5)
         Self::json_success(RequirementFull {
             index: params.index,
             title: new_title,

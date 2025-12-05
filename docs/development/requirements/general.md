@@ -456,26 +456,15 @@ The tool must execute the following steps:
 
 1. **Find or create category**: Locate the category file `{category}.md`. If not found, create a new empty file.
 
-2. **Find or create chapter**: Search for a level-1 ATX-style heading with heading content matching the chapter name in the category file using proper markdown parsing (see [G.R.2](#gr2-chapter-definition)). If not found, append a level-1 ATX-style heading with the chapter name to the end of the file.
+2. **Find or create chapter**: Search for a chapter heading matching the chapter name (see [G.R.2](#gr2-chapter-definition)). If not found, append a chapter heading to the end of the file.
 
-3. **Validate title uniqueness**: Check that the title is unique within the chapter. Parse all requirements in the chapter using proper markdown parsing (see [G.R.3](#gr3-requirement-definition)). If a requirement with the same title already exists, return an error "Title already exists in chapter".
+3. **Validate title uniqueness**: Check that the title is unique within the chapter (see [G.R.3](#gr3-requirement-definition)). If a requirement with the same title already exists, return an error "Title already exists in chapter".
 
-4. **Generate index**: Create the requirement index `{category_prefix}.{chapter_prefix}.{number}`:
-    - If first requirement in category: determine `{category_prefix}` using the unique prefix algorithm
-      (see [G.R.4](#gr4-index-format))
-    - If not first: reuse existing category prefix from other requirements
-    - If first requirement in chapter: determine `{chapter_prefix}` from chapter name using unique prefix algorithm
-    - If not first: reuse existing chapter prefix from other requirements in this chapter
-    - `{number}`: next sequential number ensuring uniqueness within the chapter
+4. **Generate index**: Create the requirement index according to [G.R.4](#gr4-index-format). Reuse existing prefixes when available, otherwise calculate unique prefixes.
 
-5. **Insert requirement**: Append a level-2 ATX-style heading with content `{index}: {title}` followed by the requirement text to the chapter.
+5. **Insert requirement**: Append a requirement heading with content `{index}: {title}` followed by the requirement text (see [G.R.3](#gr3-requirement-definition)).
 
 6. **Return result**: Return the full requirement data.
-
-## G.REQLIX_I.4: Implementation details
-
-The tool must read the category file to check existing requirements and prefixes, then append new content.
-When creating a new chapter, ensure proper markdown formatting with blank lines before and after headings.
 
 ## G.REQLIX_I.5: Response format
 
@@ -502,7 +491,7 @@ Before executing the insertion algorithm, the tool must validate all input param
 
 This validation must occur before any file system operations or requirement processing.
 
-# reqlix_update_requirement
+# Tool: reqlix_update_requirement
 
 ## G.REQLIX_U.1: Description
 
@@ -531,23 +520,23 @@ Parameters:
 
 The tool must execute the following steps:
 
-0. **Validate parameters**: Validate all input parameters according to [G.REQLIX_U.6](#greqlix_u6-parameter-validation).
+1. **Validate parameters**: Validate all input parameters according to [G.REQLIX_U.6](#greqlix_u6-parameter-validation).
 
-1. **Parse index**: Extract category prefix, chapter prefix, and requirement number from the index
+2. **Parse index**: Extract category prefix, chapter prefix, and requirement number from the index
    (see [G.REQLIX_GET_REQUIREMENT.3](#greqlix_get_requirement3-index-parsing-and-file-lookup)).
 
-2. **Find requirement**: Locate the requirement by its index (see [G.REQLIX_GET_REQUIREMENT.3](#greqlix_get_requirement3-index-parsing-and-file-lookup)). If not found, return error.
+3. **Find requirement**: Locate the requirement by its index (see [G.REQLIX_GET_REQUIREMENT.3](#greqlix_get_requirement3-index-parsing-and-file-lookup)). If not found, return error.
 
-3. **Determine new title**: If `title` parameter is provided, use it. Otherwise, keep the existing title.
+4. **Determine new title**: If `title` parameter is provided, use it. Otherwise, keep the existing title.
 
-4. **Validate title uniqueness**: If a new title was provided, check that it is unique within the chapter
+5. **Validate title uniqueness**: If a new title was provided, check that it is unique within the chapter
    (excluding the current requirement). Parse all requirements in the chapter using proper markdown parsing (see [G.R.3](#gr3-requirement-definition)). If a requirement with the same title already exists, return an error
    "Title already exists in chapter".
 
-5. **Update requirement**: Replace the existing level-2 ATX-style requirement heading and body with the new title (or keep existing)
+6. **Update requirement**: Replace the existing level-2 ATX-style requirement heading and body with the new title (or keep existing)
    and new text. Keep the same index.
 
-6. **Return result**: Return the full updated requirement data.
+7. **Return result**: Return the full updated requirement data.
 
 ## G.REQLIX_U.4: Implementation details
 
