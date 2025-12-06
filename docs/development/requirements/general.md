@@ -19,13 +19,33 @@ All tool parameters must satisfy the following constraints:
 - `operation_description` - required, max 10000 characters
 - `category` - required, max 100 characters
 - `chapter` - required, max 100 characters
-- `index` - required, max 10 characters
+- `index` - required, max 100 characters
 - `text` - required, max 10000 characters
 - `title` - required for `reqlix_insert_requirement`, optional for `reqlix_update_requirement`, max 100 characters
 
 ## G.P.2: Constraint violation error
 
 If any parameter does not satisfy the constraints, the tool must return an error.
+
+## G.P.3: Name validation
+
+Category and chapter names must satisfy the following validation rules:
+
+**Category name validation:**
+- Must not be empty (enforced by [G.P.1](#gp1-parameter-constraints) max length constraint)
+- Must be a valid filename (cannot contain characters that are invalid in filenames: `/`, `\`, `:`, `*`, `?`, `"`, `<`, `>`, `|`)
+- Must not be `AGENTS` (reserved name)
+- Must not start or end with whitespace
+- Must not contain consecutive dots (`.`)
+- Must not be `.` or `..`
+
+**Chapter name validation:**
+- Must not be empty (enforced by [G.P.1](#gp1-parameter-constraints) max length constraint)
+- Must not start or end with whitespace
+- Must not contain newline characters (would break markdown heading structure)
+- Must be a valid markdown heading content
+
+If validation fails, the tool must return an error in the format specified in [G.C.6](#gc6-error-response-format) with a descriptive message indicating which validation rule was violated.
 
 # Requirements Storage Format
 
@@ -119,6 +139,34 @@ To find a category file by prefix:
 3. Calculate what prefix this category would have using the algorithm in [G.R.4](#gr4-index-format)
 4. Return the category whose calculated prefix matches the search prefix
 5. If no category matches the prefix, return an error "Category not found"
+
+## G.R.8: File encoding
+
+All requirement files must be encoded in UTF-8. All tools must read and write files using UTF-8 encoding. If a file cannot be read as UTF-8, the tool must return an error indicating encoding issues.
+
+## G.R.9: File system error handling
+
+All tools must handle file system errors gracefully. Common errors include:
+
+- Permission denied: Return error "Permission denied: {path}"
+- File not found: For read operations, return appropriate error (e.g., "Category not found", "Requirement not found"). For write operations, create files/directories as needed (see [G.C.2](#gc2-directory-creation))
+- Disk full: Return error "Disk full: cannot write to {path}"
+- Invalid path: Return error "Invalid path: {path}"
+- Encoding errors: Return error "Encoding error: file is not valid UTF-8"
+
+All file system errors must be returned in the JSON error format specified in [G.C.6](#gc6-error-response-format).
+
+## G.R.10: Empty file handling
+
+Empty files must be handled as follows:
+
+- **Empty category file**: An empty category file (containing only whitespace or no content) is considered valid. It has no chapters and no requirements. Tools must return empty arrays for chapters and requirements when querying an empty category file.
+
+- **Category file with only whitespace**: Files containing only whitespace (spaces, tabs, newlines) are treated as empty files.
+
+- **Chapter with no requirements**: A chapter that exists but contains no requirements (only the level-1 heading) is valid. Tools must return an empty requirements array for such chapters.
+
+- **File creation**: When creating a new category file, it must be created as an empty file (or with only the initial chapter heading if a chapter is being added).
 
 # Tool: reqlix_get_instructions
 

@@ -99,7 +99,7 @@ const MAX_PROJECT_ROOT_LEN: usize = 1000;
 const MAX_OPERATION_DESC_LEN: usize = 10000;
 const MAX_CATEGORY_LEN: usize = 100;
 const MAX_CHAPTER_LEN: usize = 100;
-const MAX_INDEX_LEN: usize = 10;
+const MAX_INDEX_LEN: usize = 100;
 const MAX_TEXT_LEN: usize = 10000;
 const MAX_TITLE_LEN: usize = 100;
 
@@ -283,6 +283,7 @@ impl RequirementsServer {
 
     #[cfg_attr(test, allow(dead_code))]
     pub fn validate_category(value: &str) -> Result<(), String> {
+        // Basic constraints (G.P.1)
         if value.is_empty() {
             return Err("category is required".to_string());
         }
@@ -292,11 +293,43 @@ impl RequirementsServer {
                 MAX_CATEGORY_LEN
             ));
         }
+        
+        // Name validation (G.P.3)
+        // Must not start or end with whitespace
+        if value.trim() != value {
+            return Err("category name must not start or end with whitespace".to_string());
+        }
+        
+        // Must be a valid filename (cannot contain invalid characters)
+        let invalid_chars = ['/', '\\', ':', '*', '?', '"', '<', '>', '|'];
+        if let Some(ch) = value.chars().find(|c| invalid_chars.contains(c)) {
+            return Err(format!(
+                "category name contains invalid character: '{}' (invalid for filename)",
+                ch
+            ));
+        }
+        
+        // Must not be reserved name
+        if value == "AGENTS" {
+            return Err("category name 'AGENTS' is reserved".to_string());
+        }
+        
+        // Must not contain consecutive dots
+        if value.contains("..") {
+            return Err("category name must not contain consecutive dots".to_string());
+        }
+        
+        // Must not be . or ..
+        if value == "." || value == ".." {
+            return Err("category name must not be '.' or '..'".to_string());
+        }
+        
         Ok(())
     }
 
     #[cfg_attr(test, allow(dead_code))]
     pub fn validate_chapter(value: &str) -> Result<(), String> {
+        // Basic constraints (G.P.1)
         if value.is_empty() {
             return Err("chapter is required".to_string());
         }
@@ -306,6 +339,41 @@ impl RequirementsServer {
                 MAX_CHAPTER_LEN
             ));
         }
+        
+        // Name validation (G.P.3)
+        // Must not start or end with whitespace
+        if value.trim() != value {
+            return Err("chapter name must not start or end with whitespace".to_string());
+        }
+        
+        // Must not contain newline characters (would break markdown heading structure)
+        if value.contains('\n') || value.contains('\r') {
+            return Err("chapter name must not contain newline characters (invalid for markdown heading)".to_string());
+        }
+        
+        // Must be valid markdown heading content
+        // Verify by parsing a test heading
+        let test_heading = format!("# {}", value);
+        let parser = Parser::new(&test_heading);
+        let events: Vec<Event> = parser.collect();
+        
+        // Check if we can parse it as a valid level-1 heading
+        if events.len() < 2 {
+            return Err("chapter name is not valid markdown heading content".to_string());
+        }
+        
+        // Verify it's a level-1 heading with text content
+        match (&events[0], &events[1]) {
+            (Event::Start(Tag::Heading(level, _, _)), Event::Text(_)) => {
+                if level != &HeadingLevel::H1 {
+                    return Err("chapter name is not valid markdown heading content".to_string());
+                }
+            }
+            _ => {
+                return Err("chapter name is not valid markdown heading content".to_string());
+            }
+        }
+        
         Ok(())
     }
 
@@ -384,8 +452,87 @@ impl RequirementsServer {
     }
 
     // =========================================================================
-    // File system helpers (G.REQLIX_GET_I.3, G.REQLIX_GET_I.4, G.C.1, G.C.2)
+    // File system helpers (G.REQLIX_GET_I.3, G.REQLIX_GET_I.4, G.C.1, G.C.2, G.R.8, G.R.9, G.R.10)
     // =========================================================================
+
+    /// Read file as UTF-8 with proper error handling (G.R.8, G.R.9)
+    /// Returns content or formatted error message
+    #[cfg_attr(test, allow(dead_code))]
+    pub fn read_file_utf8(path: &PathBuf) -> Result<String, String> {
+        match fs::read_to_string(path) {
+            Ok(content) => Ok(content),
+            Err(e) => {
+                let error_kind = e.kind();
+                let path_str = path.to_string_lossy();
+                
+                // Handle specific error types (G.R.9)
+                let error_msg = match error_kind {
+                    std::io::ErrorKind::PermissionDenied => {
+                        format!("Permission denied: {}", path_str)
+                    }
+                    std::io::ErrorKind::NotFound => {
+                        format!("File not found: {}", path_str)
+                    }
+                    std::io::ErrorKind::InvalidInput => {
+                        format!("Encoding error: file is not valid UTF-8: {}", path_str)
+                    }
+                    _ => {
+                        format!("Failed to read file {}: {}", path_str, e)
+                    }
+                };
+                Err(error_msg)
+            }
+        }
+    }
+
+    /// Write file as UTF-8 with proper error handling (G.R.8, G.R.9)
+    /// Returns success or formatted error message
+    #[cfg_attr(test, allow(dead_code))]
+    pub fn write_file_utf8(path: &PathBuf, content: &str) -> Result<(), String> {
+        // Ensure parent directory exists (G.C.2)
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent).map_err(|e| {
+                let path_str = path.to_string_lossy();
+                match e.kind() {
+                    std::io::ErrorKind::PermissionDenied => {
+                        format!("Permission denied: {}", path_str)
+                    }
+                    _ => format!("Failed to create directory for {}: {}", path_str, e)
+                }
+            })?;
+        }
+
+        match fs::write(path, content) {
+            Ok(_) => Ok(()),
+            Err(e) => {
+                let error_kind = e.kind();
+                let path_str = path.to_string_lossy();
+                
+                // Handle specific error types (G.R.9)
+                let error_msg = match error_kind {
+                    std::io::ErrorKind::PermissionDenied => {
+                        format!("Permission denied: {}", path_str)
+                    }
+                    std::io::ErrorKind::NotFound => {
+                        format!("Invalid path: {}", path_str)
+                    }
+                    std::io::ErrorKind::OutOfMemory => {
+                        format!("Disk full: cannot write to {}", path_str)
+                    }
+                    _ => {
+                        format!("Failed to write file {}: {}", path_str, e)
+                    }
+                };
+                Err(error_msg)
+            }
+        }
+    }
+
+    /// Check if file is empty (only whitespace) (G.R.10)
+    #[cfg_attr(test, allow(dead_code))]
+    pub fn is_file_empty_or_whitespace(content: &str) -> bool {
+        content.trim().is_empty()
+    }
 
     /// Get search paths for AGENTS.md (G.REQLIX_GET_I.3)
     #[cfg_attr(test, allow(dead_code))]
@@ -444,7 +591,7 @@ impl RequirementsServer {
             .unwrap_or_default();
         let content = PLACEHOLDER_CONTENT.replace("{requirements_directory}", &requirements_dir);
 
-        fs::write(&create_path, content)
+        Self::write_file_utf8(&create_path, &content)
             .map_err(|e| format!("Failed to create requirements file: {}", e))?;
 
         Ok(create_path)
@@ -693,12 +840,18 @@ impl RequirementsServer {
     // Chapter helpers (G.REQLIX_GET_CH.3)
     // =========================================================================
 
-    /// Read chapters from a category file (streaming) (G.REQLIX_GET_CH.3, G.R.2)
+    /// Read chapters from a category file (streaming) (G.REQLIX_GET_CH.3, G.R.2, G.R.8, G.R.9, G.R.10)
     /// Parses markdown level-1 headings correctly, ignoring those inside code blocks
+    /// Handles empty files and whitespace-only files (G.R.10)
     #[cfg_attr(test, allow(dead_code))]
     pub fn read_chapters_streaming(category_path: &PathBuf) -> Result<Vec<String>, String> {
-        let content = fs::read_to_string(category_path)
-            .map_err(|e| format!("Failed to read category file: {}", e))?;
+        // Read file as UTF-8 (G.R.8, G.R.9)
+        let content = Self::read_file_utf8(category_path)?;
+        
+        // Handle empty files (G.R.10)
+        if Self::is_file_empty_or_whitespace(&content) {
+            return Ok(Vec::new());
+        }
         
         let parser = Parser::new(&content);
         let mut chapters = Vec::new();
@@ -737,15 +890,21 @@ impl RequirementsServer {
     // Requirement helpers (G.REQLIX_GET_REQUIREMENTS.3, G.REQLIX_GET_REQUIREMENT.3, G.REQLIX_GET_REQUIREMENT.4, G.R.5)
     // =========================================================================
 
-    /// Read requirements from a chapter (streaming) (G.REQLIX_GET_REQUIREMENTS.3, G.R.3, G.R.5)
+    /// Read requirements from a chapter (streaming) (G.REQLIX_GET_REQUIREMENTS.3, G.R.3, G.R.5, G.R.8, G.R.9, G.R.10)
     /// Parses markdown level-2 headings correctly, ignoring those inside code blocks
+    /// Handles empty files and chapters with no requirements (G.R.10)
     #[cfg_attr(test, allow(dead_code))]
     pub fn read_requirements_streaming(
         category_path: &PathBuf,
         chapter: &str,
     ) -> Result<Vec<RequirementSummary>, String> {
-        let content = fs::read_to_string(category_path)
-            .map_err(|e| format!("Failed to read category file: {}", e))?;
+        // Read file as UTF-8 (G.R.8, G.R.9)
+        let content = Self::read_file_utf8(category_path)?;
+        
+        // Handle empty files (G.R.10)
+        if Self::is_file_empty_or_whitespace(&content) {
+            return Ok(Vec::new());
+        }
         
         let parser = Parser::new(&content);
         let mut requirements = Vec::new();
@@ -807,8 +966,8 @@ impl RequirementsServer {
         category_name: &str,
         search_index: &str,
     ) -> Result<RequirementFull, String> {
-        let content = fs::read_to_string(category_path)
-            .map_err(|e| format!("Failed to read category file: {}", e))?;
+        // Read file as UTF-8 (G.R.8, G.R.9)
+        let content = Self::read_file_utf8(category_path)?;
         let lines: Vec<&str> = content.lines().collect();
         
         // Use pulldown-cmark to find the requirement and determine chapter
@@ -1119,9 +1278,9 @@ impl RequirementsServer {
         };
 
         // Read AGENTS.md content
-        let mut content = match fs::read_to_string(&agents_path) {
+        let mut content = match Self::read_file_utf8(&agents_path) {
             Ok(c) => c,
-            Err(e) => return Self::json_error(&format!("Failed to read requirements file: {}", e)),
+            Err(e) => return Self::json_error(&e),
         };
 
         // Get requirements directory
@@ -1342,10 +1501,11 @@ impl RequirementsServer {
 
         let category_path = requirements_dir.join(format!("{}.md", params.category));
 
-        // Step 1: Find or create category (G.REQLIX_I.3 step 1)
+        // Step 1: Find or create category (G.REQLIX_I.3 step 1, G.R.10)
         if !category_path.exists() {
-            if let Err(e) = fs::write(&category_path, "") {
-                return Self::json_error(&format!("Failed to create category file: {}", e));
+            // Create empty file (G.R.10)
+            if let Err(e) = Self::write_file_utf8(&category_path, "") {
+                return Self::json_error(&e);
             }
         }
 
@@ -1357,16 +1517,16 @@ impl RequirementsServer {
 
         if !chapters.contains(&params.chapter) {
             // Append chapter heading
-            let mut content = match fs::read_to_string(&category_path) {
+            let mut content = match Self::read_file_utf8(&category_path) {
                 Ok(c) => c,
-                Err(e) => return Self::json_error(&format!("Failed to read category file: {}", e)),
+                Err(e) => return Self::json_error(&e),
             };
             if !content.is_empty() && !content.ends_with('\n') {
                 content.push('\n');
             }
             content.push_str(&format!("\n# {}\n", params.chapter));
-            if let Err(e) = fs::write(&category_path, &content) {
-                return Self::json_error(&format!("Failed to write category file: {}", e));
+            if let Err(e) = Self::write_file_utf8(&category_path, &content) {
+                return Self::json_error(&e);
             }
         }
 
@@ -1404,9 +1564,9 @@ impl RequirementsServer {
         let index = format!("{}.{}.{}", category_prefix, chapter_prefix, number);
 
         // Step 5: Insert requirement (G.REQLIX_I.3 step 5)
-        let mut content = match fs::read_to_string(&category_path) {
+        let mut content = match Self::read_file_utf8(&category_path) {
             Ok(c) => c,
-            Err(e) => return Self::json_error(&format!("Failed to read category file: {}", e)),
+            Err(e) => return Self::json_error(&e),
         };
 
         // Find position to insert (after chapter heading or at end of chapter)
@@ -1425,9 +1585,9 @@ impl RequirementsServer {
             return Self::json_error("Chapter not found after creation");
         }
 
-        if let Err(e) = fs::write(&category_path, &content) {
-            return Self::json_error(&format!("Failed to write category file: {}", e));
-        }
+            if let Err(e) = Self::write_file_utf8(&category_path, &content) {
+                return Self::json_error(&e);
+            }
 
         // Step 6: Return result (G.REQLIX_I.3 step 6, G.REQLIX_I.5)
         Self::json_success(RequirementFull {

@@ -1,6 +1,9 @@
 #[path = "unit/validation_tests.rs"]
 mod validation_tests;
 
+#[path = "unit/name_and_file_validation_tests.rs"]
+mod name_and_file_validation_tests;
+
 #[path = "unit/markdown_parsing_tests.rs"]
 mod markdown_parsing_tests;
 

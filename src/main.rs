@@ -99,7 +99,7 @@ const MAX_PROJECT_ROOT_LEN: usize = 1000;
 const MAX_OPERATION_DESC_LEN: usize = 10000;
 const MAX_CATEGORY_LEN: usize = 100;
 const MAX_CHAPTER_LEN: usize = 100;
-const MAX_INDEX_LEN: usize = 10;
+const MAX_INDEX_LEN: usize = 100;
 const MAX_TEXT_LEN: usize = 10000;
 const MAX_TITLE_LEN: usize = 100;
 
@@ -278,6 +278,7 @@ impl RequirementsServer {
     }
 
     fn validate_category(value: &str) -> Result<(), String> {
+        // Basic constraints (G.P.1)
         if value.is_empty() {
             return Err("category is required".to_string());
         }
@@ -287,10 +288,42 @@ impl RequirementsServer {
                 MAX_CATEGORY_LEN
             ));
         }
+        
+        // Name validation (G.P.3)
+        // Must not start or end with whitespace
+        if value.trim() != value {
+            return Err("category name must not start or end with whitespace".to_string());
+        }
+        
+        // Must be a valid filename (cannot contain invalid characters)
+        let invalid_chars = ['/', '\\', ':', '*', '?', '"', '<', '>', '|'];
+        if let Some(ch) = value.chars().find(|c| invalid_chars.contains(c)) {
+            return Err(format!(
+                "category name contains invalid character: '{}' (invalid for filename)",
+                ch
+            ));
+        }
+        
+        // Must not be reserved name
+        if value == "AGENTS" {
+            return Err("category name 'AGENTS' is reserved".to_string());
+        }
+        
+        // Must not contain consecutive dots
+        if value.contains("..") {
+            return Err("category name must not contain consecutive dots".to_string());
+        }
+        
+        // Must not be . or ..
+        if value == "." || value == ".." {
+            return Err("category name must not be '.' or '..'".to_string());
+        }
+        
         Ok(())
     }
 
     fn validate_chapter(value: &str) -> Result<(), String> {
+        // Basic constraints (G.P.1)
         if value.is_empty() {
             return Err("chapter is required".to_string());
         }
@@ -300,6 +333,21 @@ impl RequirementsServer {
                 MAX_CHAPTER_LEN
             ));
         }
+        
+        // Name validation (G.P.3)
+        // Must not start or end with whitespace
+        if value.trim() != value {
+            return Err("chapter name must not start or end with whitespace".to_string());
+        }
+        
+        // Must not contain newline characters (would break markdown heading structure)
+        if value.contains('\n') || value.contains('\r') {
+            return Err("chapter name must not contain newline characters (invalid for markdown heading)".to_string());
+        }
+        
+        // Must be valid markdown heading content
+        // Basic validation - empty check already done above
+        // Full markdown validation is done in lib.rs where parser is available
         Ok(())
     }
 
@@ -1195,15 +1243,16 @@ impl RequirementsServer {
 
         let category_path = requirements_dir.join(format!("{}.md", params.category));
 
-        // Step 1: Find or create category (G.REQLIX_I.3 step 1)
+        // Step 1: Find or create category (G.REQLIX_I.3 step 1, G.R.10)
         if !category_path.exists() {
+            // Create empty file (G.R.10)
             if let Err(e) = fs::write(&category_path, "") {
                 return Self::json_error(&format!("Failed to create category file: {}", e));
             }
         }
 
         // Step 2: Find or create chapter (G.REQLIX_I.3 step 2)
-        let chapters = match Self::read_chapters_streaming(&category_path) {
+        let chapters = match RequirementsServer::read_chapters_streaming(&category_path) {
             Ok(c) => c,
             Err(e) => return Self::json_error(&e),
         };

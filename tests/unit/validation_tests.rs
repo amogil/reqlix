@@ -275,40 +275,93 @@ fn test_validate_index_valid() {
 }
 
 /// Test: validate_index with value exceeding max length
-/// Precondition: System has an index value exceeding 10 characters
-/// Action: Call validate_index with string longer than 10 characters
+/// Precondition: System has an index value exceeding 100 characters
+/// Action: Call validate_index with string longer than 100 characters
 /// Result: Function returns error indicating max length exceeded
 /// Covers Requirement: G.P.1, G.P.2
 #[test]
 fn test_validate_index_too_long() {
-    let long_index = "a".repeat(11);
+    let long_index = "a".repeat(101);
     let result = RequirementsServer::validate_index(&long_index);
     assert!(result.is_err());
     assert!(result.unwrap_err().contains("exceeds maximum length"));
 }
 
 /// Test: validate_index with exactly max length
-/// Precondition: System has an index value exactly 10 characters
-/// Action: Call validate_index with string exactly 10 characters
+/// Precondition: System has an index value exactly 100 characters
+/// Action: Call validate_index with string exactly 100 characters
 /// Result: Function returns Ok(())
 /// Covers Requirement: G.P.1, G.P.2
 #[test]
 fn test_validate_index_max_length() {
-    let max_index = "a".repeat(10);
+    let max_index = "a".repeat(100);
     let result = RequirementsServer::validate_index(&max_index);
     assert!(result.is_ok());
 }
 
 /// Test: validate_index with one character over max length
-/// Precondition: System has an index value 11 characters
-/// Action: Call validate_index with string 11 characters
+/// Precondition: System has an index value 101 characters
+/// Action: Call validate_index with string 101 characters
 /// Result: Function returns error
 /// Covers Requirement: G.P.1, G.P.2
 #[test]
 fn test_validate_index_one_over_max() {
-    let over_max_index = "a".repeat(11);
+    let over_max_index = "a".repeat(101);
     let result = RequirementsServer::validate_index(&over_max_index);
     assert!(result.is_err());
+}
+
+/// Test: validate_index with realistic long index format
+/// Precondition: System has an index value with realistic format like "G.REQLIX_U.3"
+/// Action: Call validate_index with realistic long index (13 characters)
+/// Result: Function returns Ok(()) since it's within 100 character limit
+/// Covers Requirement: G.P.1, G.P.2
+#[test]
+fn test_validate_index_realistic_long_format() {
+    let realistic_index = "G.REQLIX_U.3";
+    let result = RequirementsServer::validate_index(realistic_index);
+    assert!(result.is_ok());
+}
+
+/// Test: validate_index with very long but valid index
+/// Precondition: System has an index value at 99 characters (just under limit)
+/// Action: Call validate_index with string 99 characters
+/// Result: Function returns Ok(())
+/// Covers Requirement: G.P.1, G.P.2
+#[test]
+fn test_validate_index_just_under_max() {
+    let just_under_max_index = "a".repeat(99);
+    let result = RequirementsServer::validate_index(&just_under_max_index);
+    assert!(result.is_ok());
+}
+
+/// Test: validate_index with index containing dots and special characters at max length
+/// Precondition: System has an index value exactly 100 characters with realistic format
+/// Action: Call validate_index with complex index format at max length
+/// Result: Function returns Ok(())
+/// Covers Requirement: G.P.1, G.P.2
+#[test]
+fn test_validate_index_complex_format_at_max() {
+    // Create a realistic index format that's exactly 100 characters
+    // Format: CATEGORY_PREFIX.CHAPTER_PREFIX.NUMBER
+    let category_part = "VERY_LONG_CATEGORY_NAME";
+    let chapter_part = "EXTREMELY_LONG_CHAPTER_NAME_FOR_TESTING";
+    let number_part = "12345";
+    let separator = ".";
+    let total_len = category_part.len() + separator.len() + chapter_part.len() + separator.len() + number_part.len();
+    // Adjust to exactly 100 characters
+    let padding_needed = 100 - total_len;
+    let complex_index = format!("{}{}{}{}{}{}", 
+        category_part, 
+        separator, 
+        chapter_part, 
+        separator, 
+        number_part,
+        "x".repeat(padding_needed.max(0))
+    );
+    assert_eq!(complex_index.len(), 100);
+    let result = RequirementsServer::validate_index(&complex_index);
+    assert!(result.is_ok());
 }
 
 // Tests for validate_text
@@ -568,3 +621,4 @@ fn test_validate_chapter_unicode() {
     let result = RequirementsServer::validate_chapter("Глава");
     assert!(result.is_ok());
 }
+
