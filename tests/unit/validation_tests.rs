@@ -603,22 +603,144 @@ fn test_validate_text_newlines() {
 /// Test: validate_category with unicode characters
 /// Precondition: System has a category value containing unicode characters
 /// Action: Call validate_category with string containing unicode
-/// Result: Function returns Ok(()) (unicode is valid)
-/// Covers Requirement: G.P.1, G.P.2
+/// Result: Function returns error (only lowercase English letters and underscore allowed)
+/// Covers Requirement: G.P.3
 #[test]
 fn test_validate_category_unicode() {
     let result = RequirementsServer::validate_category("тест");
-    assert!(result.is_ok());
+    assert!(result.is_err());
+    assert!(result.unwrap_err().contains("lowercase English letters"));
 }
 
 /// Test: validate_chapter with unicode characters
 /// Precondition: System has a chapter value containing unicode characters
 /// Action: Call validate_chapter with string containing unicode
-/// Result: Function returns Ok(()) (unicode is valid)
-/// Covers Requirement: G.P.1, G.P.2
+/// Result: Function returns error (only A-Z, a-z, spaces, colons, and hyphens allowed)
+/// Covers Requirement: G.P.3
 #[test]
 fn test_validate_chapter_unicode() {
     let result = RequirementsServer::validate_chapter("Глава");
+    assert!(result.is_err());
+    assert!(result.unwrap_err().contains("uppercase and lowercase English letters"));
+}
+
+// Tests for category validation: only lowercase English letters and underscore (G.P.3)
+
+/// Test: validate_category with uppercase letters
+/// Precondition: System has a category value containing uppercase letters
+/// Action: Call validate_category with "General"
+/// Result: Function returns error (only lowercase allowed)
+/// Covers Requirement: G.P.3
+#[test]
+fn test_validate_category_uppercase() {
+    let result = RequirementsServer::validate_category("General");
+    assert!(result.is_err());
+    assert!(result.unwrap_err().contains("lowercase English letters"));
+}
+
+/// Test: validate_category with numbers
+/// Precondition: System has a category value containing numbers
+/// Action: Call validate_category with "test123"
+/// Result: Function returns error (only lowercase letters and underscore allowed)
+/// Covers Requirement: G.P.3
+#[test]
+fn test_validate_category_with_numbers() {
+    let result = RequirementsServer::validate_category("test123");
+    assert!(result.is_err());
+    assert!(result.unwrap_err().contains("lowercase English letters"));
+}
+
+/// Test: validate_category with spaces
+/// Precondition: System has a category value containing spaces
+/// Action: Call validate_category with "test category"
+/// Result: Function returns error (spaces not allowed)
+/// Covers Requirement: G.P.3
+#[test]
+fn test_validate_category_with_spaces() {
+    let result = RequirementsServer::validate_category("test category");
+    assert!(result.is_err());
+    assert!(result.unwrap_err().contains("lowercase English letters"));
+}
+
+/// Test: validate_category with valid underscore
+/// Precondition: System has a category value with underscore
+/// Action: Call validate_category with "test_category"
+/// Result: Function returns Ok(())
+/// Covers Requirement: G.P.3
+#[test]
+fn test_validate_category_with_underscore() {
+    let result = RequirementsServer::validate_category("test_category");
+    assert!(result.is_ok());
+}
+
+/// Test: validate_category with mixed case
+/// Precondition: System has a category value with mixed case
+/// Action: Call validate_category with "TestCategory"
+/// Result: Function returns error (only lowercase allowed)
+/// Covers Requirement: G.P.3
+#[test]
+fn test_validate_category_mixed_case() {
+    let result = RequirementsServer::validate_category("TestCategory");
+    assert!(result.is_err());
+    assert!(result.unwrap_err().contains("lowercase English letters"));
+}
+
+// Tests for chapter validation: only A-Z, a-z, spaces, colons, and hyphens (G.P.3)
+
+/// Test: validate_chapter with numbers
+/// Precondition: System has a chapter value containing numbers
+/// Action: Call validate_chapter with "Chapter 123"
+/// Result: Function returns error (numbers not allowed)
+/// Covers Requirement: G.P.3
+#[test]
+fn test_validate_chapter_with_numbers() {
+    let result = RequirementsServer::validate_chapter("Chapter 123");
+    assert!(result.is_err());
+    assert!(result.unwrap_err().contains("uppercase and lowercase English letters"));
+}
+
+/// Test: validate_chapter with underscore
+/// Precondition: System has a chapter value containing underscore
+/// Action: Call validate_chapter with "Chapter_Name"
+/// Result: Function returns error (underscore not allowed)
+/// Covers Requirement: G.P.3
+#[test]
+fn test_validate_chapter_with_underscore() {
+    let result = RequirementsServer::validate_chapter("Chapter_Name");
+    assert!(result.is_err());
+    assert!(result.unwrap_err().contains("uppercase and lowercase English letters"));
+}
+
+/// Test: validate_chapter with valid colon
+/// Precondition: System has a chapter value containing colon
+/// Action: Call validate_chapter with "Chapter: Subchapter"
+/// Result: Function returns Ok(())
+/// Covers Requirement: G.P.3
+#[test]
+fn test_validate_chapter_with_colon() {
+    let result = RequirementsServer::validate_chapter("Chapter: Subchapter");
+    assert!(result.is_ok());
+}
+
+/// Test: validate_chapter with valid hyphen
+/// Precondition: System has a chapter value containing hyphen
+/// Action: Call validate_chapter with "Chapter-Subchapter"
+/// Result: Function returns Ok(())
+/// Covers Requirement: G.P.3
+#[test]
+fn test_validate_chapter_with_hyphen() {
+    let result = RequirementsServer::validate_chapter("Chapter-Subchapter");
+    assert!(result.is_ok());
+}
+
+/// Test: validate_chapter with valid combination of allowed characters
+/// Precondition: System has a chapter value with spaces, colons, and hyphens
+/// Action: Call validate_chapter with "Chapter: Sub-Chapter Name"
+/// Result: Function returns Ok(())
+/// Covers Requirement: G.P.3
+#[test]
+fn test_validate_chapter_with_all_allowed_chars() {
+    let result = RequirementsServer::validate_chapter("Chapter: Sub-Chapter Name");
     assert!(result.is_ok());
 }
 

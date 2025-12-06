@@ -33,6 +33,7 @@ Category and chapter names must satisfy the following validation rules:
 
 **Category name validation:**
 - Must not be empty (enforced by [G.P.1](#gp1-parameter-constraints) max length constraint)
+- Must contain only lowercase English letters (a-z) and underscore (_)
 - Must be a valid filename (cannot contain characters that are invalid in filenames: `/`, `\`, `:`, `*`, `?`, `"`, `<`, `>`, `|`)
 - Must not be `AGENTS` (reserved name)
 - Must not start or end with whitespace
@@ -41,6 +42,7 @@ Category and chapter names must satisfy the following validation rules:
 
 **Chapter name validation:**
 - Must not be empty (enforced by [G.P.1](#gp1-parameter-constraints) max length constraint)
+- Must contain only uppercase and lowercase English letters (A-Z, a-z), spaces, colons (:), and hyphens (-)
 - Must not start or end with whitespace
 - Must not contain newline characters (would break markdown heading structure)
 - Must be a valid markdown heading content
@@ -74,8 +76,8 @@ Requirement index format: `{category_prefix}.{chapter_prefix}.{number}`
 
 The dot (`.`) is the delimiter between parts. Each part is parsed by splitting the index on dots.
 
-- `{category_prefix}` - First letter(s) of the category name (uppercase). Algorithm: if the category file already contains requirements, extract the prefix from an existing requirement index; otherwise, calculate a unique prefix that does not conflict with other category files by taking the first letter(s) and adding more letters until unique.
-- `{chapter_prefix}` - First letter(s) of the chapter name (uppercase). Algorithm: if the chapter already contains requirements, extract the prefix from an existing requirement index; otherwise, calculate a unique prefix that does not conflict with other chapters in the same category by taking the first character(s) of the chapter name (using uppercase) and adding more characters until unique.
+- `{category_prefix}` - First letter(s) of the category name (uppercase). Algorithm: if the category file already contains requirements, extract the prefix from an existing requirement index; otherwise, calculate a unique prefix that does not conflict with other category files by taking the first letter(s) and adding more letters until unique. **Only ASCII letters (A-Z, a-z) are considered for prefix calculation; all other characters (spaces, underscores, hyphens, colons, numbers, etc.) are ignored.**
+- `{chapter_prefix}` - First letter(s) of the chapter name (uppercase). Algorithm: if the chapter already contains requirements, extract the prefix from an existing requirement index; otherwise, calculate a unique prefix that does not conflict with other chapters in the same category by taking the first letter(s) of the chapter name (using uppercase) and adding more letters until unique. **Only ASCII letters (A-Z, a-z) are considered for prefix calculation; all other characters (spaces, colons, hyphens, numbers, etc.) are ignored.**
 - `{number}` - Sequential number of the requirement within the chapter (1, 2, 3, ...).
 
 Examples:
@@ -89,6 +91,7 @@ Examples:
 - Category `general`, chapter `reqlix_insert_requirement` → G.R.1, G.R.2, ... (if unique) or longer prefix if conflicts
 - Category `general`, chapter `reqlix_update_requirement` → G.R.1, G.R.2, ... (if unique) or longer prefix if conflicts
 - Category `testing`, chapter `Unit Tests` → T.U.1, T.U.2, ...
+- Category `general`, chapter `Chapter: Sub-Chapter Name` → G.C.1, G.C.2, ... (only letters "ChapterSubChapterName" are considered)
 
 ## G.R.5: Requirement parsing boundaries
 

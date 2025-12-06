@@ -22,37 +22,43 @@ fn test_validate_category_valid() {
 /// Test: validate_category with name containing invalid filename character
 /// Precondition: System has a category name with invalid character
 /// Action: Call validate_category with name containing '/'
-/// Result: Function returns error about invalid character
+/// Result: Function returns error (either about lowercase letters or invalid character)
 /// Covers Requirement: G.P.3
 #[test]
 fn test_validate_category_invalid_char_slash() {
     let result = RequirementsServer::validate_category("test/category");
     assert!(result.is_err());
-    assert!(result.unwrap_err().contains("invalid character"));
+    let err_msg = result.unwrap_err();
+    // Error should mention either lowercase letters validation or invalid character
+    assert!(err_msg.contains("lowercase English letters") || err_msg.contains("invalid character"));
 }
 
 /// Test: validate_category with name containing backslash
 /// Precondition: System has a category name with backslash
 /// Action: Call validate_category with name containing '\'
-/// Result: Function returns error about invalid character
+/// Result: Function returns error (either about lowercase letters or invalid character)
 /// Covers Requirement: G.P.3
 #[test]
 fn test_validate_category_invalid_char_backslash() {
     let result = RequirementsServer::validate_category("test\\category");
     assert!(result.is_err());
-    assert!(result.unwrap_err().contains("invalid character"));
+    let err_msg = result.unwrap_err();
+    // Error should mention either lowercase letters validation or invalid character
+    assert!(err_msg.contains("lowercase English letters") || err_msg.contains("invalid character"));
 }
 
 /// Test: validate_category with reserved name AGENTS
 /// Precondition: System has category name "AGENTS"
 /// Action: Call validate_category with "AGENTS"
-/// Result: Function returns error about reserved name
+/// Result: Function returns error (either about lowercase letters or reserved name)
 /// Covers Requirement: G.P.3
 #[test]
 fn test_validate_category_reserved_name() {
     let result = RequirementsServer::validate_category("AGENTS");
     assert!(result.is_err());
-    assert!(result.unwrap_err().contains("reserved"));
+    let err_msg = result.unwrap_err();
+    // Error should mention either lowercase letters validation or reserved name
+    assert!(err_msg.contains("lowercase English letters") || err_msg.contains("reserved"));
 }
 
 /// Test: validate_category with name starting with whitespace
@@ -82,13 +88,15 @@ fn test_validate_category_trailing_whitespace() {
 /// Test: validate_category with consecutive dots
 /// Precondition: System has category name with ".."
 /// Action: Call validate_category with "test..category"
-/// Result: Function returns error about consecutive dots
+/// Result: Function returns error (either about lowercase letters or consecutive dots)
 /// Covers Requirement: G.P.3
 #[test]
 fn test_validate_category_consecutive_dots() {
     let result = RequirementsServer::validate_category("test..category");
     assert!(result.is_err());
-    assert!(result.unwrap_err().contains("consecutive dots"));
+    let err_msg = result.unwrap_err();
+    // Error should mention either lowercase letters validation or consecutive dots
+    assert!(err_msg.contains("lowercase English letters") || err_msg.contains("consecutive dots"));
 }
 
 /// Test: validate_category with single dot
@@ -133,7 +141,9 @@ fn test_validate_chapter_valid() {
 fn test_validate_chapter_newline() {
     let result = RequirementsServer::validate_chapter("Chapter\nName");
     assert!(result.is_err());
-    assert!(result.unwrap_err().contains("newline"));
+    let err_msg = result.unwrap_err();
+    // Error should mention either letters validation or newline
+    assert!(err_msg.contains("uppercase and lowercase English letters") || err_msg.contains("newline"));
 }
 
 /// Test: validate_chapter with name starting with whitespace
@@ -379,27 +389,30 @@ fn test_read_requirements_streaming_empty_chapter() {
 /// Test: validate_category with all invalid filename characters
 /// Precondition: System has category name with various invalid characters
 /// Action: Call validate_category with each invalid character
-/// Result: Function returns error for each
+/// Result: Function returns error for each (only lowercase letters and underscore allowed)
 /// Covers Requirement: G.P.3
 #[test]
 fn test_validate_category_all_invalid_chars() {
-    let invalid_chars = ['/', '\\', ':', '*', '?', '"', '<', '>', '|'];
+    let invalid_chars = ['/', '\\', ':', '*', '?', '"', '<', '>', '|', 'A', '1', ' '];
     for &ch in &invalid_chars {
         let name = format!("test{}category", ch);
         let result = RequirementsServer::validate_category(&name);
         assert!(result.is_err(), "Should reject character: {}", ch);
-        assert!(result.unwrap_err().contains("invalid character"));
+        // Error message should mention lowercase letters or invalid character
+        let err_msg = result.unwrap_err();
+        assert!(err_msg.contains("lowercase English letters") || err_msg.contains("invalid character"), 
+                "Error message should mention validation rule for character: {}", ch);
     }
 }
 
 /// Test: validate_chapter with complex valid markdown heading
 /// Precondition: System has complex but valid chapter name
-/// Action: Call validate_chapter with complex name
+/// Action: Call validate_chapter with complex name (with colon and spaces)
 /// Result: Function returns Ok(())
 /// Covers Requirement: G.P.3
 #[test]
 fn test_validate_chapter_complex_valid() {
-    let result = RequirementsServer::validate_chapter("Tool: reqlix_get_instructions");
+    let result = RequirementsServer::validate_chapter("Tool: Get Instructions");
     assert!(result.is_ok());
 }
 
