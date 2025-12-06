@@ -150,3 +150,165 @@ fn test_calculate_unique_prefix_with_numbers() {
     let result = RequirementsServer::calculate_unique_prefix("test123", &names);
     assert_eq!(result, "T");
 }
+
+/// Test: calculate_chapter_prefix with single chapter
+/// Precondition: System has a single chapter in the list
+/// Action: Call calculate_chapter_prefix with "General Requirements" and list containing only "General Requirements"
+/// Result: Function returns "G"
+/// Covers Requirement: G.R.4
+#[test]
+fn test_calculate_chapter_prefix_single_chapter() {
+    let chapters = vec!["General Requirements".to_string()];
+    let result = RequirementsServer::calculate_chapter_prefix("General Requirements", &chapters);
+    assert_eq!(result, "G");
+}
+
+/// Test: calculate_chapter_prefix with unique first letter
+/// Precondition: System has multiple chapters with different first letters
+/// Action: Call calculate_chapter_prefix with "General Requirements" and list ["General Requirements", "Testing"]
+/// Result: Function returns "G"
+/// Covers Requirement: G.R.4
+#[test]
+fn test_calculate_chapter_prefix_unique_first_letter() {
+    let chapters = vec![
+        "General Requirements".to_string(),
+        "Testing".to_string(),
+    ];
+    let result = RequirementsServer::calculate_chapter_prefix("General Requirements", &chapters);
+    assert_eq!(result, "G");
+}
+
+/// Test: calculate_chapter_prefix with conflicting first letter
+/// Precondition: System has multiple chapters with same first letter
+/// Action: Call calculate_chapter_prefix with "General Requirements" and list ["General Requirements", "Guidelines"]
+/// Result: Function returns longer prefix to make it unique (e.g., "GE" or "GEN")
+/// Covers Requirement: G.R.4
+#[test]
+fn test_calculate_chapter_prefix_conflicting_first_letter() {
+    let chapters = vec![
+        "General Requirements".to_string(),
+        "Guidelines".to_string(),
+    ];
+    let result = RequirementsServer::calculate_chapter_prefix("General Requirements", &chapters);
+    // Should return at least 2 characters since both start with "G"
+    assert!(result.len() >= 2);
+    assert!(result.starts_with("G"));
+    // Verify it's unique - calculate prefix for the other chapter and check they differ
+    let other_result = RequirementsServer::calculate_chapter_prefix("Guidelines", &chapters);
+    assert_ne!(result, other_result);
+}
+
+/// Test: calculate_chapter_prefix with reqlix_ prefix chapters
+/// Precondition: System has multiple chapters with reqlix_ prefix
+/// Action: Call calculate_chapter_prefix with "reqlix_get_instructions" and list ["reqlix_get_instructions", "reqlix_get_categories"]
+/// Result: Function returns unique prefix based on full name
+/// Covers Requirement: G.R.4
+#[test]
+fn test_calculate_chapter_prefix_multiple_reqlix() {
+    let chapters = vec![
+        "reqlix_get_instructions".to_string(),
+        "reqlix_get_categories".to_string(),
+    ];
+    let result = RequirementsServer::calculate_chapter_prefix("reqlix_get_instructions", &chapters);
+    // Should use full name, prefix should start with "R"
+    assert!(result.starts_with("R"));
+    // Since both start with "reqlix_get_", should need more characters to distinguish
+    let other_result = RequirementsServer::calculate_chapter_prefix("reqlix_get_categories", &chapters);
+    assert_ne!(result, other_result);
+    // Both should start with "R" since both names start with "r"
+    assert!(other_result.starts_with("R"));
+}
+
+/// Test: calculate_chapter_prefix with empty list
+/// Precondition: System has empty list of chapters
+/// Action: Call calculate_chapter_prefix with "General Requirements" and empty list
+/// Result: Function returns "G" (first letter)
+/// Covers Requirement: G.R.4
+#[test]
+fn test_calculate_chapter_prefix_empty_list() {
+    let chapters = vec![];
+    let result = RequirementsServer::calculate_chapter_prefix("General Requirements", &chapters);
+    assert_eq!(result, "G");
+}
+
+/// Test: calculate_chapter_prefix case insensitive uniqueness
+/// Precondition: System has chapters that differ only by case
+/// Action: Call calculate_chapter_prefix with "General" and list ["general", "General"]
+/// Result: Function treats them as conflicting and returns longer prefix
+/// Covers Requirement: G.R.4
+#[test]
+fn test_calculate_chapter_prefix_case_insensitive() {
+    let chapters = vec!["general".to_string(), "General".to_string()];
+    let result = RequirementsServer::calculate_chapter_prefix("general", &chapters);
+    // Should return longer prefix since uppercase comparison makes them conflict
+    assert!(result.len() >= 2);
+    assert!(result.starts_with("G"));
+}
+
+/// Test: calculate_chapter_prefix with three conflicting chapters
+/// Precondition: System has three chapters starting with same letters
+/// Action: Call calculate_chapter_prefix with "Get Instructions" and list ["Get Instructions", "Get Categories", "Get Chapters"]
+/// Result: Function returns unique prefix that distinguishes all three
+/// Covers Requirement: G.R.4
+#[test]
+fn test_calculate_chapter_prefix_three_conflicts() {
+    let chapters = vec![
+        "Get Instructions".to_string(),
+        "Get Categories".to_string(),
+        "Get Chapters".to_string(),
+    ];
+    let result1 = RequirementsServer::calculate_chapter_prefix("Get Instructions", &chapters);
+    let result2 = RequirementsServer::calculate_chapter_prefix("Get Categories", &chapters);
+    let result3 = RequirementsServer::calculate_chapter_prefix("Get Chapters", &chapters);
+    
+    // All should start with "G"
+    assert!(result1.starts_with("G"));
+    assert!(result2.starts_with("G"));
+    assert!(result3.starts_with("G"));
+    
+    // All should be unique
+    assert_ne!(result1, result2);
+    assert_ne!(result1, result3);
+    assert_ne!(result2, result3);
+}
+
+/// Test: calculate_chapter_prefix with very long name
+/// Precondition: System has a very long chapter name
+/// Action: Call calculate_chapter_prefix with long name
+/// Result: Function returns prefix (may be full name if needed for uniqueness)
+/// Covers Requirement: G.R.4
+#[test]
+fn test_calculate_chapter_prefix_long_name() {
+    let long_name = "A".repeat(100);
+    let chapters = vec![long_name.clone()];
+    let result = RequirementsServer::calculate_chapter_prefix(&long_name, &chapters);
+    assert_eq!(result, "A");
+}
+
+/// Test: calculate_chapter_prefix with special characters
+/// Precondition: System has chapter name with special characters
+/// Action: Call calculate_chapter_prefix with name containing special chars
+/// Result: Function handles special characters correctly
+/// Covers Requirement: G.R.4
+#[test]
+fn test_calculate_chapter_prefix_special_chars() {
+    let chapters = vec!["test-chapter".to_string()];
+    let result = RequirementsServer::calculate_chapter_prefix("test-chapter", &chapters);
+    assert_eq!(result, "T");
+}
+
+/// Test: calculate_chapter_prefix returns full name when needed for uniqueness
+/// Precondition: System has chapters that require full name to be unique
+/// Action: Call calculate_chapter_prefix with "ABC" and list ["ABC", "ABD"]
+/// Result: Function returns full name "ABC" when needed
+/// Covers Requirement: G.R.4
+#[test]
+fn test_calculate_chapter_prefix_full_name_when_needed() {
+    let chapters = vec!["ABC".to_string(), "ABD".to_string()];
+    let result = RequirementsServer::calculate_chapter_prefix("ABC", &chapters);
+    // Should return "ABC" since "A" and "AB" conflict, but "ABC" is unique
+    assert_eq!(result, "ABC");
+    let other_result = RequirementsServer::calculate_chapter_prefix("ABD", &chapters);
+    assert_eq!(other_result, "ABD");
+    assert_ne!(result, other_result);
+}
