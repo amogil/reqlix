@@ -66,7 +66,10 @@ fn test_parse_level1_heading_no_space() {
 #[test]
 fn test_parse_level2_heading_valid() {
     let result = RequirementsServer::parse_level2_heading("## G.G.1: Requirement Title");
-    assert_eq!(result, Some(("G.G.1".to_string(), "Requirement Title".to_string())));
+    assert_eq!(
+        result,
+        Some(("G.G.1".to_string(), "Requirement Title".to_string()))
+    );
 }
 
 /// Test: parse_level2_heading with indented heading
@@ -77,7 +80,10 @@ fn test_parse_level2_heading_valid() {
 #[test]
 fn test_parse_level2_heading_indented() {
     let result = RequirementsServer::parse_level2_heading("  ## G.G.1: Requirement Title");
-    assert_eq!(result, Some(("G.G.1".to_string(), "Requirement Title".to_string())));
+    assert_eq!(
+        result,
+        Some(("G.G.1".to_string(), "Requirement Title".to_string()))
+    );
 }
 
 /// Test: parse_level2_heading with level-3 heading
@@ -176,7 +182,10 @@ fn test_parse_level2_heading_empty_title() {
 #[test]
 fn test_parse_level2_heading_spaces_around_colon() {
     let result = RequirementsServer::parse_level2_heading("## G.G.1 : Requirement Title");
-    assert_eq!(result, Some(("G.G.1".to_string(), "Requirement Title".to_string())));
+    assert_eq!(
+        result,
+        Some(("G.G.1".to_string(), "Requirement Title".to_string()))
+    );
 }
 
 /// Test: parse_level2_heading with trailing hash characters
@@ -197,8 +206,15 @@ fn test_parse_level2_heading_trailing_hashes() {
 /// Covers Requirement: G.R.3
 #[test]
 fn test_parse_level2_heading_complex_index() {
-    let result = RequirementsServer::parse_level2_heading("## GET.GET_C.123: Complex Requirement Title");
-    assert_eq!(result, Some(("GET.GET_C.123".to_string(), "Complex Requirement Title".to_string())));
+    let result =
+        RequirementsServer::parse_level2_heading("## GET.GET_C.123: Complex Requirement Title");
+    assert_eq!(
+        result,
+        Some((
+            "GET.GET_C.123".to_string(),
+            "Complex Requirement Title".to_string()
+        ))
+    );
 }
 
 /// Test: parse_level2_heading with title containing colon
@@ -209,7 +225,10 @@ fn test_parse_level2_heading_complex_index() {
 #[test]
 fn test_parse_level2_heading_colon_in_title() {
     let result = RequirementsServer::parse_level2_heading("## G.G.1: Title: Subtitle");
-    assert_eq!(result, Some(("G.G.1".to_string(), "Title: Subtitle".to_string())));
+    assert_eq!(
+        result,
+        Some(("G.G.1".to_string(), "Title: Subtitle".to_string()))
+    );
 }
 
 /// Test: parse_level1_heading with only hash and space
@@ -264,7 +283,10 @@ fn test_parse_level1_heading_unicode() {
 #[test]
 fn test_parse_level2_heading_unicode() {
     let result = RequirementsServer::parse_level2_heading("## G.G.1: Требование");
-    assert_eq!(result, Some(("G.G.1".to_string(), "Требование".to_string())));
+    assert_eq!(
+        result,
+        Some(("G.G.1".to_string(), "Требование".to_string()))
+    );
 }
 
 /// Test: parse_level1_heading with special characters
@@ -286,7 +308,10 @@ fn test_parse_level1_heading_special_chars() {
 #[test]
 fn test_parse_level2_heading_special_chars_title() {
     let result = RequirementsServer::parse_level2_heading("## G.G.1: Title-Name_123");
-    assert_eq!(result, Some(("G.G.1".to_string(), "Title-Name_123".to_string())));
+    assert_eq!(
+        result,
+        Some(("G.G.1".to_string(), "Title-Name_123".to_string()))
+    );
 }
 
 /// Test: parse_level2_heading with multiple spaces in title
@@ -297,7 +322,10 @@ fn test_parse_level2_heading_special_chars_title() {
 #[test]
 fn test_parse_level2_heading_multiple_spaces() {
     let result = RequirementsServer::parse_level2_heading("## G.G.1: Title   With   Spaces");
-    assert_eq!(result, Some(("G.G.1".to_string(), "Title   With   Spaces".to_string())));
+    assert_eq!(
+        result,
+        Some(("G.G.1".to_string(), "Title   With   Spaces".to_string()))
+    );
 }
 
 /// Test: parse_level1_heading with multiple spaces in name

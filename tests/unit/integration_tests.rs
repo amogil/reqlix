@@ -480,13 +480,13 @@ fn test_error_response_format() {
 fn test_get_version_returns_version() {
     let params = reqlix::GetVersionParams {};
     let result = RequirementsServer::handle_get_version(params);
-    
+
     // Parse JSON response
     let parsed: serde_json::Value = serde_json::from_str(&result).unwrap();
-    
+
     // Verify success (G.TOOLREQLIXGETV.2)
     assert_eq!(parsed["success"], true);
-    
+
     // Verify version is present and matches Cargo.toml (G.TOOLREQLIXGETV.3)
     let version = parsed["data"]["version"].as_str().unwrap();
     assert_eq!(version, env!("CARGO_PKG_VERSION"));
@@ -645,7 +645,10 @@ More content.
 
     // Verify chapter is removed
     let file_content = fs::read_to_string(req_dir.join("general.md")).unwrap();
-    assert!(!file_content.contains("# First Chapter"), "Empty chapter should be removed");
+    assert!(
+        !file_content.contains("# First Chapter"),
+        "Empty chapter should be removed"
+    );
     assert!(!file_content.contains("G.F.1"));
     // Second chapter should still exist
     assert!(file_content.contains("# Second Chapter"));
@@ -824,5 +827,3 @@ Content three.
         file_content
     );
 }
-
-

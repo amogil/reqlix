@@ -143,7 +143,9 @@ fn test_validate_chapter_newline() {
     assert!(result.is_err());
     let err_msg = result.unwrap_err();
     // Error should mention either letters validation or newline
-    assert!(err_msg.contains("uppercase and lowercase English letters") || err_msg.contains("newline"));
+    assert!(
+        err_msg.contains("uppercase and lowercase English letters") || err_msg.contains("newline")
+    );
 }
 
 /// Test: validate_chapter with name starting with whitespace
@@ -184,7 +186,7 @@ fn test_read_file_utf8_valid() {
     let temp_dir = TempDir::new().unwrap();
     let file_path = temp_dir.path().join("test.md");
     fs::write(&file_path, "Test content").unwrap();
-    
+
     let result = RequirementsServer::read_file_utf8(&file_path);
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), "Test content");
@@ -201,7 +203,7 @@ fn test_read_file_utf8_unicode() {
     let file_path = temp_dir.path().join("test.md");
     let content = "Test with émojis 🎉 and 中文";
     fs::write(&file_path, content).unwrap();
-    
+
     let result = RequirementsServer::read_file_utf8(&file_path);
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), content);
@@ -216,7 +218,7 @@ fn test_read_file_utf8_unicode() {
 fn test_read_file_utf8_not_found() {
     let temp_dir = TempDir::new().unwrap();
     let file_path = temp_dir.path().join("nonexistent.md");
-    
+
     let result = RequirementsServer::read_file_utf8(&file_path);
     assert!(result.is_err());
     assert!(result.unwrap_err().contains("File not found"));
@@ -235,7 +237,7 @@ fn test_read_file_utf8_not_found() {
 fn test_write_file_utf8_creates_dirs() {
     let temp_dir = TempDir::new().unwrap();
     let file_path = temp_dir.path().join("nested").join("path").join("test.md");
-    
+
     let result = RequirementsServer::write_file_utf8(&file_path, "Content");
     assert!(result.is_ok());
     assert!(file_path.exists());
@@ -250,10 +252,10 @@ fn test_write_file_utf8_creates_dirs() {
 fn test_write_file_utf8_valid() {
     let temp_dir = TempDir::new().unwrap();
     let file_path = temp_dir.path().join("test.md");
-    
+
     let result = RequirementsServer::write_file_utf8(&file_path, "Test content");
     assert!(result.is_ok());
-    
+
     let content = fs::read_to_string(&file_path).unwrap();
     assert_eq!(content, "Test content");
 }
@@ -332,7 +334,7 @@ fn test_read_chapters_streaming_empty_file() {
     let temp_dir = TempDir::new().unwrap();
     let file_path = temp_dir.path().join("empty.md");
     fs::write(&file_path, "").unwrap();
-    
+
     let result = RequirementsServer::read_chapters_streaming(&file_path);
     assert!(result.is_ok());
     assert_eq!(result.unwrap().len(), 0);
@@ -348,7 +350,7 @@ fn test_read_chapters_streaming_whitespace_only() {
     let temp_dir = TempDir::new().unwrap();
     let file_path = temp_dir.path().join("whitespace.md");
     fs::write(&file_path, "   \n\t\n  ").unwrap();
-    
+
     let result = RequirementsServer::read_chapters_streaming(&file_path);
     assert!(result.is_ok());
     assert_eq!(result.unwrap().len(), 0);
@@ -364,7 +366,7 @@ fn test_read_requirements_streaming_empty_file() {
     let temp_dir = TempDir::new().unwrap();
     let file_path = temp_dir.path().join("empty.md");
     fs::write(&file_path, "").unwrap();
-    
+
     let result = RequirementsServer::read_requirements_streaming(&file_path, "Chapter");
     assert!(result.is_ok());
     assert_eq!(result.unwrap().len(), 0);
@@ -380,7 +382,7 @@ fn test_read_requirements_streaming_empty_chapter() {
     let temp_dir = TempDir::new().unwrap();
     let file_path = temp_dir.path().join("test.md");
     fs::write(&file_path, "# Test Chapter\n\nNo requirements here.").unwrap();
-    
+
     let result = RequirementsServer::read_requirements_streaming(&file_path, "Test Chapter");
     assert!(result.is_ok());
     assert_eq!(result.unwrap().len(), 0);
@@ -400,8 +402,11 @@ fn test_validate_category_all_invalid_chars() {
         assert!(result.is_err(), "Should reject character: {}", ch);
         // Error message should mention lowercase letters or invalid character
         let err_msg = result.unwrap_err();
-        assert!(err_msg.contains("lowercase English letters") || err_msg.contains("invalid character"), 
-                "Error message should mention validation rule for character: {}", ch);
+        assert!(
+            err_msg.contains("lowercase English letters") || err_msg.contains("invalid character"),
+            "Error message should mention validation rule for character: {}",
+            ch
+        );
     }
 }
 
@@ -437,4 +442,3 @@ fn test_validate_chapter_single_char() {
     let result = RequirementsServer::validate_chapter("A");
     assert!(result.is_ok());
 }
-

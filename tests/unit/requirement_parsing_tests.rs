@@ -15,7 +15,7 @@ fn test_read_requirements_streaming_single() {
     let temp_dir = TempDir::new().unwrap();
     let file_path = temp_dir.path().join("test.md");
     fs::write(&file_path, "# Chapter\n## G.G.1: Title\n").unwrap();
-    
+
     let result = RequirementsServer::read_requirements_streaming(&file_path, "Chapter");
     assert!(result.is_ok());
     let requirements = result.unwrap();
@@ -33,8 +33,12 @@ fn test_read_requirements_streaming_single() {
 fn test_read_requirements_streaming_multiple() {
     let temp_dir = TempDir::new().unwrap();
     let file_path = temp_dir.path().join("test.md");
-    fs::write(&file_path, "# Chapter\n## G.G.1: Title One\n## G.G.2: Title Two\n").unwrap();
-    
+    fs::write(
+        &file_path,
+        "# Chapter\n## G.G.1: Title One\n## G.G.2: Title Two\n",
+    )
+    .unwrap();
+
     let result = RequirementsServer::read_requirements_streaming(&file_path, "Chapter");
     assert!(result.is_ok());
     let requirements = result.unwrap();
@@ -54,8 +58,12 @@ fn test_read_requirements_streaming_multiple() {
 fn test_read_requirements_streaming_ignore_code_block() {
     let temp_dir = TempDir::new().unwrap();
     let file_path = temp_dir.path().join("test.md");
-    fs::write(&file_path, "# Chapter\n## G.G.1: Real Title\n```\n## G.G.2: Fake Title\n```\n").unwrap();
-    
+    fs::write(
+        &file_path,
+        "# Chapter\n## G.G.1: Real Title\n```\n## G.G.2: Fake Title\n```\n",
+    )
+    .unwrap();
+
     let result = RequirementsServer::read_requirements_streaming(&file_path, "Chapter");
     assert!(result.is_ok());
     let requirements = result.unwrap();
@@ -73,8 +81,12 @@ fn test_read_requirements_streaming_ignore_code_block() {
 fn test_read_requirements_streaming_different_chapters() {
     let temp_dir = TempDir::new().unwrap();
     let file_path = temp_dir.path().join("test.md");
-    fs::write(&file_path, "# Chapter One\n## G.G.1: Title One\n# Chapter Two\n## G.G.2: Title Two\n").unwrap();
-    
+    fs::write(
+        &file_path,
+        "# Chapter One\n## G.G.1: Title One\n# Chapter Two\n## G.G.2: Title Two\n",
+    )
+    .unwrap();
+
     let result = RequirementsServer::read_requirements_streaming(&file_path, "Chapter One");
     assert!(result.is_ok());
     let requirements = result.unwrap();
@@ -93,7 +105,7 @@ fn test_read_requirements_streaming_empty_chapter() {
     let temp_dir = TempDir::new().unwrap();
     let file_path = temp_dir.path().join("test.md");
     fs::write(&file_path, "# Chapter\n").unwrap();
-    
+
     let result = RequirementsServer::read_requirements_streaming(&file_path, "Chapter");
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), Vec::new());
@@ -109,7 +121,7 @@ fn test_read_requirements_streaming_indented() {
     let temp_dir = TempDir::new().unwrap();
     let file_path = temp_dir.path().join("test.md");
     fs::write(&file_path, "# Chapter\n  ## G.G.1: Title\n").unwrap();
-    
+
     let result = RequirementsServer::read_requirements_streaming(&file_path, "Chapter");
     assert!(result.is_ok());
     let requirements = result.unwrap();
@@ -126,8 +138,12 @@ fn test_read_requirements_streaming_indented() {
 fn test_read_requirements_streaming_ignore_level1() {
     let temp_dir = TempDir::new().unwrap();
     let file_path = temp_dir.path().join("test.md");
-    fs::write(&file_path, "# Chapter\n## G.G.1: Title\n# Subchapter\n## G.G.2: Title Two\n").unwrap();
-    
+    fs::write(
+        &file_path,
+        "# Chapter\n## G.G.1: Title\n# Subchapter\n## G.G.2: Title Two\n",
+    )
+    .unwrap();
+
     let result = RequirementsServer::read_requirements_streaming(&file_path, "Chapter");
     assert!(result.is_ok());
     let requirements = result.unwrap();
@@ -145,7 +161,7 @@ fn test_find_requirement_streaming_simple() {
     let temp_dir = TempDir::new().unwrap();
     let file_path = temp_dir.path().join("test.md");
     fs::write(&file_path, "# Chapter\n## G.G.1: Title\nText content\n").unwrap();
-    
+
     let result = RequirementsServer::find_requirement_streaming(&file_path, "test", "G.G.1");
     assert!(result.is_ok());
     let req = result.unwrap();
@@ -166,7 +182,7 @@ fn test_find_requirement_streaming_end_of_file() {
     let temp_dir = TempDir::new().unwrap();
     let file_path = temp_dir.path().join("test.md");
     fs::write(&file_path, "# Chapter\n## G.G.1: Title\nLine 1\nLine 2\n").unwrap();
-    
+
     let result = RequirementsServer::find_requirement_streaming(&file_path, "test", "G.G.1");
     assert!(result.is_ok());
     let req = result.unwrap();
@@ -184,8 +200,12 @@ fn test_find_requirement_streaming_end_of_file() {
 fn test_find_requirement_streaming_with_code_block() {
     let temp_dir = TempDir::new().unwrap();
     let file_path = temp_dir.path().join("test.md");
-    fs::write(&file_path, "# Chapter\n## G.G.1: Title\n```\ncode line\n```\n").unwrap();
-    
+    fs::write(
+        &file_path,
+        "# Chapter\n## G.G.1: Title\n```\ncode line\n```\n",
+    )
+    .unwrap();
+
     let result = RequirementsServer::find_requirement_streaming(&file_path, "test", "G.G.1");
     assert!(result.is_ok());
     let req = result.unwrap();
@@ -202,8 +222,12 @@ fn test_find_requirement_streaming_with_code_block() {
 fn test_find_requirement_streaming_boundary_next_requirement() {
     let temp_dir = TempDir::new().unwrap();
     let file_path = temp_dir.path().join("test.md");
-    fs::write(&file_path, "# Chapter\n## G.G.1: Title One\nText one\n## G.G.2: Title Two\nText two\n").unwrap();
-    
+    fs::write(
+        &file_path,
+        "# Chapter\n## G.G.1: Title One\nText one\n## G.G.2: Title Two\nText two\n",
+    )
+    .unwrap();
+
     let result = RequirementsServer::find_requirement_streaming(&file_path, "test", "G.G.1");
     assert!(result.is_ok());
     let req = result.unwrap();
@@ -221,15 +245,25 @@ fn test_find_requirement_streaming_boundary_next_requirement() {
 fn test_find_requirement_streaming_level1_ends_requirement() {
     let temp_dir = TempDir::new().unwrap();
     let file_path = temp_dir.path().join("test.md");
-    fs::write(&file_path, "# Chapter\n## G.G.1: Title\nText before\n# NextChapter\nText after\n").unwrap();
-    
+    fs::write(
+        &file_path,
+        "# Chapter\n## G.G.1: Title\nText before\n# NextChapter\nText after\n",
+    )
+    .unwrap();
+
     let result = RequirementsServer::find_requirement_streaming(&file_path, "test", "G.G.1");
     assert!(result.is_ok());
     let req = result.unwrap();
     assert!(req.text.contains("Text before"));
     // Level-1 heading should NOT be part of requirement text (G.R.5)
-    assert!(!req.text.contains("# NextChapter"), "Level-1 heading should end requirement, not be included in text");
-    assert!(!req.text.contains("Text after"), "Content after level-1 heading should not be in requirement");
+    assert!(
+        !req.text.contains("# NextChapter"),
+        "Level-1 heading should end requirement, not be included in text"
+    );
+    assert!(
+        !req.text.contains("Text after"),
+        "Content after level-1 heading should not be in requirement"
+    );
 }
 
 /// Test: find_requirement_streaming with requirement not found
@@ -242,7 +276,7 @@ fn test_find_requirement_streaming_not_found() {
     let temp_dir = TempDir::new().unwrap();
     let file_path = temp_dir.path().join("test.md");
     fs::write(&file_path, "# Chapter\n## G.G.1: Title\n").unwrap();
-    
+
     let result = RequirementsServer::find_requirement_streaming(&file_path, "test", "G.G.999");
     assert!(result.is_err());
     assert!(result.unwrap_err().contains("not found"));
@@ -257,8 +291,12 @@ fn test_find_requirement_streaming_not_found() {
 fn test_find_requirement_streaming_multiline_code_block() {
     let temp_dir = TempDir::new().unwrap();
     let file_path = temp_dir.path().join("test.md");
-    fs::write(&file_path, "# Chapter\n## G.G.1: Title\n```\nline1\nline2\nline3\n```\nMore text\n").unwrap();
-    
+    fs::write(
+        &file_path,
+        "# Chapter\n## G.G.1: Title\n```\nline1\nline2\nline3\n```\nMore text\n",
+    )
+    .unwrap();
+
     let result = RequirementsServer::find_requirement_streaming(&file_path, "test", "G.G.1");
     assert!(result.is_ok());
     let req = result.unwrap();
@@ -277,8 +315,12 @@ fn test_find_requirement_streaming_multiline_code_block() {
 fn test_find_requirement_streaming_code_block_language() {
     let temp_dir = TempDir::new().unwrap();
     let file_path = temp_dir.path().join("test.md");
-    fs::write(&file_path, "# Chapter\n## G.G.1: Title\n```json\n{\"key\": \"value\"}\n```\n").unwrap();
-    
+    fs::write(
+        &file_path,
+        "# Chapter\n## G.G.1: Title\n```json\n{\"key\": \"value\"}\n```\n",
+    )
+    .unwrap();
+
     let result = RequirementsServer::find_requirement_streaming(&file_path, "test", "G.G.1");
     assert!(result.is_ok());
     let req = result.unwrap();

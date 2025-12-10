@@ -15,7 +15,7 @@ fn test_read_chapters_streaming_single() {
     let temp_dir = TempDir::new().unwrap();
     let file_path = temp_dir.path().join("test.md");
     fs::write(&file_path, "# Chapter One\n").unwrap();
-    
+
     let result = RequirementsServer::read_chapters_streaming(&file_path);
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), vec!["Chapter One"]);
@@ -31,7 +31,7 @@ fn test_read_chapters_streaming_multiple() {
     let temp_dir = TempDir::new().unwrap();
     let file_path = temp_dir.path().join("test.md");
     fs::write(&file_path, "# Chapter One\n\nSome text\n\n# Chapter Two\n").unwrap();
-    
+
     let result = RequirementsServer::read_chapters_streaming(&file_path);
     assert!(result.is_ok());
     let chapters = result.unwrap();
@@ -50,7 +50,7 @@ fn test_read_chapters_streaming_ignore_code_block() {
     let temp_dir = TempDir::new().unwrap();
     let file_path = temp_dir.path().join("test.md");
     fs::write(&file_path, "# Real Chapter\n```\n# Fake Chapter\n```\n").unwrap();
-    
+
     let result = RequirementsServer::read_chapters_streaming(&file_path);
     assert!(result.is_ok());
     let chapters = result.unwrap();
@@ -68,7 +68,7 @@ fn test_read_chapters_streaming_indented() {
     let temp_dir = TempDir::new().unwrap();
     let file_path = temp_dir.path().join("test.md");
     fs::write(&file_path, " # Chapter One\n   # Chapter Two\n").unwrap();
-    
+
     let result = RequirementsServer::read_chapters_streaming(&file_path);
     assert!(result.is_ok());
     let chapters = result.unwrap();
@@ -85,7 +85,7 @@ fn test_read_chapters_streaming_empty() {
     let temp_dir = TempDir::new().unwrap();
     let file_path = temp_dir.path().join("test.md");
     fs::write(&file_path, "").unwrap();
-    
+
     let result = RequirementsServer::read_chapters_streaming(&file_path);
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), Vec::<String>::new());
@@ -101,7 +101,7 @@ fn test_read_chapters_streaming_ignore_level2() {
     let temp_dir = TempDir::new().unwrap();
     let file_path = temp_dir.path().join("test.md");
     fs::write(&file_path, "# Chapter\n## Requirement\n").unwrap();
-    
+
     let result = RequirementsServer::read_chapters_streaming(&file_path);
     assert!(result.is_ok());
     let chapters = result.unwrap();
@@ -118,8 +118,12 @@ fn test_read_chapters_streaming_ignore_level2() {
 fn test_read_chapters_streaming_multiline_code_block() {
     let temp_dir = TempDir::new().unwrap();
     let file_path = temp_dir.path().join("test.md");
-    fs::write(&file_path, "# Real Chapter\n```\nline1\nline2\n# Fake Chapter\nline3\n```\n# Another Chapter\n").unwrap();
-    
+    fs::write(
+        &file_path,
+        "# Real Chapter\n```\nline1\nline2\n# Fake Chapter\nline3\n```\n# Another Chapter\n",
+    )
+    .unwrap();
+
     let result = RequirementsServer::read_chapters_streaming(&file_path);
     assert!(result.is_ok());
     let chapters = result.unwrap();
@@ -138,7 +142,7 @@ fn test_read_chapters_streaming_code_block_language() {
     let temp_dir = TempDir::new().unwrap();
     let file_path = temp_dir.path().join("test.md");
     fs::write(&file_path, "# Real Chapter\n```json\n# Fake Chapter\n```\n").unwrap();
-    
+
     let result = RequirementsServer::read_chapters_streaming(&file_path);
     assert!(result.is_ok());
     let chapters = result.unwrap();
@@ -156,7 +160,7 @@ fn test_read_chapters_streaming_trailing_spaces() {
     let temp_dir = TempDir::new().unwrap();
     let file_path = temp_dir.path().join("test.md");
     fs::write(&file_path, "# Chapter One   \n").unwrap();
-    
+
     let result = RequirementsServer::read_chapters_streaming(&file_path);
     assert!(result.is_ok());
     let chapters = result.unwrap();
@@ -174,7 +178,7 @@ fn test_read_chapters_streaming_unicode() {
     let temp_dir = TempDir::new().unwrap();
     let file_path = temp_dir.path().join("test.md");
     fs::write(&file_path, "# Глава\n").unwrap();
-    
+
     let result = RequirementsServer::read_chapters_streaming(&file_path);
     assert!(result.is_ok());
     let chapters = result.unwrap();
@@ -192,7 +196,7 @@ fn test_read_chapters_streaming_ignore_categories_in_code_block() {
     let temp_dir = TempDir::new().unwrap();
     let file_path = temp_dir.path().join("test.md");
     fs::write(&file_path, "# Real Chapter\n```\n## Categories\n```\n").unwrap();
-    
+
     let result = RequirementsServer::read_chapters_streaming(&file_path);
     assert!(result.is_ok());
     let chapters = result.unwrap();
@@ -210,7 +214,7 @@ fn test_read_chapters_streaming_ignore_categories_level1_in_code_block() {
     let temp_dir = TempDir::new().unwrap();
     let file_path = temp_dir.path().join("test.md");
     fs::write(&file_path, "# Real Chapter\n```\n# Categories\n```\n").unwrap();
-    
+
     let result = RequirementsServer::read_chapters_streaming(&file_path);
     assert!(result.is_ok());
     let chapters = result.unwrap();
@@ -227,8 +231,12 @@ fn test_read_chapters_streaming_ignore_categories_level1_in_code_block() {
 fn test_read_chapters_streaming_ignore_chapter_mention_in_text() {
     let temp_dir = TempDir::new().unwrap();
     let file_path = temp_dir.path().join("test.md");
-    fs::write(&file_path, "# Real Chapter\n## G.G.1: Title\nText with # Categories mention\n").unwrap();
-    
+    fs::write(
+        &file_path,
+        "# Real Chapter\n## G.G.1: Title\nText with # Categories mention\n",
+    )
+    .unwrap();
+
     let result = RequirementsServer::read_chapters_streaming(&file_path);
     assert!(result.is_ok());
     let chapters = result.unwrap();
@@ -245,8 +253,12 @@ fn test_read_chapters_streaming_ignore_chapter_mention_in_text() {
 fn test_read_chapters_streaming_ignore_categories_level2_in_text() {
     let temp_dir = TempDir::new().unwrap();
     let file_path = temp_dir.path().join("test.md");
-    fs::write(&file_path, "# Real Chapter\n## G.G.1: Title\nText with ## Categories\n").unwrap();
-    
+    fs::write(
+        &file_path,
+        "# Real Chapter\n## G.G.1: Title\nText with ## Categories\n",
+    )
+    .unwrap();
+
     let result = RequirementsServer::read_chapters_streaming(&file_path);
     assert!(result.is_ok());
     let chapters = result.unwrap();
@@ -263,8 +275,12 @@ fn test_read_chapters_streaming_ignore_categories_level2_in_text() {
 fn test_read_chapters_streaming_ignore_chapter_in_json_code_block() {
     let temp_dir = TempDir::new().unwrap();
     let file_path = temp_dir.path().join("test.md");
-    fs::write(&file_path, "# Real Chapter\n```json\n{\"heading\": \"# Categories\"}\n```\n").unwrap();
-    
+    fs::write(
+        &file_path,
+        "# Real Chapter\n```json\n{\"heading\": \"# Categories\"}\n```\n",
+    )
+    .unwrap();
+
     let result = RequirementsServer::read_chapters_streaming(&file_path);
     assert!(result.is_ok());
     let chapters = result.unwrap();
@@ -281,8 +297,12 @@ fn test_read_chapters_streaming_ignore_chapter_in_json_code_block() {
 fn test_read_chapters_streaming_ignore_chapter_in_markdown_code_block() {
     let temp_dir = TempDir::new().unwrap();
     let file_path = temp_dir.path().join("test.md");
-    fs::write(&file_path, "# Real Chapter\n```markdown\n# Categories\n```\n").unwrap();
-    
+    fs::write(
+        &file_path,
+        "# Real Chapter\n```markdown\n# Categories\n```\n",
+    )
+    .unwrap();
+
     let result = RequirementsServer::read_chapters_streaming(&file_path);
     assert!(result.is_ok());
     let chapters = result.unwrap();
@@ -299,8 +319,12 @@ fn test_read_chapters_streaming_ignore_chapter_in_markdown_code_block() {
 fn test_read_chapters_streaming_ignore_multiple_chapters_in_code_block() {
     let temp_dir = TempDir::new().unwrap();
     let file_path = temp_dir.path().join("test.md");
-    fs::write(&file_path, "# Real Chapter\n```\n# Categories\n# Chapters\n# Chapter List\n```\n").unwrap();
-    
+    fs::write(
+        &file_path,
+        "# Real Chapter\n```\n# Categories\n# Chapters\n# Chapter List\n```\n",
+    )
+    .unwrap();
+
     let result = RequirementsServer::read_chapters_streaming(&file_path);
     assert!(result.is_ok());
     let chapters = result.unwrap();
@@ -317,8 +341,12 @@ fn test_read_chapters_streaming_ignore_multiple_chapters_in_code_block() {
 fn test_read_chapters_streaming_ignore_chapter_in_nested_code_blocks() {
     let temp_dir = TempDir::new().unwrap();
     let file_path = temp_dir.path().join("test.md");
-    fs::write(&file_path, "# Real Chapter\n```\nouter\n```\n```\n# Categories\n```\n").unwrap();
-    
+    fs::write(
+        &file_path,
+        "# Real Chapter\n```\nouter\n```\n```\n# Categories\n```\n",
+    )
+    .unwrap();
+
     let result = RequirementsServer::read_chapters_streaming(&file_path);
     assert!(result.is_ok());
     let chapters = result.unwrap();
@@ -335,8 +363,12 @@ fn test_read_chapters_streaming_ignore_chapter_in_nested_code_blocks() {
 fn test_read_chapters_streaming_ignore_chapter_mention_in_requirement_body() {
     let temp_dir = TempDir::new().unwrap();
     let file_path = temp_dir.path().join("test.md");
-    fs::write(&file_path, "# Real Chapter\n## G.G.1: Title\nThis mentions # Categories in the text\n").unwrap();
-    
+    fs::write(
+        &file_path,
+        "# Real Chapter\n## G.G.1: Title\nThis mentions # Categories in the text\n",
+    )
+    .unwrap();
+
     let result = RequirementsServer::read_chapters_streaming(&file_path);
     assert!(result.is_ok());
     let chapters = result.unwrap();
@@ -353,8 +385,12 @@ fn test_read_chapters_streaming_ignore_chapter_mention_in_requirement_body() {
 fn test_read_chapters_streaming_ignore_chapter_in_inline_code() {
     let temp_dir = TempDir::new().unwrap();
     let file_path = temp_dir.path().join("test.md");
-    fs::write(&file_path, "# Real Chapter\nText with `## Categories` inline\n").unwrap();
-    
+    fs::write(
+        &file_path,
+        "# Real Chapter\nText with `## Categories` inline\n",
+    )
+    .unwrap();
+
     let result = RequirementsServer::read_chapters_streaming(&file_path);
     assert!(result.is_ok());
     let chapters = result.unwrap();
@@ -371,8 +407,12 @@ fn test_read_chapters_streaming_ignore_chapter_in_inline_code() {
 fn test_read_chapters_streaming_real_chapter_after_code_block() {
     let temp_dir = TempDir::new().unwrap();
     let file_path = temp_dir.path().join("test.md");
-    fs::write(&file_path, "# First Chapter\n```\n# Categories\n```\n# Second Chapter\n").unwrap();
-    
+    fs::write(
+        &file_path,
+        "# First Chapter\n```\n# Categories\n```\n# Second Chapter\n",
+    )
+    .unwrap();
+
     let result = RequirementsServer::read_chapters_streaming(&file_path);
     assert!(result.is_ok());
     let chapters = result.unwrap();
@@ -390,8 +430,12 @@ fn test_read_chapters_streaming_real_chapter_after_code_block() {
 fn test_read_chapters_streaming_ignore_indented_chapter_mention() {
     let temp_dir = TempDir::new().unwrap();
     let file_path = temp_dir.path().join("test.md");
-    fs::write(&file_path, "# Real Chapter\n## G.G.1: Title\n  Text with # Categories\n").unwrap();
-    
+    fs::write(
+        &file_path,
+        "# Real Chapter\n## G.G.1: Title\n  Text with # Categories\n",
+    )
+    .unwrap();
+
     let result = RequirementsServer::read_chapters_streaming(&file_path);
     assert!(result.is_ok());
     let chapters = result.unwrap();
@@ -408,8 +452,12 @@ fn test_read_chapters_streaming_ignore_indented_chapter_mention() {
 fn test_read_chapters_streaming_ignore_chapter_in_multiline_code_block() {
     let temp_dir = TempDir::new().unwrap();
     let file_path = temp_dir.path().join("test.md");
-    fs::write(&file_path, "# Real Chapter\n```\nline1\n# Categories\nline2\n```\n").unwrap();
-    
+    fs::write(
+        &file_path,
+        "# Real Chapter\n```\nline1\n# Categories\nline2\n```\n",
+    )
+    .unwrap();
+
     let result = RequirementsServer::read_chapters_streaming(&file_path);
     assert!(result.is_ok());
     let chapters = result.unwrap();
@@ -426,8 +474,12 @@ fn test_read_chapters_streaming_ignore_chapter_in_multiline_code_block() {
 fn test_read_chapters_streaming_ignore_categories_in_python_code_block() {
     let temp_dir = TempDir::new().unwrap();
     let file_path = temp_dir.path().join("test.md");
-    fs::write(&file_path, "# Real Chapter\n```python\n## Categories\n```\n").unwrap();
-    
+    fs::write(
+        &file_path,
+        "# Real Chapter\n```python\n## Categories\n```\n",
+    )
+    .unwrap();
+
     let result = RequirementsServer::read_chapters_streaming(&file_path);
     assert!(result.is_ok());
     let chapters = result.unwrap();
@@ -444,8 +496,12 @@ fn test_read_chapters_streaming_ignore_categories_in_python_code_block() {
 fn test_read_chapters_streaming_ignore_chapter_with_special_chars() {
     let temp_dir = TempDir::new().unwrap();
     let file_path = temp_dir.path().join("test.md");
-    fs::write(&file_path, "# Real Chapter\n## G.G.1: Title\nText: # Categories (list)\n").unwrap();
-    
+    fs::write(
+        &file_path,
+        "# Real Chapter\n## G.G.1: Title\nText: # Categories (list)\n",
+    )
+    .unwrap();
+
     let result = RequirementsServer::read_chapters_streaming(&file_path);
     assert!(result.is_ok());
     let chapters = result.unwrap();
@@ -463,7 +519,7 @@ fn test_read_chapters_streaming_ignore_chapter_at_file_start_in_code() {
     let temp_dir = TempDir::new().unwrap();
     let file_path = temp_dir.path().join("test.md");
     fs::write(&file_path, "```\n# Categories\n```\n# Real Chapter\n").unwrap();
-    
+
     let result = RequirementsServer::read_chapters_streaming(&file_path);
     assert!(result.is_ok());
     let chapters = result.unwrap();
@@ -481,7 +537,7 @@ fn test_read_chapters_streaming_ignore_chapter_at_file_end_in_code() {
     let temp_dir = TempDir::new().unwrap();
     let file_path = temp_dir.path().join("test.md");
     fs::write(&file_path, "# Real Chapter\n```\n# Categories\n```").unwrap();
-    
+
     let result = RequirementsServer::read_chapters_streaming(&file_path);
     assert!(result.is_ok());
     let chapters = result.unwrap();
@@ -499,7 +555,7 @@ fn test_read_chapters_streaming_real_categories_chapter() {
     let temp_dir = TempDir::new().unwrap();
     let file_path = temp_dir.path().join("test.md");
     fs::write(&file_path, "# Categories\n").unwrap();
-    
+
     let result = RequirementsServer::read_chapters_streaming(&file_path);
     assert!(result.is_ok());
     let chapters = result.unwrap();
@@ -516,8 +572,12 @@ fn test_read_chapters_streaming_real_categories_chapter() {
 fn test_read_chapters_streaming_ignore_chapter_between_real_chapters() {
     let temp_dir = TempDir::new().unwrap();
     let file_path = temp_dir.path().join("test.md");
-    fs::write(&file_path, "# First Chapter\n```\n# Categories\n```\n# Second Chapter\n").unwrap();
-    
+    fs::write(
+        &file_path,
+        "# First Chapter\n```\n# Categories\n```\n# Second Chapter\n",
+    )
+    .unwrap();
+
     let result = RequirementsServer::read_chapters_streaming(&file_path);
     assert!(result.is_ok());
     let chapters = result.unwrap();
@@ -535,8 +595,12 @@ fn test_read_chapters_streaming_ignore_chapter_between_real_chapters() {
 fn test_read_chapters_streaming_ignore_formatted_chapter_mention() {
     let temp_dir = TempDir::new().unwrap();
     let file_path = temp_dir.path().join("test.md");
-    fs::write(&file_path, "# Real Chapter\n## G.G.1: Title\nText with **## Categories** bold\n").unwrap();
-    
+    fs::write(
+        &file_path,
+        "# Real Chapter\n## G.G.1: Title\nText with **## Categories** bold\n",
+    )
+    .unwrap();
+
     let result = RequirementsServer::read_chapters_streaming(&file_path);
     assert!(result.is_ok());
     let chapters = result.unwrap();
@@ -554,7 +618,7 @@ fn test_read_chapters_streaming_categories_with_other() {
     let temp_dir = TempDir::new().unwrap();
     let file_path = temp_dir.path().join("test.md");
     fs::write(&file_path, "# Categories\n# Real Chapter\n").unwrap();
-    
+
     let result = RequirementsServer::read_chapters_streaming(&file_path);
     assert!(result.is_ok());
     let chapters = result.unwrap();
@@ -573,7 +637,7 @@ fn test_read_chapters_streaming_categories_with_others() {
     let temp_dir = TempDir::new().unwrap();
     let file_path = temp_dir.path().join("test.md");
     fs::write(&file_path, "# Chapter One\n# Categories\n# Chapter Two\n").unwrap();
-    
+
     let result = RequirementsServer::read_chapters_streaming(&file_path);
     assert!(result.is_ok());
     let chapters = result.unwrap();
@@ -582,7 +646,6 @@ fn test_read_chapters_streaming_categories_with_others() {
     assert_eq!(chapters[1], "Categories");
     assert_eq!(chapters[2], "Chapter Two");
 }
-
 
 /// Test: read_chapters_streaming with "Categories" both in code block and as real heading
 /// Precondition: System has a category file with "# Categories" in code block and real "# Categories" chapter
@@ -593,8 +656,12 @@ fn test_read_chapters_streaming_categories_with_others() {
 fn test_read_chapters_streaming_categories_in_code_block_and_real() {
     let temp_dir = TempDir::new().unwrap();
     let file_path = temp_dir.path().join("test.md");
-    fs::write(&file_path, "# Real Chapter\n```\n# Categories\n```\n# Categories\n# Another Chapter\n").unwrap();
-    
+    fs::write(
+        &file_path,
+        "# Real Chapter\n```\n# Categories\n```\n# Categories\n# Another Chapter\n",
+    )
+    .unwrap();
+
     let result = RequirementsServer::read_chapters_streaming(&file_path);
     assert!(result.is_ok());
     let chapters = result.unwrap();

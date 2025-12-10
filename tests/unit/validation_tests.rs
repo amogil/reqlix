@@ -348,14 +348,19 @@ fn test_validate_index_complex_format_at_max() {
     let chapter_part = "EXTREMELY_LONG_CHAPTER_NAME_FOR_TESTING";
     let number_part = "12345";
     let separator = ".";
-    let total_len = category_part.len() + separator.len() + chapter_part.len() + separator.len() + number_part.len();
+    let total_len = category_part.len()
+        + separator.len()
+        + chapter_part.len()
+        + separator.len()
+        + number_part.len();
     // Adjust to exactly 100 characters
     let padding_needed = 100 - total_len;
-    let complex_index = format!("{}{}{}{}{}{}", 
-        category_part, 
-        separator, 
-        chapter_part, 
-        separator, 
+    let complex_index = format!(
+        "{}{}{}{}{}{}",
+        category_part,
+        separator,
+        chapter_part,
+        separator,
         number_part,
         "x".repeat(padding_needed.max(0))
     );
@@ -621,7 +626,9 @@ fn test_validate_category_unicode() {
 fn test_validate_chapter_unicode() {
     let result = RequirementsServer::validate_chapter("Глава");
     assert!(result.is_err());
-    assert!(result.unwrap_err().contains("uppercase and lowercase English letters"));
+    assert!(result
+        .unwrap_err()
+        .contains("uppercase and lowercase English letters"));
 }
 
 // Tests for category validation: only lowercase English letters and underscore (G.P.3)
@@ -696,7 +703,9 @@ fn test_validate_category_mixed_case() {
 fn test_validate_chapter_with_numbers() {
     let result = RequirementsServer::validate_chapter("Chapter 123");
     assert!(result.is_err());
-    assert!(result.unwrap_err().contains("uppercase and lowercase English letters"));
+    assert!(result
+        .unwrap_err()
+        .contains("uppercase and lowercase English letters"));
 }
 
 /// Test: validate_chapter with underscore
@@ -742,4 +751,3 @@ fn test_validate_chapter_with_all_allowed_chars() {
     let result = RequirementsServer::validate_chapter("Chapter: Sub-Chapter Name");
     assert!(result.is_ok());
 }
-

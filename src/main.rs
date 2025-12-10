@@ -1,6 +1,5 @@
 use anyhow::Result;
 use rmcp::{
-    ServerHandler, ServiceExt,
     model::{
         CallToolRequestParam, CallToolResult, Content, ListToolsResult, PaginatedRequestParam,
         ServerCapabilities, Tool,
@@ -8,6 +7,7 @@ use rmcp::{
     service::RequestContext,
     service::RoleServer,
     transport::stdio,
+    ServerHandler, ServiceExt,
 };
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -267,7 +267,9 @@ impl RequirementsServer {
             "success": true,
             "data": data
         }))
-        .unwrap_or_else(|_| r#"{"success": false, "error": "Failed to serialize response"}"#.to_string())
+        .unwrap_or_else(|_| {
+            r#"{"success": false, "error": "Failed to serialize response"}"#.to_string()
+        })
     }
 
     fn json_error(message: &str) -> String {
@@ -319,18 +321,18 @@ impl RequirementsServer {
                 MAX_CATEGORY_LEN
             ));
         }
-        
+
         // Name validation (G.P.3)
         // Must not start or end with whitespace
         if value.trim() != value {
             return Err("category name must not start or end with whitespace".to_string());
         }
-        
+
         // Must contain only lowercase English letters (a-z) and underscore (_)
         if !value.chars().all(|c| c.is_ascii_lowercase() || c == '_') {
             return Err("category name must contain only lowercase English letters (a-z) and underscore (_)".to_string());
         }
-        
+
         // Must be a valid filename (cannot contain invalid characters)
         let invalid_chars = ['/', '\\', ':', '*', '?', '"', '<', '>', '|'];
         if let Some(ch) = value.chars().find(|c| invalid_chars.contains(c)) {
@@ -339,22 +341,22 @@ impl RequirementsServer {
                 ch
             ));
         }
-        
+
         // Must not be reserved name
         if value == "AGENTS" {
             return Err("category name 'AGENTS' is reserved".to_string());
         }
-        
+
         // Must not contain consecutive dots
         if value.contains("..") {
             return Err("category name must not contain consecutive dots".to_string());
         }
-        
+
         // Must not be . or ..
         if value == "." || value == ".." {
             return Err("category name must not be '.' or '..'".to_string());
         }
-        
+
         Ok(())
     }
 
@@ -369,23 +371,29 @@ impl RequirementsServer {
                 MAX_CHAPTER_LEN
             ));
         }
-        
+
         // Name validation (G.P.3)
         // Must not start or end with whitespace
         if value.trim() != value {
             return Err("chapter name must not start or end with whitespace".to_string());
         }
-        
+
         // Must contain only uppercase and lowercase English letters (A-Z, a-z), spaces, colons (:), hyphens (-), and underscores (_) - G.P.3
-        if !value.chars().all(|c| c.is_ascii_alphabetic() || c == ' ' || c == ':' || c == '-' || c == '_') {
+        if !value
+            .chars()
+            .all(|c| c.is_ascii_alphabetic() || c == ' ' || c == ':' || c == '-' || c == '_')
+        {
             return Err("chapter name must contain only uppercase and lowercase English letters (A-Z, a-z), spaces, colons (:), hyphens (-), and underscores (_)".to_string());
         }
-        
+
         // Must not contain newline characters (would break markdown heading structure)
         if value.contains('\n') || value.contains('\r') {
-            return Err("chapter name must not contain newline characters (invalid for markdown heading)".to_string());
+            return Err(
+                "chapter name must not contain newline characters (invalid for markdown heading)"
+                    .to_string(),
+            );
         }
-        
+
         // Must be valid markdown heading content
         // Basic validation - empty check already done above
         // Full markdown validation is done in lib.rs where parser is available
@@ -539,7 +547,7 @@ impl RequirementsServer {
         if letters.is_empty() {
             return String::new();
         }
-        
+
         let mut prefix_len = 1;
 
         loop {
@@ -555,7 +563,8 @@ impl RequirementsServer {
                 if other == name {
                     continue;
                 }
-                let other_letters: Vec<char> = other.chars().filter(|c| c.is_ascii_alphabetic()).collect();
+                let other_letters: Vec<char> =
+                    other.chars().filter(|c| c.is_ascii_alphabetic()).collect();
                 if other_letters.is_empty() {
                     continue;
                 }
@@ -584,7 +593,7 @@ impl RequirementsServer {
         if letters.is_empty() {
             return String::new();
         }
-        
+
         let mut prefix_len = 1;
 
         loop {
@@ -600,7 +609,8 @@ impl RequirementsServer {
                 if other == name {
                     continue;
                 }
-                let other_letters: Vec<char> = other.chars().filter(|c| c.is_ascii_alphabetic()).collect();
+                let other_letters: Vec<char> =
+                    other.chars().filter(|c| c.is_ascii_alphabetic()).collect();
                 if other_letters.is_empty() {
                     continue;
                 }
@@ -706,8 +716,8 @@ impl RequirementsServer {
     /// Read chapters from a category file (streaming) (G.REQLIX_GET_CH.3, G.R.2)
     /// Parses markdown level-1 headings correctly, ignoring those inside code blocks
     fn read_chapters_streaming(category_path: &PathBuf) -> Result<Vec<String>, String> {
-        let file =
-            File::open(category_path).map_err(|e| format!("Failed to open category file: {}", e))?;
+        let file = File::open(category_path)
+            .map_err(|e| format!("Failed to open category file: {}", e))?;
         let reader = BufReader::new(file);
         let mut chapters = Vec::new();
         let mut in_code_block = false;
@@ -752,8 +762,8 @@ impl RequirementsServer {
         category_path: &PathBuf,
         chapter: &str,
     ) -> Result<Vec<RequirementSummary>, String> {
-        let file =
-            File::open(category_path).map_err(|e| format!("Failed to open category file: {}", e))?;
+        let file = File::open(category_path)
+            .map_err(|e| format!("Failed to open category file: {}", e))?;
         let reader = BufReader::new(file);
         let mut requirements = Vec::new();
         let mut in_target_chapter = false;
@@ -804,8 +814,8 @@ impl RequirementsServer {
         category_name: &str,
         search_index: &str,
     ) -> Result<RequirementFull, String> {
-        let file =
-            File::open(category_path).map_err(|e| format!("Failed to open category file: {}", e))?;
+        let file = File::open(category_path)
+            .map_err(|e| format!("Failed to open category file: {}", e))?;
         let reader = BufReader::new(file);
 
         let mut current_chapter = String::new();
@@ -1012,7 +1022,10 @@ impl RequirementsServer {
     }
 
     /// Get next requirement number in a chapter
-    fn get_next_requirement_number(category_path: &PathBuf, chapter_name: &str) -> Result<u32, String> {
+    fn get_next_requirement_number(
+        category_path: &PathBuf,
+        chapter_name: &str,
+    ) -> Result<u32, String> {
         let requirements = Self::read_requirements_streaming(category_path, chapter_name)?;
         let mut max_num: u32 = 0;
 
@@ -1228,7 +1241,8 @@ impl RequirementsServer {
         }
 
         // Read requirements (G.REQLIX_GET_REQUIREMENTS.3)
-        let requirements = match Self::read_requirements_streaming(&category_path, &params.chapter) {
+        let requirements = match Self::read_requirements_streaming(&category_path, &params.chapter)
+        {
             Ok(r) => r,
             Err(e) => return Self::json_error(&e),
         };
@@ -1267,7 +1281,8 @@ impl RequirementsServer {
         };
 
         // Find category by prefix (G.C.7)
-        let category_name = match Self::find_category_by_prefix(&requirements_dir, &category_prefix) {
+        let category_name = match Self::find_category_by_prefix(&requirements_dir, &category_prefix)
+        {
             Ok(c) => c,
             Err(e) => return Self::json_error(&e),
         };
@@ -1275,10 +1290,11 @@ impl RequirementsServer {
         let category_path = requirements_dir.join(format!("{}.md", category_name));
 
         // Find requirement (G.REQLIX_GET_REQUIREMENT.4)
-        let requirement = match Self::find_requirement_streaming(&category_path, &category_name, &params.index) {
-            Ok(r) => r,
-            Err(e) => return Self::json_error(&e),
-        };
+        let requirement =
+            match Self::find_requirement_streaming(&category_path, &category_name, &params.index) {
+                Ok(r) => r,
+                Err(e) => return Self::json_error(&e),
+            };
 
         // Return JSON response (G.REQLIX_GET_REQUIREMENT.4)
         Self::json_success(requirement)
@@ -1359,16 +1375,20 @@ impl RequirementsServer {
             Err(e) => return Self::json_error(&e),
         };
 
-        let category_prefix =
-            match Self::get_or_calculate_category_prefix(&category_path, &params.category, &all_categories) {
-                Ok(p) => p,
-                Err(e) => return Self::json_error(&e),
-            };
-
-        let chapter_prefix = match Self::get_or_calculate_chapter_prefix(&category_path, &params.chapter) {
+        let category_prefix = match Self::get_or_calculate_category_prefix(
+            &category_path,
+            &params.category,
+            &all_categories,
+        ) {
             Ok(p) => p,
             Err(e) => return Self::json_error(&e),
         };
+
+        let chapter_prefix =
+            match Self::get_or_calculate_chapter_prefix(&category_path, &params.chapter) {
+                Ok(p) => p,
+                Err(e) => return Self::json_error(&e),
+            };
 
         let number = match Self::get_next_requirement_number(&category_path, &params.chapter) {
             Ok(n) => n,
@@ -1448,7 +1468,8 @@ impl RequirementsServer {
         };
 
         // Find category by prefix
-        let category_name = match Self::find_category_by_prefix(&requirements_dir, &category_prefix) {
+        let category_name = match Self::find_category_by_prefix(&requirements_dir, &category_prefix)
+        {
             Ok(c) => c,
             Err(e) => return Self::json_error(&e),
         };
@@ -1456,10 +1477,11 @@ impl RequirementsServer {
         let category_path = requirements_dir.join(format!("{}.md", category_name));
 
         // Step 3: Find requirement (G.REQLIX_U.3 step 3)
-        let existing = match Self::find_requirement_streaming(&category_path, &category_name, &params.index) {
-            Ok(r) => r,
-            Err(e) => return Self::json_error(&e),
-        };
+        let existing =
+            match Self::find_requirement_streaming(&category_path, &category_name, &params.index) {
+                Ok(r) => r,
+                Err(e) => return Self::json_error(&e),
+            };
 
         // Step 4: Determine new title (G.REQLIX_U.3 step 4)
         // Use provided title or keep existing
@@ -1572,7 +1594,7 @@ impl RequirementsServer {
     fn handle_get_version(_params: GetVersionParams) -> String {
         // G.TOOLREQLIXGETV.3: Use env!("CARGO_PKG_VERSION") macro at compile time
         let version = env!("CARGO_PKG_VERSION");
-        
+
         // G.TOOLREQLIXGETV.2: Return success response
         Self::json_success(json!({
             "version": version
@@ -1614,10 +1636,11 @@ impl RequirementsServer {
         let category_path = req_dir.join(format!("{}.md", category));
 
         // Step 3: Find requirement (G.TOOLREQLIXD.3 step 3)
-        let requirement = match Self::find_requirement_streaming(&category_path, &category, &params.index) {
-            Ok(req) => req,
-            Err(_) => return Self::json_error("Requirement not found"),
-        };
+        let requirement =
+            match Self::find_requirement_streaming(&category_path, &category, &params.index) {
+                Ok(req) => req,
+                Err(_) => return Self::json_error("Requirement not found"),
+            };
 
         // Read file content for modification
         let content = match fs::read_to_string(&category_path) {
@@ -1668,7 +1691,7 @@ impl RequirementsServer {
         // Build new content without the requirement
         let mut new_content = String::new();
         new_content.push_str(&content[..start]);
-        
+
         // G.R.11: Handle blank lines - remove extra blank lines at deletion point
         let remaining = &content[end..];
         // Trim trailing newlines from new_content and leading from remaining
@@ -1691,15 +1714,17 @@ impl RequirementsServer {
                 .find("\n# ")
                 .map(|p| after_chapter + p)
                 .unwrap_or(new_content.len());
-            
+
             let chapter_content = &new_content[after_chapter..chapter_end];
             // Check if there are any level-2 headings in this chapter
-            let has_requirements = chapter_content.lines()
+            let has_requirements = chapter_content
+                .lines()
                 .any(|line| Self::parse_level2_heading(line).is_some());
-            
+
             if !has_requirements {
                 // Remove the empty chapter
-                let chapter_line_start = new_content[..chapter_pos].rfind('\n')
+                let chapter_line_start = new_content[..chapter_pos]
+                    .rfind('\n')
                     .map(|p| p + 1)
                     .unwrap_or(0);
                 new_content = format!(
@@ -1749,8 +1774,9 @@ impl ServerHandler for RequirementsServer {
         &self,
         _request: Option<PaginatedRequestParam>,
         _context: RequestContext<RoleServer>,
-    ) -> impl std::future::Future<Output = std::result::Result<ListToolsResult, rmcp::model::ErrorData>>
-           + Send
+    ) -> impl std::future::Future<
+        Output = std::result::Result<ListToolsResult, rmcp::model::ErrorData>,
+    > + Send
            + '_ {
         async move {
             let tools = vec![
@@ -1782,10 +1808,7 @@ impl ServerHandler for RequirementsServer {
                     "reqlix_update_requirement",
                     UPDATE_REQUIREMENT_DESC,
                 ),
-                Self::build_tool_schema::<GetVersionParams>(
-                    "reqlix_get_version",
-                    GET_VERSION_DESC,
-                ),
+                Self::build_tool_schema::<GetVersionParams>("reqlix_get_version", GET_VERSION_DESC),
                 Self::build_tool_schema::<DeleteRequirementParams>(
                     "reqlix_delete_requirement",
                     DELETE_REQUIREMENT_DESC,
@@ -1810,68 +1833,77 @@ impl ServerHandler for RequirementsServer {
         async move {
             let result = match request.name.as_ref() {
                 "reqlix_get_instructions" => {
-                    let params: GetInstructionsParams = serde_json::from_value(
-                        request.arguments.unwrap_or_default().into(),
-                    )
-                    .map_err(|e| rmcp::model::ErrorData::invalid_params(e.to_string(), None))?;
+                    let params: GetInstructionsParams =
+                        serde_json::from_value(request.arguments.unwrap_or_default().into())
+                            .map_err(|e| {
+                                rmcp::model::ErrorData::invalid_params(e.to_string(), None)
+                            })?;
                     Self::handle_get_instructions(params)
                 }
                 "reqlix_get_categories" => {
-                    let params: GetCategoriesParams = serde_json::from_value(
-                        request.arguments.unwrap_or_default().into(),
-                    )
-                    .map_err(|e| rmcp::model::ErrorData::invalid_params(e.to_string(), None))?;
+                    let params: GetCategoriesParams =
+                        serde_json::from_value(request.arguments.unwrap_or_default().into())
+                            .map_err(|e| {
+                                rmcp::model::ErrorData::invalid_params(e.to_string(), None)
+                            })?;
                     Self::handle_get_categories(params)
                 }
                 "reqlix_get_chapters" => {
-                    let params: GetChaptersParams = serde_json::from_value(
-                        request.arguments.unwrap_or_default().into(),
-                    )
-                    .map_err(|e| rmcp::model::ErrorData::invalid_params(e.to_string(), None))?;
+                    let params: GetChaptersParams =
+                        serde_json::from_value(request.arguments.unwrap_or_default().into())
+                            .map_err(|e| {
+                                rmcp::model::ErrorData::invalid_params(e.to_string(), None)
+                            })?;
                     Self::handle_get_chapters(params)
                 }
                 "reqlix_get_requirements" => {
-                    let params: GetRequirementsParams = serde_json::from_value(
-                        request.arguments.unwrap_or_default().into(),
-                    )
-                    .map_err(|e| rmcp::model::ErrorData::invalid_params(e.to_string(), None))?;
+                    let params: GetRequirementsParams =
+                        serde_json::from_value(request.arguments.unwrap_or_default().into())
+                            .map_err(|e| {
+                                rmcp::model::ErrorData::invalid_params(e.to_string(), None)
+                            })?;
                     Self::handle_get_requirements(params)
                 }
                 "reqlix_get_requirement" => {
-                    let params: GetRequirementParams = serde_json::from_value(
-                        request.arguments.unwrap_or_default().into(),
-                    )
-                    .map_err(|e| rmcp::model::ErrorData::invalid_params(e.to_string(), None))?;
+                    let params: GetRequirementParams =
+                        serde_json::from_value(request.arguments.unwrap_or_default().into())
+                            .map_err(|e| {
+                                rmcp::model::ErrorData::invalid_params(e.to_string(), None)
+                            })?;
                     Self::handle_get_requirement(params)
                 }
                 "reqlix_insert_requirement" => {
-                    let params: InsertRequirementParams = serde_json::from_value(
-                        request.arguments.unwrap_or_default().into(),
-                    )
-                    .map_err(|e| rmcp::model::ErrorData::invalid_params(e.to_string(), None))?;
+                    let params: InsertRequirementParams =
+                        serde_json::from_value(request.arguments.unwrap_or_default().into())
+                            .map_err(|e| {
+                                rmcp::model::ErrorData::invalid_params(e.to_string(), None)
+                            })?;
                     Self::handle_insert_requirement(params)
                 }
                 "reqlix_update_requirement" => {
-                    let params: UpdateRequirementParams = serde_json::from_value(
-                        request.arguments.unwrap_or_default().into(),
-                    )
-                    .map_err(|e| rmcp::model::ErrorData::invalid_params(e.to_string(), None))?;
+                    let params: UpdateRequirementParams =
+                        serde_json::from_value(request.arguments.unwrap_or_default().into())
+                            .map_err(|e| {
+                                rmcp::model::ErrorData::invalid_params(e.to_string(), None)
+                            })?;
                     Self::handle_update_requirement(params)
                 }
                 "reqlix_get_version" => {
                     // G.TOOLREQLIXGETV.3: No parameters required
-                    let params: GetVersionParams = serde_json::from_value(
-                        request.arguments.unwrap_or_default().into(),
-                    )
-                    .map_err(|e| rmcp::model::ErrorData::invalid_params(e.to_string(), None))?;
+                    let params: GetVersionParams =
+                        serde_json::from_value(request.arguments.unwrap_or_default().into())
+                            .map_err(|e| {
+                                rmcp::model::ErrorData::invalid_params(e.to_string(), None)
+                            })?;
                     Self::handle_get_version(params)
                 }
                 "reqlix_delete_requirement" => {
                     // G.TOOLREQLIXD.2: Parse parameters
-                    let params: DeleteRequirementParams = serde_json::from_value(
-                        request.arguments.unwrap_or_default().into(),
-                    )
-                    .map_err(|e| rmcp::model::ErrorData::invalid_params(e.to_string(), None))?;
+                    let params: DeleteRequirementParams =
+                        serde_json::from_value(request.arguments.unwrap_or_default().into())
+                            .map_err(|e| {
+                                rmcp::model::ErrorData::invalid_params(e.to_string(), None)
+                            })?;
                     Self::handle_delete_requirement(params)
                 }
                 _ => {

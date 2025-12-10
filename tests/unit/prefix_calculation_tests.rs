@@ -70,7 +70,8 @@ fn test_calculate_unique_prefix_multiple_reqlix() {
     assert!(result.starts_with("R"));
     // Since both start with "reqlix_get_", should need more characters to distinguish
     // Verify it's unique - calculate prefix for the other name and check they differ
-    let other_result = RequirementsServer::calculate_unique_prefix("reqlix_get_instructions", &names);
+    let other_result =
+        RequirementsServer::calculate_unique_prefix("reqlix_get_instructions", &names);
     assert_ne!(result, other_result);
     // Both should start with "R" since both names start with "r"
     assert!(other_result.starts_with("R"));
@@ -171,10 +172,7 @@ fn test_calculate_chapter_prefix_single_chapter() {
 /// Covers Requirement: G.R.4
 #[test]
 fn test_calculate_chapter_prefix_unique_first_letter() {
-    let chapters = vec![
-        "General Requirements".to_string(),
-        "Testing".to_string(),
-    ];
+    let chapters = vec!["General Requirements".to_string(), "Testing".to_string()];
     let result = RequirementsServer::calculate_chapter_prefix("General Requirements", &chapters);
     assert_eq!(result, "G");
 }
@@ -186,10 +184,7 @@ fn test_calculate_chapter_prefix_unique_first_letter() {
 /// Covers Requirement: G.R.4
 #[test]
 fn test_calculate_chapter_prefix_conflicting_first_letter() {
-    let chapters = vec![
-        "General Requirements".to_string(),
-        "Guidelines".to_string(),
-    ];
+    let chapters = vec!["General Requirements".to_string(), "Guidelines".to_string()];
     let result = RequirementsServer::calculate_chapter_prefix("General Requirements", &chapters);
     // Should return at least 2 characters since both start with "G"
     assert!(result.len() >= 2);
@@ -214,7 +209,8 @@ fn test_calculate_chapter_prefix_multiple_reqlix() {
     // Should use full name, prefix should start with "R"
     assert!(result.starts_with("R"));
     // Since both start with "reqlix_get_", should need more characters to distinguish
-    let other_result = RequirementsServer::calculate_chapter_prefix("reqlix_get_categories", &chapters);
+    let other_result =
+        RequirementsServer::calculate_chapter_prefix("reqlix_get_categories", &chapters);
     assert_ne!(result, other_result);
     // Both should start with "R" since both names start with "r"
     assert!(other_result.starts_with("R"));
@@ -261,12 +257,12 @@ fn test_calculate_chapter_prefix_three_conflicts() {
     let result1 = RequirementsServer::calculate_chapter_prefix("Get Instructions", &chapters);
     let result2 = RequirementsServer::calculate_chapter_prefix("Get Categories", &chapters);
     let result3 = RequirementsServer::calculate_chapter_prefix("Get Chapters", &chapters);
-    
+
     // All should start with "G"
     assert!(result1.starts_with("G"));
     assert!(result2.starts_with("G"));
     assert!(result3.starts_with("G"));
-    
+
     // All should be unique
     assert_ne!(result1, result2);
     assert_ne!(result1, result3);
@@ -384,12 +380,12 @@ fn test_calculate_chapter_prefix_conflicting_non_letters() {
     let result1 = RequirementsServer::calculate_chapter_prefix("Chapter Name", &chapters);
     let result2 = RequirementsServer::calculate_chapter_prefix("Chapter-Name", &chapters);
     let result3 = RequirementsServer::calculate_chapter_prefix("Chapter:Name", &chapters);
-    
+
     // All should start with "C" since they all start with "Chapter"
     assert!(result1.starts_with("C"));
     assert!(result2.starts_with("C"));
     assert!(result3.starts_with("C"));
-    
+
     // Since they all have the same letters (ChapterName), they should get the same prefix
     // which is the full uppercase version of all letters
     assert_eq!(result1, "CHAPTERNAME");
@@ -446,7 +442,8 @@ fn test_calculate_unique_prefix_starts_with_number() {
 #[test]
 fn test_calculate_chapter_prefix_complex_non_letters() {
     let chapters = vec!["Chapter: Sub-Chapter 123 Name".to_string()];
-    let result = RequirementsServer::calculate_chapter_prefix("Chapter: Sub-Chapter 123 Name", &chapters);
+    let result =
+        RequirementsServer::calculate_chapter_prefix("Chapter: Sub-Chapter 123 Name", &chapters);
     // Should return "C" (first letter, ignoring spaces, colons, hyphens, numbers)
     assert_eq!(result, "C");
 }
@@ -458,17 +455,14 @@ fn test_calculate_chapter_prefix_complex_non_letters() {
 /// Covers Requirement: G.R.4
 #[test]
 fn test_calculate_unique_prefix_same_letters_different_non_letters() {
-    let names = vec![
-        "test-category".to_string(),
-        "test_category".to_string(),
-    ];
+    let names = vec!["test-category".to_string(), "test_category".to_string()];
     let result1 = RequirementsServer::calculate_unique_prefix("test-category", &names);
     let result2 = RequirementsServer::calculate_unique_prefix("test_category", &names);
-    
+
     // Both should start with "T"
     assert!(result1.starts_with("T"));
     assert!(result2.starts_with("T"));
-    
+
     // Since they have the same letters (testcategory), they should get the same prefix
     // which is the full uppercase version of all letters
     assert_eq!(result1, "TESTCATEGORY");

@@ -1,13 +1,13 @@
 use anyhow::Result;
 use pulldown_cmark::{Event, HeadingLevel, Parser, Tag};
 use rmcp::{
-    ServerHandler,
     model::{
         CallToolRequestParam, CallToolResult, Content, ListToolsResult, PaginatedRequestParam,
         ServerCapabilities, Tool,
     },
     service::RequestContext,
     service::RoleServer,
+    ServerHandler,
 };
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -269,7 +269,9 @@ impl RequirementsServer {
             "success": true,
             "data": data
         }))
-        .unwrap_or_else(|_| r#"{"success": false, "error": "Failed to serialize response"}"#.to_string())
+        .unwrap_or_else(|_| {
+            r#"{"success": false, "error": "Failed to serialize response"}"#.to_string()
+        })
     }
 
     fn json_error(message: &str) -> String {
@@ -324,18 +326,18 @@ impl RequirementsServer {
                 MAX_CATEGORY_LEN
             ));
         }
-        
+
         // Name validation (G.P.3)
         // Must not start or end with whitespace
         if value.trim() != value {
             return Err("category name must not start or end with whitespace".to_string());
         }
-        
+
         // Must contain only lowercase English letters (a-z) and underscore (_)
         if !value.chars().all(|c| c.is_ascii_lowercase() || c == '_') {
             return Err("category name must contain only lowercase English letters (a-z) and underscore (_)".to_string());
         }
-        
+
         // Must be a valid filename (cannot contain invalid characters)
         let invalid_chars = ['/', '\\', ':', '*', '?', '"', '<', '>', '|'];
         if let Some(ch) = value.chars().find(|c| invalid_chars.contains(c)) {
@@ -344,22 +346,22 @@ impl RequirementsServer {
                 ch
             ));
         }
-        
+
         // Must not be reserved name
         if value == "AGENTS" {
             return Err("category name 'AGENTS' is reserved".to_string());
         }
-        
+
         // Must not contain consecutive dots
         if value.contains("..") {
             return Err("category name must not contain consecutive dots".to_string());
         }
-        
+
         // Must not be . or ..
         if value == "." || value == ".." {
             return Err("category name must not be '.' or '..'".to_string());
         }
-        
+
         Ok(())
     }
 
@@ -375,34 +377,40 @@ impl RequirementsServer {
                 MAX_CHAPTER_LEN
             ));
         }
-        
+
         // Name validation (G.P.3)
         // Must not start or end with whitespace
         if value.trim() != value {
             return Err("chapter name must not start or end with whitespace".to_string());
         }
-        
+
         // Must contain only uppercase and lowercase English letters (A-Z, a-z), spaces, colons (:), hyphens (-), and underscores (_) - G.P.3
-        if !value.chars().all(|c| c.is_ascii_alphabetic() || c == ' ' || c == ':' || c == '-' || c == '_') {
+        if !value
+            .chars()
+            .all(|c| c.is_ascii_alphabetic() || c == ' ' || c == ':' || c == '-' || c == '_')
+        {
             return Err("chapter name must contain only uppercase and lowercase English letters (A-Z, a-z), spaces, colons (:), hyphens (-), and underscores (_)".to_string());
         }
-        
+
         // Must not contain newline characters (would break markdown heading structure)
         if value.contains('\n') || value.contains('\r') {
-            return Err("chapter name must not contain newline characters (invalid for markdown heading)".to_string());
+            return Err(
+                "chapter name must not contain newline characters (invalid for markdown heading)"
+                    .to_string(),
+            );
         }
-        
+
         // Must be valid markdown heading content
         // Verify by parsing a test heading
         let test_heading = format!("# {}", value);
         let parser = Parser::new(&test_heading);
         let events: Vec<Event> = parser.collect();
-        
+
         // Check if we can parse it as a valid level-1 heading
         if events.len() < 2 {
             return Err("chapter name is not valid markdown heading content".to_string());
         }
-        
+
         // Verify it's a level-1 heading with text content
         match (&events[0], &events[1]) {
             (Event::Start(Tag::Heading(level, _, _)), Event::Text(_)) => {
@@ -414,7 +422,7 @@ impl RequirementsServer {
                 return Err("chapter name is not valid markdown heading content".to_string());
             }
         }
-        
+
         Ok(())
     }
 
@@ -457,25 +465,27 @@ impl RequirementsServer {
                 MAX_TITLE_LEN
             ));
         }
-        
+
         // Validate that title is valid markdown heading content (G.P.3, G.R.3)
         // Title will be used in a level-2 ATX-style heading: ## {index}: {title}
         // A valid heading content must not contain newlines (which would break the heading structure)
         if !value.is_empty() {
             if value.contains('\n') || value.contains('\r') {
-                return Err("title must not contain newlines (invalid for markdown heading)".to_string());
+                return Err(
+                    "title must not contain newlines (invalid for markdown heading)".to_string(),
+                );
             }
-            
+
             // Verify that the title can be used in a markdown heading by parsing a test heading
             let test_heading = format!("## G.G.1: {}", value);
             let parser = Parser::new(&test_heading);
             let events: Vec<Event> = parser.collect();
-            
+
             // Check if we can parse it as a valid level-2 heading
             if events.len() < 2 {
                 return Err("title is not valid markdown heading content".to_string());
             }
-            
+
             // Verify it's a level-2 heading with text content
             match (&events[0], &events[1]) {
                 (Event::Start(Tag::Heading(level, _, _)), Event::Text(_)) => {
@@ -488,7 +498,7 @@ impl RequirementsServer {
                 }
             }
         }
-        
+
         Ok(())
     }
 
@@ -505,7 +515,7 @@ impl RequirementsServer {
             Err(e) => {
                 let error_kind = e.kind();
                 let path_str = path.to_string_lossy();
-                
+
                 // Handle specific error types (G.R.9)
                 let error_msg = match error_kind {
                     std::io::ErrorKind::PermissionDenied => {
@@ -538,7 +548,7 @@ impl RequirementsServer {
                     std::io::ErrorKind::PermissionDenied => {
                         format!("Permission denied: {}", path_str)
                     }
-                    _ => format!("Failed to create directory for {}: {}", path_str, e)
+                    _ => format!("Failed to create directory for {}: {}", path_str, e),
                 }
             })?;
         }
@@ -548,7 +558,7 @@ impl RequirementsServer {
             Err(e) => {
                 let error_kind = e.kind();
                 let path_str = path.to_string_lossy();
-                
+
                 // Handle specific error types (G.R.9)
                 let error_msg = match error_kind {
                     std::io::ErrorKind::PermissionDenied => {
@@ -683,7 +693,7 @@ impl RequirementsServer {
         if letters.is_empty() {
             return String::new();
         }
-        
+
         let mut prefix_len = 1;
 
         loop {
@@ -699,7 +709,8 @@ impl RequirementsServer {
                 if other == name {
                     continue;
                 }
-                let other_letters: Vec<char> = other.chars().filter(|c| c.is_ascii_alphabetic()).collect();
+                let other_letters: Vec<char> =
+                    other.chars().filter(|c| c.is_ascii_alphabetic()).collect();
                 if other_letters.is_empty() {
                     continue;
                 }
@@ -729,7 +740,7 @@ impl RequirementsServer {
         if letters.is_empty() {
             return String::new();
         }
-        
+
         let mut prefix_len = 1;
 
         loop {
@@ -745,7 +756,8 @@ impl RequirementsServer {
                 if other == name {
                     continue;
                 }
-                let other_letters: Vec<char> = other.chars().filter(|c| c.is_ascii_alphabetic()).collect();
+                let other_letters: Vec<char> =
+                    other.chars().filter(|c| c.is_ascii_alphabetic()).collect();
                 if other_letters.is_empty() {
                     continue;
                 }
@@ -813,7 +825,7 @@ impl RequirementsServer {
         // Use pulldown-cmark to parse according to standard markdown rules
         let parser = Parser::new(trimmed);
         let events: Vec<Event> = parser.collect();
-        
+
         // Check if we have a level-1 heading
         if events.len() >= 2 {
             match (&events[0], &events[1]) {
@@ -829,7 +841,10 @@ impl RequirementsServer {
                         }
                     }
                 }
-                (Event::Start(Tag::Heading(level, _, _)), Event::End(Tag::Heading(end_level, _, _))) => {
+                (
+                    Event::Start(Tag::Heading(level, _, _)),
+                    Event::End(Tag::Heading(end_level, _, _)),
+                ) => {
                     // Handle empty heading: Start + End without Text
                     if level == &HeadingLevel::H1 && end_level == &HeadingLevel::H1 {
                         // Empty heading content
@@ -839,7 +854,7 @@ impl RequirementsServer {
                 _ => {}
             }
         }
-        
+
         None
     }
 
@@ -868,10 +883,12 @@ impl RequirementsServer {
         // Use pulldown-cmark to parse according to standard markdown rules
         let parser = Parser::new(trimmed);
         let events: Vec<Event> = parser.collect();
-        
+
         // Check if we have a level-2 heading
         if events.len() >= 2 {
-            if let (Event::Start(Tag::Heading(level, _, _)), Event::Text(text)) = (&events[0], &events[1]) {
+            if let (Event::Start(Tag::Heading(level, _, _)), Event::Text(text)) =
+                (&events[0], &events[1])
+            {
                 if level == &HeadingLevel::H2 {
                     // Check if there are more events (would indicate level-3 or higher)
                     if events.len() == 3 {
@@ -892,7 +909,7 @@ impl RequirementsServer {
                 }
             }
         }
-        
+
         None
     }
 
@@ -907,12 +924,12 @@ impl RequirementsServer {
     pub fn read_chapters_streaming(category_path: &PathBuf) -> Result<Vec<String>, String> {
         // Read file as UTF-8 (G.R.8, G.R.9)
         let content = Self::read_file_utf8(category_path)?;
-        
+
         // Handle empty files (G.R.10)
         if Self::is_file_empty_or_whitespace(&content) {
             return Ok(Vec::new());
         }
-        
+
         let parser = Parser::new(&content);
         let mut chapters = Vec::new();
         let mut in_code_block = false;
@@ -931,10 +948,14 @@ impl RequirementsServer {
                     current_heading_level = Some(level);
                     current_heading_text.clear();
                 }
-                Event::Text(text) if !in_code_block && current_heading_level == Some(HeadingLevel::H1) => {
+                Event::Text(text)
+                    if !in_code_block && current_heading_level == Some(HeadingLevel::H1) =>
+                {
                     current_heading_text.push_str(&text);
                 }
-                Event::End(Tag::Heading(level, _, _)) if !in_code_block && level == HeadingLevel::H1 => {
+                Event::End(Tag::Heading(level, _, _))
+                    if !in_code_block && level == HeadingLevel::H1 =>
+                {
                     chapters.push(current_heading_text.trim().to_string());
                     current_heading_text.clear();
                     current_heading_level = None;
@@ -960,12 +981,12 @@ impl RequirementsServer {
     ) -> Result<Vec<RequirementSummary>, String> {
         // Read file as UTF-8 (G.R.8, G.R.9)
         let content = Self::read_file_utf8(category_path)?;
-        
+
         // Handle empty files (G.R.10)
         if Self::is_file_empty_or_whitespace(&content) {
             return Ok(Vec::new());
         }
-        
+
         let parser = Parser::new(&content);
         let mut requirements = Vec::new();
         let mut in_target_chapter = false;
@@ -995,7 +1016,9 @@ impl RequirementsServer {
                         current_heading_text.push_str(&text);
                     }
                 }
-                Event::End(Tag::Heading(level, _, _)) if !in_code_block && level == HeadingLevel::H2 && in_target_chapter => {
+                Event::End(Tag::Heading(level, _, _))
+                    if !in_code_block && level == HeadingLevel::H2 && in_target_chapter =>
+                {
                     // Parse format: {index}: {title}
                     let content = current_heading_text.trim();
                     if let Some(colon_pos) = content.find(':') {
@@ -1029,7 +1052,7 @@ impl RequirementsServer {
         // Read file as UTF-8 (G.R.8, G.R.9)
         let content = Self::read_file_utf8(category_path)?;
         let lines: Vec<&str> = content.lines().collect();
-        
+
         // Use pulldown-cmark to find the requirement and determine chapter
         let parser = Parser::new(&content);
         let mut current_chapter = String::new();
@@ -1059,13 +1082,15 @@ impl RequirementsServer {
                         current_heading_text.push_str(&text);
                     }
                 }
-                Event::End(Tag::Heading(level, _, _)) if !in_code_block && level == HeadingLevel::H2 => {
+                Event::End(Tag::Heading(level, _, _))
+                    if !in_code_block && level == HeadingLevel::H2 =>
+                {
                     // Parse format: {index}: {title}
                     let heading_content = current_heading_text.trim();
                     if let Some(colon_pos) = heading_content.find(':') {
                         let index = heading_content[..colon_pos].trim().to_string();
                         let title = heading_content[colon_pos + 1..].trim().to_string();
-                        
+
                         if !index.is_empty() && !title.is_empty() && index == search_index {
                             found_requirement = Some((title, current_chapter.clone()));
                             break;
@@ -1082,15 +1107,15 @@ impl RequirementsServer {
             // Find the requirement heading line in the file
             let mut requirement_start_idx: Option<usize> = None;
             let mut in_code_block_line = false;
-            
+
             for (idx, line) in lines.iter().enumerate() {
                 let trimmed = line.trim();
-                
+
                 // Track code blocks
                 if trimmed.starts_with("```") {
                     in_code_block_line = !in_code_block_line;
                 }
-                
+
                 // Find the requirement heading (not in code block)
                 if !in_code_block_line {
                     if let Some((index, _)) = Self::parse_level2_heading(line) {
@@ -1101,20 +1126,20 @@ impl RequirementsServer {
                     }
                 }
             }
-            
+
             if let Some(start_idx) = requirement_start_idx {
                 // Find the end: next level-2 heading (not in code block) or end of file
                 let mut requirement_end_idx = lines.len();
                 let mut in_code_block_line = false;
-                
+
                 for (idx, line) in lines.iter().enumerate().skip(start_idx + 1) {
                     let trimmed = line.trim();
-                    
+
                     // Track code blocks
                     if trimmed.starts_with("```") {
                         in_code_block_line = !in_code_block_line;
                     }
-                    
+
                     // Find next heading of same or higher level (not in code block) - G.R.5
                     if !in_code_block_line {
                         // Level-1 heading ends requirement (higher level than level-2)
@@ -1131,14 +1156,14 @@ impl RequirementsServer {
                         }
                     }
                 }
-                
+
                 // Extract text (skip the heading line)
                 let text_lines: Vec<&str> = lines[start_idx + 1..requirement_end_idx]
                     .iter()
                     .copied()
                     .collect();
                 let text = text_lines.join("\n").trim().to_string();
-                
+
                 return Ok(RequirementFull {
                     index: search_index.to_string(),
                     title,
@@ -1264,7 +1289,10 @@ impl RequirementsServer {
     }
 
     /// Get next requirement number in a chapter
-    fn get_next_requirement_number(category_path: &PathBuf, chapter_name: &str) -> Result<u32, String> {
+    fn get_next_requirement_number(
+        category_path: &PathBuf,
+        chapter_name: &str,
+    ) -> Result<u32, String> {
         let requirements = Self::read_requirements_streaming(category_path, chapter_name)?;
         let mut max_num: u32 = 0;
 
@@ -1480,7 +1508,8 @@ impl RequirementsServer {
         }
 
         // Read requirements (G.REQLIX_GET_REQUIREMENTS.3)
-        let requirements = match Self::read_requirements_streaming(&category_path, &params.chapter) {
+        let requirements = match Self::read_requirements_streaming(&category_path, &params.chapter)
+        {
             Ok(r) => r,
             Err(e) => return Self::json_error(&e),
         };
@@ -1519,7 +1548,8 @@ impl RequirementsServer {
         };
 
         // Find category by prefix (G.C.7)
-        let category_name = match Self::find_category_by_prefix(&requirements_dir, &category_prefix) {
+        let category_name = match Self::find_category_by_prefix(&requirements_dir, &category_prefix)
+        {
             Ok(c) => c,
             Err(e) => return Self::json_error(&e),
         };
@@ -1527,10 +1557,11 @@ impl RequirementsServer {
         let category_path = requirements_dir.join(format!("{}.md", category_name));
 
         // Find requirement (G.REQLIX_GET_REQUIREMENT.4)
-        let requirement = match Self::find_requirement_streaming(&category_path, &category_name, &params.index) {
-            Ok(r) => r,
-            Err(e) => return Self::json_error(&e),
-        };
+        let requirement =
+            match Self::find_requirement_streaming(&category_path, &category_name, &params.index) {
+                Ok(r) => r,
+                Err(e) => return Self::json_error(&e),
+            };
 
         // Return JSON response (G.REQLIX_GET_REQUIREMENT.4)
         Self::json_success(requirement)
@@ -1611,16 +1642,20 @@ impl RequirementsServer {
             Err(e) => return Self::json_error(&e),
         };
 
-        let category_prefix =
-            match Self::get_or_calculate_category_prefix(&category_path, &params.category, &all_categories) {
-                Ok(p) => p,
-                Err(e) => return Self::json_error(&e),
-            };
-
-        let chapter_prefix = match Self::get_or_calculate_chapter_prefix(&category_path, &params.chapter) {
+        let category_prefix = match Self::get_or_calculate_category_prefix(
+            &category_path,
+            &params.category,
+            &all_categories,
+        ) {
             Ok(p) => p,
             Err(e) => return Self::json_error(&e),
         };
+
+        let chapter_prefix =
+            match Self::get_or_calculate_chapter_prefix(&category_path, &params.chapter) {
+                Ok(p) => p,
+                Err(e) => return Self::json_error(&e),
+            };
 
         let number = match Self::get_next_requirement_number(&category_path, &params.chapter) {
             Ok(n) => n,
@@ -1651,9 +1686,9 @@ impl RequirementsServer {
             return Self::json_error("Chapter not found after creation");
         }
 
-            if let Err(e) = Self::write_file_utf8(&category_path, &content) {
-                return Self::json_error(&e);
-            }
+        if let Err(e) = Self::write_file_utf8(&category_path, &content) {
+            return Self::json_error(&e);
+        }
 
         // Step 6: Return result (G.REQLIX_I.3 step 6, G.REQLIX_I.5)
         Self::json_success(RequirementFull {
@@ -1700,7 +1735,8 @@ impl RequirementsServer {
         };
 
         // Find category by prefix
-        let category_name = match Self::find_category_by_prefix(&requirements_dir, &category_prefix) {
+        let category_name = match Self::find_category_by_prefix(&requirements_dir, &category_prefix)
+        {
             Ok(c) => c,
             Err(e) => return Self::json_error(&e),
         };
@@ -1708,10 +1744,11 @@ impl RequirementsServer {
         let category_path = requirements_dir.join(format!("{}.md", category_name));
 
         // Step 3: Find requirement (G.REQLIX_U.3 step 3)
-        let existing = match Self::find_requirement_streaming(&category_path, &category_name, &params.index) {
-            Ok(r) => r,
-            Err(e) => return Self::json_error(&e),
-        };
+        let existing =
+            match Self::find_requirement_streaming(&category_path, &category_name, &params.index) {
+                Ok(r) => r,
+                Err(e) => return Self::json_error(&e),
+            };
 
         // Step 4: Determine new title (G.REQLIX_U.3 step 4)
         // Use provided title or keep existing
@@ -1824,7 +1861,7 @@ impl RequirementsServer {
     pub fn handle_get_version(_params: GetVersionParams) -> String {
         // G.TOOLREQLIXGETV.3: Use env!("CARGO_PKG_VERSION") macro at compile time
         let version = env!("CARGO_PKG_VERSION");
-        
+
         // G.TOOLREQLIXGETV.2: Return success response
         Self::json_success(json!({
             "version": version
@@ -1866,10 +1903,11 @@ impl RequirementsServer {
         let category_path = req_dir.join(format!("{}.md", category));
 
         // Step 3: Find requirement (G.TOOLREQLIXD.3 step 3)
-        let requirement = match Self::find_requirement_streaming(&category_path, &category, &params.index) {
-            Ok(req) => req,
-            Err(_) => return Self::json_error("Requirement not found"),
-        };
+        let requirement =
+            match Self::find_requirement_streaming(&category_path, &category, &params.index) {
+                Ok(req) => req,
+                Err(_) => return Self::json_error("Requirement not found"),
+            };
 
         // Read file content for modification
         let content = match Self::read_file_utf8(&category_path) {
@@ -1920,7 +1958,7 @@ impl RequirementsServer {
         // Build new content without the requirement
         let mut new_content = String::new();
         new_content.push_str(&content[..start]);
-        
+
         // G.R.11: Handle blank lines - remove extra blank lines at deletion point
         let remaining = &content[end..];
         // Trim trailing newlines from new_content and leading from remaining
@@ -1943,15 +1981,17 @@ impl RequirementsServer {
                 .find("\n# ")
                 .map(|p| after_chapter + p)
                 .unwrap_or(new_content.len());
-            
+
             let chapter_content = &new_content[after_chapter..chapter_end];
             // Check if there are any level-2 headings in this chapter
-            let has_requirements = chapter_content.lines()
+            let has_requirements = chapter_content
+                .lines()
                 .any(|line| Self::parse_level2_heading(line).is_some());
-            
+
             if !has_requirements {
                 // Remove the empty chapter
-                let chapter_line_start = new_content[..chapter_pos].rfind('\n')
+                let chapter_line_start = new_content[..chapter_pos]
+                    .rfind('\n')
                     .map(|p| p + 1)
                     .unwrap_or(0);
                 new_content = format!(
@@ -2001,8 +2041,9 @@ impl ServerHandler for RequirementsServer {
         &self,
         _request: Option<PaginatedRequestParam>,
         _context: RequestContext<RoleServer>,
-    ) -> impl std::future::Future<Output = std::result::Result<ListToolsResult, rmcp::model::ErrorData>>
-           + Send
+    ) -> impl std::future::Future<
+        Output = std::result::Result<ListToolsResult, rmcp::model::ErrorData>,
+    > + Send
            + '_ {
         async move {
             let tools = vec![
@@ -2034,10 +2075,7 @@ impl ServerHandler for RequirementsServer {
                     "reqlix_update_requirement",
                     UPDATE_REQUIREMENT_DESC,
                 ),
-                Self::build_tool_schema::<GetVersionParams>(
-                    "reqlix_get_version",
-                    GET_VERSION_DESC,
-                ),
+                Self::build_tool_schema::<GetVersionParams>("reqlix_get_version", GET_VERSION_DESC),
                 Self::build_tool_schema::<DeleteRequirementParams>(
                     "reqlix_delete_requirement",
                     DELETE_REQUIREMENT_DESC,
@@ -2062,68 +2100,77 @@ impl ServerHandler for RequirementsServer {
         async move {
             let result = match request.name.as_ref() {
                 "reqlix_get_instructions" => {
-                    let params: GetInstructionsParams = serde_json::from_value(
-                        request.arguments.unwrap_or_default().into(),
-                    )
-                    .map_err(|e| rmcp::model::ErrorData::invalid_params(e.to_string(), None))?;
+                    let params: GetInstructionsParams =
+                        serde_json::from_value(request.arguments.unwrap_or_default().into())
+                            .map_err(|e| {
+                                rmcp::model::ErrorData::invalid_params(e.to_string(), None)
+                            })?;
                     Self::handle_get_instructions(params)
                 }
                 "reqlix_get_categories" => {
-                    let params: GetCategoriesParams = serde_json::from_value(
-                        request.arguments.unwrap_or_default().into(),
-                    )
-                    .map_err(|e| rmcp::model::ErrorData::invalid_params(e.to_string(), None))?;
+                    let params: GetCategoriesParams =
+                        serde_json::from_value(request.arguments.unwrap_or_default().into())
+                            .map_err(|e| {
+                                rmcp::model::ErrorData::invalid_params(e.to_string(), None)
+                            })?;
                     Self::handle_get_categories(params)
                 }
                 "reqlix_get_chapters" => {
-                    let params: GetChaptersParams = serde_json::from_value(
-                        request.arguments.unwrap_or_default().into(),
-                    )
-                    .map_err(|e| rmcp::model::ErrorData::invalid_params(e.to_string(), None))?;
+                    let params: GetChaptersParams =
+                        serde_json::from_value(request.arguments.unwrap_or_default().into())
+                            .map_err(|e| {
+                                rmcp::model::ErrorData::invalid_params(e.to_string(), None)
+                            })?;
                     Self::handle_get_chapters(params)
                 }
                 "reqlix_get_requirements" => {
-                    let params: GetRequirementsParams = serde_json::from_value(
-                        request.arguments.unwrap_or_default().into(),
-                    )
-                    .map_err(|e| rmcp::model::ErrorData::invalid_params(e.to_string(), None))?;
+                    let params: GetRequirementsParams =
+                        serde_json::from_value(request.arguments.unwrap_or_default().into())
+                            .map_err(|e| {
+                                rmcp::model::ErrorData::invalid_params(e.to_string(), None)
+                            })?;
                     Self::handle_get_requirements(params)
                 }
                 "reqlix_get_requirement" => {
-                    let params: GetRequirementParams = serde_json::from_value(
-                        request.arguments.unwrap_or_default().into(),
-                    )
-                    .map_err(|e| rmcp::model::ErrorData::invalid_params(e.to_string(), None))?;
+                    let params: GetRequirementParams =
+                        serde_json::from_value(request.arguments.unwrap_or_default().into())
+                            .map_err(|e| {
+                                rmcp::model::ErrorData::invalid_params(e.to_string(), None)
+                            })?;
                     Self::handle_get_requirement(params)
                 }
                 "reqlix_insert_requirement" => {
-                    let params: InsertRequirementParams = serde_json::from_value(
-                        request.arguments.unwrap_or_default().into(),
-                    )
-                    .map_err(|e| rmcp::model::ErrorData::invalid_params(e.to_string(), None))?;
+                    let params: InsertRequirementParams =
+                        serde_json::from_value(request.arguments.unwrap_or_default().into())
+                            .map_err(|e| {
+                                rmcp::model::ErrorData::invalid_params(e.to_string(), None)
+                            })?;
                     Self::handle_insert_requirement(params)
                 }
                 "reqlix_update_requirement" => {
-                    let params: UpdateRequirementParams = serde_json::from_value(
-                        request.arguments.unwrap_or_default().into(),
-                    )
-                    .map_err(|e| rmcp::model::ErrorData::invalid_params(e.to_string(), None))?;
+                    let params: UpdateRequirementParams =
+                        serde_json::from_value(request.arguments.unwrap_or_default().into())
+                            .map_err(|e| {
+                                rmcp::model::ErrorData::invalid_params(e.to_string(), None)
+                            })?;
                     Self::handle_update_requirement(params)
                 }
                 "reqlix_get_version" => {
                     // G.TOOLREQLIXGETV.3: No parameters required
-                    let params: GetVersionParams = serde_json::from_value(
-                        request.arguments.unwrap_or_default().into(),
-                    )
-                    .map_err(|e| rmcp::model::ErrorData::invalid_params(e.to_string(), None))?;
+                    let params: GetVersionParams =
+                        serde_json::from_value(request.arguments.unwrap_or_default().into())
+                            .map_err(|e| {
+                                rmcp::model::ErrorData::invalid_params(e.to_string(), None)
+                            })?;
                     Self::handle_get_version(params)
                 }
                 "reqlix_delete_requirement" => {
                     // G.TOOLREQLIXD.2: Parse parameters
-                    let params: DeleteRequirementParams = serde_json::from_value(
-                        request.arguments.unwrap_or_default().into(),
-                    )
-                    .map_err(|e| rmcp::model::ErrorData::invalid_params(e.to_string(), None))?;
+                    let params: DeleteRequirementParams =
+                        serde_json::from_value(request.arguments.unwrap_or_default().into())
+                            .map_err(|e| {
+                                rmcp::model::ErrorData::invalid_params(e.to_string(), None)
+                            })?;
                     Self::handle_delete_requirement(params)
                 }
                 _ => {
@@ -2143,4 +2190,3 @@ impl ServerHandler for RequirementsServer {
         }
     }
 }
-

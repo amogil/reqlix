@@ -11,7 +11,10 @@ use reqlix::RequirementsServer;
 #[test]
 fn test_parse_index_valid() {
     let result = RequirementsServer::parse_index("G.G.1");
-    assert_eq!(result, Ok(("G".to_string(), "G".to_string(), "1".to_string())));
+    assert_eq!(
+        result,
+        Ok(("G".to_string(), "G".to_string(), "1".to_string()))
+    );
 }
 
 /// Test: parse_index with multi-character parts
@@ -22,7 +25,10 @@ fn test_parse_index_valid() {
 #[test]
 fn test_parse_index_multi_char() {
     let result = RequirementsServer::parse_index("GET.GET_C.123");
-    assert_eq!(result, Ok(("GET".to_string(), "GET_C".to_string(), "123".to_string())));
+    assert_eq!(
+        result,
+        Ok(("GET".to_string(), "GET_C".to_string(), "123".to_string()))
+    );
 }
 
 /// Test: parse_index with invalid format (too few parts)
@@ -83,7 +89,10 @@ fn test_parse_index_leading_dot() {
     let result = RequirementsServer::parse_index(".G.1");
     // parse_index only splits by dots, doesn't validate empty parts
     // Empty parts will be caught by validate_index
-    assert_eq!(result, Ok(("".to_string(), "G".to_string(), "1".to_string())));
+    assert_eq!(
+        result,
+        Ok(("".to_string(), "G".to_string(), "1".to_string()))
+    );
 }
 
 /// Test: parse_index with trailing dot
@@ -96,7 +105,10 @@ fn test_parse_index_trailing_dot() {
     let result = RequirementsServer::parse_index("G.G.");
     // parse_index only splits by dots, doesn't validate empty parts
     // Empty parts will be caught by validate_index
-    assert_eq!(result, Ok(("G".to_string(), "G".to_string(), "".to_string())));
+    assert_eq!(
+        result,
+        Ok(("G".to_string(), "G".to_string(), "".to_string()))
+    );
 }
 
 /// Test: parse_index with consecutive dots
@@ -109,7 +121,10 @@ fn test_parse_index_consecutive_dots() {
     let result = RequirementsServer::parse_index("G..1");
     // parse_index only splits by dots, doesn't validate empty parts
     // Empty parts will be caught by validate_index
-    assert_eq!(result, Ok(("G".to_string(), "".to_string(), "1".to_string())));
+    assert_eq!(
+        result,
+        Ok(("G".to_string(), "".to_string(), "1".to_string()))
+    );
 }
 
 /// Test: parse_index with single character parts
@@ -120,7 +135,10 @@ fn test_parse_index_consecutive_dots() {
 #[test]
 fn test_parse_index_single_chars() {
     let result = RequirementsServer::parse_index("A.B.1");
-    assert_eq!(result, Ok(("A".to_string(), "B".to_string(), "1".to_string())));
+    assert_eq!(
+        result,
+        Ok(("A".to_string(), "B".to_string(), "1".to_string()))
+    );
 }
 
 /// Test: parse_index with large number
@@ -131,7 +149,10 @@ fn test_parse_index_single_chars() {
 #[test]
 fn test_parse_index_large_number() {
     let result = RequirementsServer::parse_index("G.G.999999");
-    assert_eq!(result, Ok(("G".to_string(), "G".to_string(), "999999".to_string())));
+    assert_eq!(
+        result,
+        Ok(("G".to_string(), "G".to_string(), "999999".to_string()))
+    );
 }
 
 /// Test: parse_index with zero as number
@@ -142,7 +163,10 @@ fn test_parse_index_large_number() {
 #[test]
 fn test_parse_index_zero_number() {
     let result = RequirementsServer::parse_index("G.G.0");
-    assert_eq!(result, Ok(("G".to_string(), "G".to_string(), "0".to_string())));
+    assert_eq!(
+        result,
+        Ok(("G".to_string(), "G".to_string(), "0".to_string()))
+    );
 }
 
 /// Test: parse_index with underscore in parts
@@ -153,7 +177,10 @@ fn test_parse_index_zero_number() {
 #[test]
 fn test_parse_index_underscores() {
     let result = RequirementsServer::parse_index("GET.GET_C.1");
-    assert_eq!(result, Ok(("GET".to_string(), "GET_C".to_string(), "1".to_string())));
+    assert_eq!(
+        result,
+        Ok(("GET".to_string(), "GET_C".to_string(), "1".to_string()))
+    );
 }
 
 /// Test: parse_index with whitespace (should fail validation before parsing)
