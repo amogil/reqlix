@@ -616,3 +616,36 @@ Errors (requirement not found, file system error, title already exists): Use err
 Before executing the update algorithm, the tool must validate all input parameters according to the constraints defined in [G.P.1](#gp1-parameter-constraints). If any parameter violates these constraints, the tool must return an error as specified in [G.P.2](#gp2-constraint-violation-error).
 
 This validation must occur before any file system operations or requirement processing.
+
+# Tool: reqlix_get_version
+
+## G.TOOLREQLIXGETV.1: Description
+
+Description (shown to LLM in tool list):
+
+```
+Returns the version of the reqlix MCP server.
+Use this to check which version of the server is running.
+This tool has no parameters.
+
+Returns JSON with "success": true and "data": {"version": "x.y.z"}.
+```
+## G.TOOLREQLIXGETV.2: Response format
+
+Success:
+
+```json
+{
+  "success": true,
+  "data": {
+    "version": "0.1.0"
+  }
+}
+```
+
+This tool always succeeds and does not return errors.
+## G.TOOLREQLIXGETV.3: Implementation details
+
+The tool must return the version string from `Cargo.toml` using the `env!("CARGO_PKG_VERSION")` macro at compile time.
+
+This tool has no parameters and does not require validation.

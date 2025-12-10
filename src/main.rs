@@ -69,6 +69,12 @@ Chapter must contain only uppercase and lowercase English letters (A-Z, a-z), sp
 Returns JSON with \"success\": true and \"data\": {\"index\": \"...\", \"title\": \"...\", \"text\": \"...\", \"category\": \"...\", \"chapter\": \"...\"}. \
 On error (requirement not found, title already exists, file system error, validation error), returns JSON with \"success\": false and \"error\": \"error message\".";
 
+// G.TOOLREQLIXGETV.1
+const GET_VERSION_DESC: &str = "Returns the version of the reqlix MCP server. \
+Use this to check which version of the server is running. \
+This tool has no parameters. \
+Returns JSON with \"success\": true and \"data\": {\"version\": \"x.y.z\"}.";
+
 // =============================================================================
 // Placeholder content (G.REQLIX_GET_I.6)
 // =============================================================================
@@ -197,6 +203,10 @@ pub struct UpdateRequirementParams {
     /// If provided, must be unique within the chapter. If not provided, the existing title is kept.
     pub title: Option<String>,
 }
+
+/// Parameters for reqlix_get_version (G.TOOLREQLIXGETV.3 - no parameters)
+#[derive(Debug, Serialize, Deserialize, JsonSchema)]
+pub struct GetVersionParams {}
 
 // =============================================================================
 // Data structures for requirements
@@ -1533,6 +1543,18 @@ impl RequirementsServer {
             chapter: existing.chapter,
         })
     }
+
+    /// reqlix_get_version (G.TOOLREQLIXGETV)
+    /// Returns the version of the MCP server (G.TOOLREQLIXGETV.2, G.TOOLREQLIXGETV.3)
+    fn handle_get_version(_params: GetVersionParams) -> String {
+        // G.TOOLREQLIXGETV.3: Use env!("CARGO_PKG_VERSION") macro at compile time
+        let version = env!("CARGO_PKG_VERSION");
+        
+        // G.TOOLREQLIXGETV.2: Return success response
+        Self::json_success(json!({
+            "version": version
+        }))
+    }
 }
 
 // =============================================================================
@@ -1591,6 +1613,10 @@ impl ServerHandler for RequirementsServer {
                 Self::build_tool_schema::<UpdateRequirementParams>(
                     "reqlix_update_requirement",
                     UPDATE_REQUIREMENT_DESC,
+                ),
+                Self::build_tool_schema::<GetVersionParams>(
+                    "reqlix_get_version",
+                    GET_VERSION_DESC,
                 ),
             ];
 
@@ -1659,6 +1685,14 @@ impl ServerHandler for RequirementsServer {
                     )
                     .map_err(|e| rmcp::model::ErrorData::invalid_params(e.to_string(), None))?;
                     Self::handle_update_requirement(params)
+                }
+                "reqlix_get_version" => {
+                    // G.TOOLREQLIXGETV.3: No parameters required
+                    let params: GetVersionParams = serde_json::from_value(
+                        request.arguments.unwrap_or_default().into(),
+                    )
+                    .map_err(|e| rmcp::model::ErrorData::invalid_params(e.to_string(), None))?;
+                    Self::handle_get_version(params)
                 }
                 _ => {
                     return Err(rmcp::model::ErrorData::invalid_params(

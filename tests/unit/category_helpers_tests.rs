@@ -15,7 +15,7 @@ fn test_list_categories_single() {
     let temp_dir = TempDir::new().unwrap();
     let file_path = temp_dir.path().join("general.md");
     fs::write(&file_path, "").unwrap();
-    
+
     let result = RequirementsServer::list_categories(&temp_dir.path().to_path_buf());
     assert!(result.is_ok());
     let categories = result.unwrap();
@@ -33,7 +33,7 @@ fn test_list_categories_exclude_agents() {
     let temp_dir = TempDir::new().unwrap();
     fs::write(temp_dir.path().join("AGENTS.md"), "").unwrap();
     fs::write(temp_dir.path().join("general.md"), "").unwrap();
-    
+
     let result = RequirementsServer::list_categories(&temp_dir.path().to_path_buf());
     assert!(result.is_ok());
     let categories = result.unwrap();
@@ -53,7 +53,7 @@ fn test_list_categories_multiple() {
     fs::write(temp_dir.path().join("testing.md"), "").unwrap();
     fs::write(temp_dir.path().join("general.md"), "").unwrap();
     fs::write(temp_dir.path().join("deployment.md"), "").unwrap();
-    
+
     let result = RequirementsServer::list_categories(&temp_dir.path().to_path_buf());
     assert!(result.is_ok());
     let categories = result.unwrap();
@@ -72,7 +72,7 @@ fn test_list_categories_multiple() {
 #[test]
 fn test_list_categories_empty() {
     let temp_dir = TempDir::new().unwrap();
-    
+
     let result = RequirementsServer::list_categories(&temp_dir.path().to_path_buf());
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), Vec::<String>::new());
@@ -88,7 +88,7 @@ fn test_list_categories_ignore_non_md() {
     let temp_dir = TempDir::new().unwrap();
     fs::write(temp_dir.path().join("general.md"), "").unwrap();
     fs::write(temp_dir.path().join("readme.txt"), "").unwrap();
-    
+
     let result = RequirementsServer::list_categories(&temp_dir.path().to_path_buf());
     assert!(result.is_ok());
     let categories = result.unwrap();
@@ -105,7 +105,7 @@ fn test_list_categories_ignore_non_md() {
 fn test_find_category_by_prefix_single() {
     let temp_dir = TempDir::new().unwrap();
     fs::write(temp_dir.path().join("general.md"), "").unwrap();
-    
+
     let result = RequirementsServer::find_category_by_prefix(&temp_dir.path().to_path_buf(), "G");
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), "general");
@@ -121,7 +121,7 @@ fn test_find_category_by_prefix_multiple() {
     let temp_dir = TempDir::new().unwrap();
     fs::write(temp_dir.path().join("general.md"), "").unwrap();
     fs::write(temp_dir.path().join("testing.md"), "").unwrap();
-    
+
     let result = RequirementsServer::find_category_by_prefix(&temp_dir.path().to_path_buf(), "G");
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), "general");
@@ -136,7 +136,7 @@ fn test_find_category_by_prefix_multiple() {
 fn test_find_category_by_prefix_not_found() {
     let temp_dir = TempDir::new().unwrap();
     fs::write(temp_dir.path().join("general.md"), "").unwrap();
-    
+
     let result = RequirementsServer::find_category_by_prefix(&temp_dir.path().to_path_buf(), "X");
     assert!(result.is_err());
     assert!(result.unwrap_err().contains("not found"));
@@ -152,12 +152,14 @@ fn test_find_category_by_prefix_conflicting() {
     let temp_dir = TempDir::new().unwrap();
     fs::write(temp_dir.path().join("general.md"), "").unwrap();
     fs::write(temp_dir.path().join("guidelines.md"), "").unwrap();
-    
+
     // Both start with "G", so need longer prefix
     // "general" would have prefix "GE" or longer, "guidelines" would have "GU" or longer
-    let result_ge = RequirementsServer::find_category_by_prefix(&temp_dir.path().to_path_buf(), "GE");
-    let result_gu = RequirementsServer::find_category_by_prefix(&temp_dir.path().to_path_buf(), "GU");
-    
+    let result_ge =
+        RequirementsServer::find_category_by_prefix(&temp_dir.path().to_path_buf(), "GE");
+    let result_gu =
+        RequirementsServer::find_category_by_prefix(&temp_dir.path().to_path_buf(), "GU");
+
     // At least one should succeed
     assert!(result_ge.is_ok() || result_gu.is_ok());
 }
@@ -170,10 +172,8 @@ fn test_find_category_by_prefix_conflicting() {
 #[test]
 fn test_find_category_by_prefix_empty_dir() {
     let temp_dir = TempDir::new().unwrap();
-    
+
     let result = RequirementsServer::find_category_by_prefix(&temp_dir.path().to_path_buf(), "G");
     assert!(result.is_err());
     assert!(result.unwrap_err().contains("not found"));
 }
-
-

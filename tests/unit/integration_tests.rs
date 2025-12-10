@@ -29,7 +29,7 @@ fn create_agents_file(temp_dir: &TempDir, content: &str) {
 #[test]
 fn test_get_instructions_creates_file() {
     let temp_dir = TempDir::new().unwrap();
-    
+
     // Test that get_create_path returns correct path
     let create_path = RequirementsServer::get_create_path(&temp_dir.path().to_string_lossy());
     assert!(create_path.ends_with("AGENTS.md"));
@@ -51,7 +51,7 @@ fn test_get_categories_multiple() {
     create_category_file(&temp_dir, "general", "");
     create_category_file(&temp_dir, "deployment", "");
     create_agents_file(&temp_dir, "");
-    
+
     let categories = RequirementsServer::list_categories(&temp_dir.path().to_path_buf()).unwrap();
     assert_eq!(categories.len(), 3);
     assert_eq!(categories[0], "deployment");
@@ -68,7 +68,7 @@ fn test_get_categories_multiple() {
 fn test_get_categories_empty() {
     let temp_dir = TempDir::new().unwrap();
     create_agents_file(&temp_dir, "");
-    
+
     let categories = RequirementsServer::list_categories(&temp_dir.path().to_path_buf()).unwrap();
     assert_eq!(categories.len(), 0);
 }
@@ -94,10 +94,9 @@ Content of chapter one.
 Content of chapter two.
 "#;
     create_category_file(&temp_dir, "general", content);
-    
-    let chapters = RequirementsServer::read_chapters_streaming(
-        &temp_dir.path().join("general.md")
-    ).unwrap();
+
+    let chapters =
+        RequirementsServer::read_chapters_streaming(&temp_dir.path().join("general.md")).unwrap();
     assert_eq!(chapters.len(), 2);
     assert_eq!(chapters[0], "Chapter One");
     assert_eq!(chapters[1], "Chapter Two");
@@ -112,10 +111,9 @@ Content of chapter two.
 fn test_get_chapters_empty() {
     let temp_dir = TempDir::new().unwrap();
     create_category_file(&temp_dir, "general", "");
-    
-    let chapters = RequirementsServer::read_chapters_streaming(
-        &temp_dir.path().join("general.md")
-    ).unwrap();
+
+    let chapters =
+        RequirementsServer::read_chapters_streaming(&temp_dir.path().join("general.md")).unwrap();
     assert_eq!(chapters.len(), 0);
 }
 
@@ -142,11 +140,12 @@ Content of first requirement.
 Content of second requirement.
 "#;
     create_category_file(&temp_dir, "general", content);
-    
+
     let requirements = RequirementsServer::read_requirements_streaming(
         &temp_dir.path().join("general.md"),
-        "Test Chapter"
-    ).unwrap();
+        "Test Chapter",
+    )
+    .unwrap();
     assert_eq!(requirements.len(), 2);
     assert_eq!(requirements[0].index, "G.T.1");
     assert_eq!(requirements[0].title, "First Requirement");
@@ -167,11 +166,12 @@ fn test_get_requirements_empty() {
 No requirements here.
 "#;
     create_category_file(&temp_dir, "general", content);
-    
+
     let requirements = RequirementsServer::read_requirements_streaming(
         &temp_dir.path().join("general.md"),
-        "Test Chapter"
-    ).unwrap();
+        "Test Chapter",
+    )
+    .unwrap();
     assert_eq!(requirements.len(), 0);
 }
 
@@ -195,12 +195,13 @@ This is the requirement text.
 It can span multiple lines.
 "#;
     create_category_file(&temp_dir, "general", content);
-    
+
     let requirement = RequirementsServer::find_requirement_streaming(
         &temp_dir.path().join("general.md"),
         "general",
-        "G.T.1"
-    ).unwrap();
+        "G.T.1",
+    )
+    .unwrap();
     assert_eq!(requirement.index, "G.T.1");
     assert_eq!(requirement.title, "Test Requirement");
     assert!(requirement.text.contains("This is the requirement text"));
@@ -221,11 +222,11 @@ fn test_get_requirement_not_found() {
 Content.
 "#;
     create_category_file(&temp_dir, "general", content);
-    
+
     let result = RequirementsServer::find_requirement_streaming(
         &temp_dir.path().join("general.md"),
         "general",
-        "G.T.999"
+        "G.T.999",
     );
     assert!(result.is_err());
     assert!(result.unwrap_err().contains("not found"));
@@ -250,7 +251,7 @@ fn test_insert_requirement_new() {
 Existing content.
 "#;
     create_category_file(&temp_dir, "general", content);
-    
+
     // This would test the full insert flow, but requires access to private methods
     // For now, we verify the file structure is correct
     let file_content = fs::read_to_string(temp_dir.path().join("general.md")).unwrap();
@@ -273,12 +274,13 @@ fn test_insert_requirement_duplicate_title() {
 Content.
 "#;
     create_category_file(&temp_dir, "general", content);
-    
+
     // Verify that reading requirements finds the existing one
     let requirements = RequirementsServer::read_requirements_streaming(
         &temp_dir.path().join("general.md"),
-        "Test Chapter"
-    ).unwrap();
+        "Test Chapter",
+    )
+    .unwrap();
     assert_eq!(requirements.len(), 1);
     assert_eq!(requirements[0].title, "Duplicate Title");
 }
@@ -302,13 +304,14 @@ fn test_update_requirement_text() {
 Old content.
 "#;
     create_category_file(&temp_dir, "general", content);
-    
+
     // Verify initial state
     let requirement = RequirementsServer::find_requirement_streaming(
         &temp_dir.path().join("general.md"),
         "general",
-        "G.T.1"
-    ).unwrap();
+        "G.T.1",
+    )
+    .unwrap();
     assert!(requirement.text.contains("Old content"));
 }
 
@@ -331,12 +334,13 @@ Content one.
 Content two.
 "#;
     create_category_file(&temp_dir, "general", content);
-    
+
     // Verify both requirements exist
     let requirements = RequirementsServer::read_requirements_streaming(
         &temp_dir.path().join("general.md"),
-        "Test Chapter"
-    ).unwrap();
+        "Test Chapter",
+    )
+    .unwrap();
     assert_eq!(requirements.len(), 2);
     assert_eq!(requirements[0].title, "First Requirement");
     assert_eq!(requirements[1].title, "Second Requirement");
@@ -363,22 +367,31 @@ Content of last requirement.
 Content of second chapter requirement.
 "#;
     create_category_file(&temp_dir, "general", content);
-    
+
     // Get the last requirement in first chapter
     let requirement = RequirementsServer::find_requirement_streaming(
         &temp_dir.path().join("general.md"),
         "general",
-        "G.F.1"
-    ).unwrap();
-    
+        "G.F.1",
+    )
+    .unwrap();
+
     // Verify requirement text does NOT include next chapter (G.R.5)
     assert!(requirement.text.contains("Content of last requirement"));
-    assert!(!requirement.text.contains("# Second Chapter"), 
-        "Level-1 heading should end requirement, not be included in text");
-    assert!(!requirement.text.contains("G.S.1"), 
-        "Content after level-1 heading should not be in requirement");
-    assert!(!requirement.text.contains("Content of second chapter requirement"),
-        "Content from next chapter should not be in requirement");
+    assert!(
+        !requirement.text.contains("# Second Chapter"),
+        "Level-1 heading should end requirement, not be included in text"
+    );
+    assert!(
+        !requirement.text.contains("G.S.1"),
+        "Content after level-1 heading should not be in requirement"
+    );
+    assert!(
+        !requirement
+            .text
+            .contains("Content of second chapter requirement"),
+        "Content from next chapter should not be in requirement"
+    );
 }
 
 // =============================================================================
@@ -435,4 +448,44 @@ fn test_error_response_format() {
     assert!(error_msg.contains("required") || error_msg.contains("exceeds"));
 }
 
+// =============================================================================
+// Tests for reqlix_get_version (G.TOOLREQLIXGETV.*)
+// =============================================================================
 
+/// Test: reqlix_get_version returns version string
+/// Precondition: Server is running
+/// Action: Call handle_get_version
+/// Result: Function returns JSON with version from Cargo.toml
+/// Covers Requirement: G.TOOLREQLIXGETV.2, G.TOOLREQLIXGETV.3
+#[test]
+fn test_get_version_returns_version() {
+    let params = reqlix::GetVersionParams {};
+    let result = RequirementsServer::handle_get_version(params);
+    
+    // Parse JSON response
+    let parsed: serde_json::Value = serde_json::from_str(&result).unwrap();
+    
+    // Verify success (G.TOOLREQLIXGETV.2)
+    assert_eq!(parsed["success"], true);
+    
+    // Verify version is present and matches Cargo.toml (G.TOOLREQLIXGETV.3)
+    let version = parsed["data"]["version"].as_str().unwrap();
+    assert_eq!(version, env!("CARGO_PKG_VERSION"));
+}
+
+/// Test: reqlix_get_version always succeeds
+/// Precondition: Server is running
+/// Action: Call handle_get_version multiple times
+/// Result: Function always returns success: true
+/// Covers Requirement: G.TOOLREQLIXGETV.2
+#[test]
+fn test_get_version_always_succeeds() {
+    // Call multiple times to verify consistent behavior
+    for _ in 0..3 {
+        let params = reqlix::GetVersionParams {};
+        let result = RequirementsServer::handle_get_version(params);
+        let parsed: serde_json::Value = serde_json::from_str(&result).unwrap();
+        assert_eq!(parsed["success"], true);
+        assert!(parsed["data"]["version"].is_string());
+    }
+}
