@@ -355,9 +355,9 @@ impl RequirementsServer {
             return Err("chapter name must not start or end with whitespace".to_string());
         }
         
-        // Must contain only uppercase and lowercase English letters (A-Z, a-z), spaces, colons (:), and hyphens (-)
-        if !value.chars().all(|c| c.is_ascii_alphabetic() || c == ' ' || c == ':' || c == '-') {
-            return Err("chapter name must contain only uppercase and lowercase English letters (A-Z, a-z), spaces, colons (:), and hyphens (-)".to_string());
+        // Must contain only uppercase and lowercase English letters (A-Z, a-z), spaces, colons (:), hyphens (-), and underscores (_) - G.P.3
+        if !value.chars().all(|c| c.is_ascii_alphabetic() || c == ' ' || c == ':' || c == '-' || c == '_') {
+            return Err("chapter name must contain only uppercase and lowercase English letters (A-Z, a-z), spaces, colons (:), hyphens (-), and underscores (_)".to_string());
         }
         
         // Must not contain newline characters (would break markdown heading structure)

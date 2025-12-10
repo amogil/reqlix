@@ -702,13 +702,12 @@ fn test_validate_chapter_with_numbers() {
 /// Test: validate_chapter with underscore
 /// Precondition: System has a chapter value containing underscore
 /// Action: Call validate_chapter with "Chapter_Name"
-/// Result: Function returns error (underscore not allowed)
+/// Result: Function returns Ok (underscore is allowed per G.P.3)
 /// Covers Requirement: G.P.3
 #[test]
 fn test_validate_chapter_with_underscore() {
     let result = RequirementsServer::validate_chapter("Chapter_Name");
-    assert!(result.is_err());
-    assert!(result.unwrap_err().contains("uppercase and lowercase English letters"));
+    assert!(result.is_ok());
 }
 
 /// Test: validate_chapter with valid colon

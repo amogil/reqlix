@@ -349,9 +349,9 @@ impl RequirementsServer {
             return Err("chapter name must not start or end with whitespace".to_string());
         }
         
-        // Must contain only uppercase and lowercase English letters (A-Z, a-z), spaces, colons (:), and hyphens (-)
-        if !value.chars().all(|c| c.is_ascii_alphabetic() || c == ' ' || c == ':' || c == '-') {
-            return Err("chapter name must contain only uppercase and lowercase English letters (A-Z, a-z), spaces, colons (:), and hyphens (-)".to_string());
+        // Must contain only uppercase and lowercase English letters (A-Z, a-z), spaces, colons (:), hyphens (-), and underscores (_) - G.P.3
+        if !value.chars().all(|c| c.is_ascii_alphabetic() || c == ' ' || c == ':' || c == '-' || c == '_') {
+            return Err("chapter name must contain only uppercase and lowercase English letters (A-Z, a-z), spaces, colons (:), hyphens (-), and underscores (_)".to_string());
         }
         
         // Must not contain newline characters (would break markdown heading structure)
@@ -805,16 +805,28 @@ impl RequirementsServer {
                 continue;
             }
 
-            // Check for chapter heading (only when not collecting requirement text) (G.R.5, G.R.2)
-            if !collecting_text && !in_code_block {
+            // Check for chapter heading (G.R.5, G.R.2)
+            // Level-1 heading ends requirement (higher level than level-2) - G.R.5
+            if !in_code_block {
                 if let Some(chapter_name) = Self::parse_level1_heading(&line) {
+                    // If we were collecting text for found requirement, we're done
+                    if collecting_text {
+                        let (title, chapter) = found_requirement.unwrap();
+                        return Ok(RequirementFull {
+                            index: search_index.to_string(),
+                            title,
+                            text: text_lines.join("\n").trim().to_string(),
+                            category: category_name.to_string(),
+                            chapter,
+                        });
+                    }
                     current_chapter = chapter_name;
                     continue;
                 }
             }
 
             // Check for requirement heading (G.R.5, G.R.3)
-            // Only stop collecting if we encounter a new requirement heading AND we're not in a code block
+            // Level-2 heading also ends requirement (same level) - G.R.5
             if !in_code_block {
                 if let Some((index, title)) = Self::parse_level2_heading(&line) {
                     // If we were collecting text for found requirement, we're done
@@ -1468,9 +1480,15 @@ impl RequirementsServer {
                 in_code_block = !in_code_block;
             }
 
-            // Check for requirement heading (G.R.5, G.R.3)
-            // Only consider markdown level-2 headings that are not inside code blocks
+            // Check for heading boundaries (G.R.5, G.R.3)
+            // Only consider markdown headings that are not inside code blocks
             if !in_code_block {
+                // Level-1 heading ends requirement (higher level than level-2) - G.R.5
+                if heading_start.is_some() && Self::parse_level1_heading(line).is_some() {
+                    req_end = Some(line_start);
+                    break;
+                }
+                // Level-2 heading: either start of our requirement or end boundary
                 if let Some((index, _)) = Self::parse_level2_heading(line) {
                     if index == params.index {
                         // Found the requirement we're updating
