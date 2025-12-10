@@ -146,6 +146,20 @@ Requirement text content.
 
 This ensures proper markdown rendering and readability.
 
+## G.R.12: Exact heading match
+
+When searching for chapters or requirements by name/index, tools must use exact heading match after proper markdown parsing, not substring search.
+
+**Correct approach:**
+1. Parse file line by line
+2. Identify headings using markdown parser
+3. Extract heading text and compare exactly
+
+**Incorrect approach:**
+- Using `content.find("# ChapterName")` which may match `# ChapterName` as substring of `# ChapterNameExtended`
+
+This prevents bugs where chapter "Foo" is incorrectly matched when searching in a file containing both "# Foobar" and "# Foo".
+
 # Tool: reqlix_get_instructions
 
 ## G.REQLIX_GET_I.1: Description

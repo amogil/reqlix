@@ -1404,9 +1404,23 @@ impl RequirementsServer {
         };
 
         // Find position to insert (after chapter heading or at end of chapter)
-        let chapter_heading = format!("# {}", params.chapter);
-        if let Some(chapter_pos) = content.find(&chapter_heading) {
+        // Must find exact chapter heading (not a substring of another chapter name)
+        let chapter_heading_newline = format!("# {}\n", params.chapter);
+        let chapter_pos = content
+            .find(&chapter_heading_newline)
+            .or_else(|| {
+                // Handle case where chapter is at end of file without trailing newline
+                let chapter_heading = format!("# {}", params.chapter);
+                if content.ends_with(&chapter_heading) {
+                    Some(content.len() - chapter_heading.len())
+                } else {
+                    None
+                }
+            });
+
+        if let Some(chapter_pos) = chapter_pos {
             // Find end of chapter (next # heading or end of file)
+            let chapter_heading = format!("# {}", params.chapter);
             let after_chapter = chapter_pos + chapter_heading.len();
             let insert_pos = content[after_chapter..]
                 .find("\n# ")
@@ -1707,8 +1721,18 @@ impl RequirementsServer {
 
         // Step 5: Delete empty chapter (G.TOOLREQLIXD.3 step 5)
         // Check if chapter is now empty (no more ## headings until next # or EOF)
+        // Must find exact chapter heading (not a substring of another chapter name)
         let chapter_heading = format!("# {}", requirement.chapter);
-        if let Some(chapter_pos) = new_content.find(&chapter_heading) {
+        let chapter_heading_newline = format!("# {}\n", requirement.chapter);
+        let chapter_pos = new_content.find(&chapter_heading_newline).or_else(|| {
+            // Handle case where chapter is at end of file without trailing newline
+            if new_content.ends_with(&chapter_heading) {
+                Some(new_content.len() - chapter_heading.len())
+            } else {
+                None
+            }
+        });
+        if let Some(chapter_pos) = chapter_pos {
             let after_chapter = chapter_pos + chapter_heading.len();
             let chapter_end = new_content[after_chapter..]
                 .find("\n# ")
