@@ -1524,8 +1524,14 @@ impl RequirementsServer {
             new_content.push_str(&new_heading);
             new_content.push_str("\n\n");
             new_content.push_str(&params.text);
-            new_content.push('\n');
-            new_content.push_str(&content[end..]);
+            // G.R.11: Ensure blank line before next heading
+            let remaining = &content[end..];
+            if remaining.starts_with('#') || remaining.starts_with("\n#") {
+                new_content.push_str("\n\n");
+            } else {
+                new_content.push('\n');
+            }
+            new_content.push_str(remaining);
 
             if let Err(e) = fs::write(&category_path, &new_content) {
                 return Self::json_error(&format!("Failed to write category file: {}", e));

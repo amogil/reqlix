@@ -171,6 +171,25 @@ Empty files must be handled as follows:
 
 - **File creation**: When creating a new category file, it must be created as an empty file (or with only the initial chapter heading if a chapter is being added).
 
+## G.R.11: Blank line before headings
+
+When writing requirements to files, there must always be a blank line between the requirement text and the next heading (level-1 or level-2).
+
+**Correct:**
+```markdown
+Requirement text content.
+
+## G.G.2: Next requirement
+```
+
+**Incorrect:**
+```markdown
+Requirement text content.
+## G.G.2: Next requirement
+```
+
+This ensures proper markdown rendering and readability.
+
 # Tool: reqlix_get_instructions
 
 ## G.REQLIX_GET_I.1: Description
@@ -649,3 +668,63 @@ This tool always succeeds and does not return errors.
 The tool must return the version string from `Cargo.toml` using the `env!("CARGO_PKG_VERSION")` macro at compile time.
 
 This tool has no parameters and does not require validation.
+
+# Tool: reqlix_delete_requirement
+
+## G.TOOLREQLIXD.1: Description
+
+Description (shown to LLM in tool list):
+
+```
+Deletes an existing requirement by its index.
+The requirement will be permanently removed from the category file.
+
+Returns JSON with "success": true and "data": {"index": "...", "title": "...", "category": "...", "chapter": "..."}.
+On error (requirement not found, file system error, validation error), returns JSON with "success": false and "error": "error message".
+```
+
+## G.TOOLREQLIXD.2: Parameters
+
+Parameters:
+
+- `project_root` (string, required) - Path to the project root directory.
+- `operation_description` (string, required) - Brief description of the operation that LLM intends to perform.
+- `index` (string, required) - Requirement index to delete (e.g., "G.G.1", "T.U.2").
+
+## G.TOOLREQLIXD.3: Algorithm
+
+The tool must execute the following steps:
+
+1. **Validate parameters**: Validate all input parameters according to [G.TOOLREQLIXD.5](#gtoolreqlixd5-parameter-validation).
+
+2. **Parse index**: Extract category prefix, chapter prefix, and requirement number from the index (see [G.R.4](#gr4-index-format)).
+
+3. **Find requirement**: Locate the requirement by its index (see [G.REQLIX_GET_REQUIREMENT.3](#greqlix_get_requirement3-index-parsing-and-file-lookup)). If not found, return error "Requirement not found".
+
+4. **Delete requirement**: Remove the requirement heading and body from the category file. The requirement boundaries are determined according to [G.R.5](#gr5-requirement-parsing-boundaries).
+
+5. **Delete empty chapter**: If the chapter becomes empty after deleting the requirement (no more requirements in the chapter), remove the chapter heading from the category file.
+
+6. **Return result**: Return the deleted requirement metadata (index, title, category, chapter).
+## G.TOOLREQLIXD.4: Response format
+
+Success:
+
+```json
+{
+  "success": true,
+  "data": {
+    "index": "G.G.1",
+    "title": "Deleted requirement title",
+    "category": "general",
+    "chapter": "General Requirements"
+  }
+}
+```
+
+Errors (requirement not found, file system error, validation error): Use error format from [G.C.6](#gc6-error-response-format).
+## G.TOOLREQLIXD.5: Parameter validation
+
+Before executing the deletion algorithm, the tool must validate all input parameters according to the constraints defined in [G.P.1](#gp1-parameter-constraints). If any parameter violates these constraints, the tool must return an error as specified in [G.P.2](#gp2-constraint-violation-error).
+
+This validation must occur before any file system operations or requirement processing.

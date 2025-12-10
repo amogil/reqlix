@@ -489,3 +489,4 @@ fn test_get_version_always_succeeds() {
         assert!(parsed["data"]["version"].is_string());
     }
 }
+
