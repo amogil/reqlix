@@ -75,6 +75,12 @@ Use this to check which version of the server is running. \
 This tool has no parameters. \
 Returns JSON with \"success\": true and \"data\": {\"version\": \"x.y.z\"}.";
 
+// G.TOOLREQLIXD.1
+const DELETE_REQUIREMENT_DESC: &str = "Deletes an existing requirement by its index. \
+The requirement will be permanently removed from the category file. \
+Returns JSON with \"success\": true and \"data\": {\"index\": \"...\", \"title\": \"...\", \"category\": \"...\", \"chapter\": \"...\"}. \
+On error (requirement not found, file system error, validation error), returns JSON with \"success\": false and \"error\": \"error message\".";
+
 // =============================================================================
 // Placeholder content (G.REQLIX_GET_I.6)
 // =============================================================================
@@ -207,6 +213,17 @@ pub struct UpdateRequirementParams {
 /// Parameters for reqlix_get_version (G.TOOLREQLIXGETV.3 - no parameters)
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct GetVersionParams {}
+
+/// Parameters for reqlix_delete_requirement (G.TOOLREQLIXD.2)
+#[derive(Debug, Serialize, Deserialize, JsonSchema)]
+pub struct DeleteRequirementParams {
+    /// Path to the project root directory.
+    pub project_root: String,
+    /// Brief description of the operation that LLM intends to perform.
+    pub operation_description: String,
+    /// Requirement index to delete (e.g., "G.G.1", "T.U.2").
+    pub index: String,
+}
 
 // =============================================================================
 // Data structures for requirements
@@ -1561,6 +1578,151 @@ impl RequirementsServer {
             "version": version
         }))
     }
+
+    /// reqlix_delete_requirement (G.TOOLREQLIXD)
+    /// Deletes an existing requirement by its index.
+    fn handle_delete_requirement(params: DeleteRequirementParams) -> String {
+        // Step 1: Validate parameters (G.TOOLREQLIXD.5, G.TOOLREQLIXD.3 step 1)
+        if let Err(e) = Self::validate_project_root(&params.project_root) {
+            return Self::json_error(&e);
+        }
+        if let Err(e) = Self::validate_operation_description(&params.operation_description) {
+            return Self::json_error(&e);
+        }
+        if let Err(e) = Self::validate_index(&params.index) {
+            return Self::json_error(&e);
+        }
+
+        // Step 2: Parse index (G.TOOLREQLIXD.3 step 2, G.R.4)
+        let (category_prefix, _chapter_prefix, _req_number) = match Self::parse_index(&params.index)
+        {
+            Ok(parts) => parts,
+            Err(e) => return Self::json_error(&e),
+        };
+
+        // Find category by prefix (G.C.7)
+        let req_dir = match Self::get_requirements_dir(&params.project_root) {
+            Ok(dir) => dir,
+            Err(e) => return Self::json_error(&e),
+        };
+
+        let category = match Self::find_category_by_prefix(&req_dir, &category_prefix) {
+            Ok(cat) => cat,
+            Err(e) => return Self::json_error(&e),
+        };
+
+        let category_path = req_dir.join(format!("{}.md", category));
+
+        // Step 3: Find requirement (G.TOOLREQLIXD.3 step 3)
+        let requirement = match Self::find_requirement_streaming(&category_path, &category, &params.index) {
+            Ok(req) => req,
+            Err(_) => return Self::json_error("Requirement not found"),
+        };
+
+        // Read file content for modification
+        let content = match fs::read_to_string(&category_path) {
+            Ok(c) => c,
+            Err(e) => return Self::json_error(&format!("Failed to read category file: {}", e)),
+        };
+
+        // Step 4: Delete requirement (G.TOOLREQLIXD.3 step 4, G.R.5)
+        // Find requirement boundaries
+        let search_heading = format!("## {}: ", params.index);
+        let mut heading_start: Option<usize> = None;
+        let mut req_end: Option<usize> = None;
+        let mut in_code_block = false;
+        let mut line_start = 0;
+
+        for line in content.lines() {
+            let line_end = line_start + line.len() + 1; // +1 for newline
+
+            // Track code blocks (G.R.3)
+            if line.trim_start().starts_with("```") {
+                in_code_block = !in_code_block;
+            }
+
+            if !in_code_block {
+                // Level-1 heading ends requirement (G.R.5)
+                if heading_start.is_some() && Self::parse_level1_heading(line).is_some() {
+                    req_end = Some(line_start);
+                    break;
+                }
+                // Level-2 heading: start or end boundary
+                if line.starts_with(&search_heading) {
+                    heading_start = Some(line_start);
+                } else if heading_start.is_some() && Self::parse_level2_heading(line).is_some() {
+                    req_end = Some(line_start);
+                    break;
+                }
+            }
+
+            line_start = line_end;
+        }
+
+        let start = match heading_start {
+            Some(s) => s,
+            None => return Self::json_error("Requirement not found"),
+        };
+        let end = req_end.unwrap_or(content.len());
+
+        // Build new content without the requirement
+        let mut new_content = String::new();
+        new_content.push_str(&content[..start]);
+        
+        // G.R.11: Handle blank lines - remove extra blank lines at deletion point
+        let remaining = &content[end..];
+        // Trim trailing newlines from new_content and leading from remaining
+        while new_content.ends_with('\n') {
+            new_content.pop();
+        }
+        let remaining_trimmed = remaining.trim_start_matches('\n');
+        if !remaining_trimmed.is_empty() {
+            // Add exactly one blank line before next heading (G.R.11)
+            new_content.push_str("\n\n");
+        }
+        new_content.push_str(remaining_trimmed);
+
+        // Step 5: Delete empty chapter (G.TOOLREQLIXD.3 step 5)
+        // Check if chapter is now empty (no more ## headings until next # or EOF)
+        let chapter_heading = format!("# {}", requirement.chapter);
+        if let Some(chapter_pos) = new_content.find(&chapter_heading) {
+            let after_chapter = chapter_pos + chapter_heading.len();
+            let chapter_end = new_content[after_chapter..]
+                .find("\n# ")
+                .map(|p| after_chapter + p)
+                .unwrap_or(new_content.len());
+            
+            let chapter_content = &new_content[after_chapter..chapter_end];
+            // Check if there are any level-2 headings in this chapter
+            let has_requirements = chapter_content.lines()
+                .any(|line| Self::parse_level2_heading(line).is_some());
+            
+            if !has_requirements {
+                // Remove the empty chapter
+                let chapter_line_start = new_content[..chapter_pos].rfind('\n')
+                    .map(|p| p + 1)
+                    .unwrap_or(0);
+                new_content = format!(
+                    "{}{}",
+                    &new_content[..chapter_line_start],
+                    &new_content[chapter_end..]
+                );
+            }
+        }
+
+        // Write updated content
+        if let Err(e) = fs::write(&category_path, &new_content) {
+            return Self::json_error(&format!("Failed to write category file: {}", e));
+        }
+
+        // Step 6: Return result (G.TOOLREQLIXD.3 step 6, G.TOOLREQLIXD.4)
+        Self::json_success(json!({
+            "index": params.index,
+            "title": requirement.title,
+            "category": category,
+            "chapter": requirement.chapter
+        }))
+    }
 }
 
 // =============================================================================
@@ -1623,6 +1785,10 @@ impl ServerHandler for RequirementsServer {
                 Self::build_tool_schema::<GetVersionParams>(
                     "reqlix_get_version",
                     GET_VERSION_DESC,
+                ),
+                Self::build_tool_schema::<DeleteRequirementParams>(
+                    "reqlix_delete_requirement",
+                    DELETE_REQUIREMENT_DESC,
                 ),
             ];
 
@@ -1699,6 +1865,14 @@ impl ServerHandler for RequirementsServer {
                     )
                     .map_err(|e| rmcp::model::ErrorData::invalid_params(e.to_string(), None))?;
                     Self::handle_get_version(params)
+                }
+                "reqlix_delete_requirement" => {
+                    // G.TOOLREQLIXD.2: Parse parameters
+                    let params: DeleteRequirementParams = serde_json::from_value(
+                        request.arguments.unwrap_or_default().into(),
+                    )
+                    .map_err(|e| rmcp::model::ErrorData::invalid_params(e.to_string(), None))?;
+                    Self::handle_delete_requirement(params)
                 }
                 _ => {
                     return Err(rmcp::model::ErrorData::invalid_params(

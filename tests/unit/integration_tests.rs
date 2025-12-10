@@ -17,6 +17,25 @@ fn create_agents_file(temp_dir: &TempDir, content: &str) {
     fs::write(&file_path, content).unwrap();
 }
 
+// Helper function to create requirements directory structure for handle_* tests
+fn create_requirements_dir(temp_dir: &TempDir) -> std::path::PathBuf {
+    let req_dir = temp_dir.path().join("docs/development/requirements");
+    fs::create_dir_all(&req_dir).unwrap();
+    req_dir
+}
+
+// Helper function to create a category file in requirements directory
+fn create_category_file_in_req_dir(req_dir: &std::path::Path, category: &str, content: &str) {
+    let file_path = req_dir.join(format!("{}.md", category));
+    fs::write(&file_path, content).unwrap();
+}
+
+// Helper function to create AGENTS.md in requirements directory
+fn create_agents_file_in_req_dir(req_dir: &std::path::Path, content: &str) {
+    let file_path = req_dir.join("AGENTS.md");
+    fs::write(&file_path, content).unwrap();
+}
+
 // =============================================================================
 // Tests for reqlix_get_instructions (G.REQLIX_GET_I.*)
 // =============================================================================
@@ -488,5 +507,321 @@ fn test_get_version_always_succeeds() {
         assert_eq!(parsed["success"], true);
         assert!(parsed["data"]["version"].is_string());
     }
+}
+
+// =============================================================================
+// Tests for reqlix_delete_requirement (G.TOOLREQLIXD.*)
+// =============================================================================
+
+/// Test: reqlix_delete_requirement deletes existing requirement
+/// Precondition: System has category file with requirement
+/// Action: Call handle_delete_requirement with valid index
+/// Result: Requirement is deleted and metadata is returned
+/// Covers Requirement: G.TOOLREQLIXD.1, G.TOOLREQLIXD.3, G.TOOLREQLIXD.4
+#[test]
+fn test_delete_requirement_success() {
+    let temp_dir = TempDir::new().unwrap();
+    let req_dir = create_requirements_dir(&temp_dir);
+    create_agents_file_in_req_dir(&req_dir, "# Instructions\n");
+    let content = r#"# Test Chapter
+
+## G.T.1: First Requirement
+
+Content of first requirement.
+
+## G.T.2: Second Requirement
+
+Content of second requirement.
+"#;
+    create_category_file_in_req_dir(&req_dir, "general", content);
+
+    let params = reqlix::DeleteRequirementParams {
+        project_root: temp_dir.path().to_string_lossy().to_string(),
+        operation_description: "Test delete".to_string(),
+        index: "G.T.1".to_string(),
+    };
+    let result = RequirementsServer::handle_delete_requirement(params);
+    let parsed: serde_json::Value = serde_json::from_str(&result).unwrap();
+
+    // Verify success response (G.TOOLREQLIXD.4)
+    assert_eq!(parsed["success"], true);
+    assert_eq!(parsed["data"]["index"], "G.T.1");
+    assert_eq!(parsed["data"]["title"], "First Requirement");
+    assert_eq!(parsed["data"]["category"], "general");
+    assert_eq!(parsed["data"]["chapter"], "Test Chapter");
+
+    // Verify requirement is deleted from file
+    let file_content = fs::read_to_string(req_dir.join("general.md")).unwrap();
+    assert!(!file_content.contains("G.T.1"));
+    assert!(!file_content.contains("First Requirement"));
+    // Second requirement should still exist
+    assert!(file_content.contains("G.T.2"));
+    assert!(file_content.contains("Second Requirement"));
+}
+
+/// Test: reqlix_delete_requirement returns error for non-existent requirement
+/// Precondition: System has category file without the specified requirement
+/// Action: Call handle_delete_requirement with non-existent index
+/// Result: Function returns error "Requirement not found"
+/// Covers Requirement: G.TOOLREQLIXD.3 step 3, G.TOOLREQLIXD.4
+#[test]
+fn test_delete_requirement_not_found() {
+    let temp_dir = TempDir::new().unwrap();
+    let req_dir = create_requirements_dir(&temp_dir);
+    create_agents_file_in_req_dir(&req_dir, "# Instructions\n");
+    let content = r#"# Test Chapter
+
+## G.T.1: Test Requirement
+
+Content.
+"#;
+    create_category_file_in_req_dir(&req_dir, "general", content);
+
+    let params = reqlix::DeleteRequirementParams {
+        project_root: temp_dir.path().to_string_lossy().to_string(),
+        operation_description: "Test delete".to_string(),
+        index: "G.T.999".to_string(),
+    };
+    let result = RequirementsServer::handle_delete_requirement(params);
+    let parsed: serde_json::Value = serde_json::from_str(&result).unwrap();
+
+    assert_eq!(parsed["success"], false);
+    assert!(parsed["error"].as_str().unwrap().contains("not found"));
+}
+
+/// Test: reqlix_delete_requirement validates parameters
+/// Precondition: System has invalid parameters
+/// Action: Call handle_delete_requirement with invalid parameters
+/// Result: Function returns validation error before processing
+/// Covers Requirement: G.TOOLREQLIXD.5, G.P.1, G.P.2
+#[test]
+fn test_delete_requirement_validation() {
+    let params = reqlix::DeleteRequirementParams {
+        project_root: "".to_string(),
+        operation_description: "Test".to_string(),
+        index: "G.T.1".to_string(),
+    };
+    let result = RequirementsServer::handle_delete_requirement(params);
+    let parsed: serde_json::Value = serde_json::from_str(&result).unwrap();
+
+    assert_eq!(parsed["success"], false);
+    // Should fail on project_root validation
+    assert!(parsed["error"].as_str().unwrap().contains("project_root"));
+}
+
+/// Test: reqlix_delete_requirement removes empty chapter
+/// Precondition: System has chapter with single requirement
+/// Action: Delete the only requirement in chapter
+/// Result: Chapter heading is also removed
+/// Covers Requirement: G.TOOLREQLIXD.3 step 5
+#[test]
+fn test_delete_requirement_removes_empty_chapter() {
+    let temp_dir = TempDir::new().unwrap();
+    let req_dir = create_requirements_dir(&temp_dir);
+    create_agents_file_in_req_dir(&req_dir, "# Instructions\n");
+    let content = r#"# First Chapter
+
+## G.F.1: Only Requirement
+
+Content.
+
+# Second Chapter
+
+## G.S.1: Another Requirement
+
+More content.
+"#;
+    create_category_file_in_req_dir(&req_dir, "general", content);
+
+    let params = reqlix::DeleteRequirementParams {
+        project_root: temp_dir.path().to_string_lossy().to_string(),
+        operation_description: "Test delete".to_string(),
+        index: "G.F.1".to_string(),
+    };
+    let result = RequirementsServer::handle_delete_requirement(params);
+    let parsed: serde_json::Value = serde_json::from_str(&result).unwrap();
+
+    assert_eq!(parsed["success"], true);
+
+    // Verify chapter is removed
+    let file_content = fs::read_to_string(req_dir.join("general.md")).unwrap();
+    assert!(!file_content.contains("# First Chapter"), "Empty chapter should be removed");
+    assert!(!file_content.contains("G.F.1"));
+    // Second chapter should still exist
+    assert!(file_content.contains("# Second Chapter"));
+    assert!(file_content.contains("G.S.1"));
+}
+
+/// Test: reqlix_delete_requirement handles last requirement in file
+/// Precondition: System has category file with single requirement
+/// Action: Delete the only requirement
+/// Result: File becomes empty or contains only chapter heading
+/// Covers Requirement: G.TOOLREQLIXD.3 step 4, G.TOOLREQLIXD.3 step 5
+#[test]
+fn test_delete_requirement_last_in_file() {
+    let temp_dir = TempDir::new().unwrap();
+    let req_dir = create_requirements_dir(&temp_dir);
+    create_agents_file_in_req_dir(&req_dir, "# Instructions\n");
+    let content = r#"# Only Chapter
+
+## G.O.1: Only Requirement
+
+Content.
+"#;
+    create_category_file_in_req_dir(&req_dir, "general", content);
+
+    let params = reqlix::DeleteRequirementParams {
+        project_root: temp_dir.path().to_string_lossy().to_string(),
+        operation_description: "Test delete".to_string(),
+        index: "G.O.1".to_string(),
+    };
+    let result = RequirementsServer::handle_delete_requirement(params);
+    let parsed: serde_json::Value = serde_json::from_str(&result).unwrap();
+
+    assert_eq!(parsed["success"], true);
+
+    // Verify requirement is deleted
+    let file_content = fs::read_to_string(req_dir.join("general.md")).unwrap();
+    assert!(!file_content.contains("G.O.1"));
+    assert!(!file_content.contains("Only Requirement"));
+}
+
+// =============================================================================
+// Tests for G.R.11 (Blank line before headings)
+// =============================================================================
+
+/// Test: update_requirement ensures blank line before next heading
+/// Precondition: System has category file with requirements
+/// Action: Update requirement text
+/// Result: There is a blank line between updated text and next heading
+/// Covers Requirement: G.R.11
+#[test]
+fn test_update_requirement_blank_line_before_next_heading() {
+    let temp_dir = TempDir::new().unwrap();
+    let req_dir = create_requirements_dir(&temp_dir);
+    create_agents_file_in_req_dir(&req_dir, "# Instructions\n");
+    let content = r#"# Test Chapter
+
+## G.T.1: First Requirement
+
+Old content.
+
+## G.T.2: Second Requirement
+
+Content.
+"#;
+    create_category_file_in_req_dir(&req_dir, "general", content);
+
+    let params = reqlix::UpdateRequirementParams {
+        project_root: temp_dir.path().to_string_lossy().to_string(),
+        operation_description: "Test update".to_string(),
+        index: "G.T.1".to_string(),
+        text: "New content without trailing newline".to_string(),
+        title: None,
+    };
+    let result = RequirementsServer::handle_update_requirement(params);
+    let parsed: serde_json::Value = serde_json::from_str(&result).unwrap();
+
+    assert_eq!(parsed["success"], true);
+
+    // Verify blank line before next heading (G.R.11)
+    let file_content = fs::read_to_string(req_dir.join("general.md")).unwrap();
+    // Should have blank line before ## G.T.2
+    assert!(
+        file_content.contains("New content without trailing newline\n\n## G.T.2"),
+        "Should have blank line before next requirement heading. Content: {}",
+        file_content
+    );
+}
+
+/// Test: update_requirement ensures blank line before next chapter heading
+/// Precondition: System has category file with requirement before next chapter
+/// Action: Update requirement that is last in its chapter
+/// Result: There is a blank line between updated text and next chapter heading
+/// Covers Requirement: G.R.11
+#[test]
+fn test_update_requirement_blank_line_before_chapter_heading() {
+    let temp_dir = TempDir::new().unwrap();
+    let req_dir = create_requirements_dir(&temp_dir);
+    create_agents_file_in_req_dir(&req_dir, "# Instructions\n");
+    let content = r#"# First Chapter
+
+## G.F.1: Last In Chapter
+
+Old content.
+
+# Second Chapter
+
+## G.S.1: First In Second
+
+Content.
+"#;
+    create_category_file_in_req_dir(&req_dir, "general", content);
+
+    let params = reqlix::UpdateRequirementParams {
+        project_root: temp_dir.path().to_string_lossy().to_string(),
+        operation_description: "Test update".to_string(),
+        index: "G.F.1".to_string(),
+        text: "Updated content".to_string(),
+        title: None,
+    };
+    let result = RequirementsServer::handle_update_requirement(params);
+    let parsed: serde_json::Value = serde_json::from_str(&result).unwrap();
+
+    assert_eq!(parsed["success"], true);
+
+    // Verify blank line before next chapter heading (G.R.11)
+    let file_content = fs::read_to_string(req_dir.join("general.md")).unwrap();
+    assert!(
+        file_content.contains("Updated content\n\n# Second Chapter"),
+        "Should have blank line before next chapter heading. Content: {}",
+        file_content
+    );
+}
+
+/// Test: delete_requirement maintains blank line formatting
+/// Precondition: System has multiple requirements
+/// Action: Delete middle requirement
+/// Result: Proper blank lines are maintained between remaining requirements
+/// Covers Requirement: G.R.11
+#[test]
+fn test_delete_requirement_maintains_blank_lines() {
+    let temp_dir = TempDir::new().unwrap();
+    let req_dir = create_requirements_dir(&temp_dir);
+    create_agents_file_in_req_dir(&req_dir, "# Instructions\n");
+    let content = r#"# Test Chapter
+
+## G.T.1: First Requirement
+
+Content one.
+
+## G.T.2: Middle Requirement
+
+Content two.
+
+## G.T.3: Last Requirement
+
+Content three.
+"#;
+    create_category_file_in_req_dir(&req_dir, "general", content);
+
+    let params = reqlix::DeleteRequirementParams {
+        project_root: temp_dir.path().to_string_lossy().to_string(),
+        operation_description: "Test delete".to_string(),
+        index: "G.T.2".to_string(),
+    };
+    let result = RequirementsServer::handle_delete_requirement(params);
+    let parsed: serde_json::Value = serde_json::from_str(&result).unwrap();
+
+    assert_eq!(parsed["success"], true);
+
+    // Verify proper formatting after deletion
+    let file_content = fs::read_to_string(req_dir.join("general.md")).unwrap();
+    // Should have blank line before ## G.T.3
+    assert!(
+        file_content.contains("Content one.\n\n## G.T.3"),
+        "Should have blank line before next requirement after deletion. Content: {}",
+        file_content
+    );
 }
 
