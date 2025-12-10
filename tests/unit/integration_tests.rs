@@ -342,6 +342,45 @@ Content two.
     assert_eq!(requirements[1].title, "Second Requirement");
 }
 
+/// Test: find_requirement_streaming correctly identifies boundaries before next chapter
+/// Precondition: System has category file with requirement followed by level-1 heading (new chapter)
+/// Action: Call find_requirement_streaming for last requirement before new chapter
+/// Result: Requirement text does NOT include the next chapter heading (G.R.5: ends at same or higher level)
+/// Covers Requirement: G.R.5, G.REQLIX_GET_REQUIREMENT.3, G.REQLIX_GET_REQUIREMENT.4
+#[test]
+fn test_requirement_boundary_before_next_chapter() {
+    let temp_dir = TempDir::new().unwrap();
+    let content = r#"# First Chapter
+
+## G.F.1: Last Requirement In Chapter
+
+Content of last requirement.
+
+# Second Chapter
+
+## G.S.1: First Requirement In Second Chapter
+
+Content of second chapter requirement.
+"#;
+    create_category_file(&temp_dir, "general", content);
+    
+    // Get the last requirement in first chapter
+    let requirement = RequirementsServer::find_requirement_streaming(
+        &temp_dir.path().join("general.md"),
+        "general",
+        "G.F.1"
+    ).unwrap();
+    
+    // Verify requirement text does NOT include next chapter (G.R.5)
+    assert!(requirement.text.contains("Content of last requirement"));
+    assert!(!requirement.text.contains("# Second Chapter"), 
+        "Level-1 heading should end requirement, not be included in text");
+    assert!(!requirement.text.contains("G.S.1"), 
+        "Content after level-1 heading should not be in requirement");
+    assert!(!requirement.text.contains("Content of second chapter requirement"),
+        "Content from next chapter should not be in requirement");
+}
+
 // =============================================================================
 // Tests for parameter validation in tools (G.REQLIX_I.6, G.REQLIX_U.6)
 // =============================================================================
@@ -395,3 +434,4 @@ fn test_error_response_format() {
     assert!(!error_msg.is_empty());
     assert!(error_msg.contains("required") || error_msg.contains("exceeds"));
 }
+

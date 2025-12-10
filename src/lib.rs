@@ -1088,8 +1088,14 @@ impl RequirementsServer {
                         in_code_block_line = !in_code_block_line;
                     }
                     
-                    // Find next level-2 heading (not in code block)
+                    // Find next heading of same or higher level (not in code block) - G.R.5
                     if !in_code_block_line {
+                        // Level-1 heading ends requirement (higher level than level-2)
+                        if Self::parse_level1_heading(line).is_some() {
+                            requirement_end_idx = idx;
+                            break;
+                        }
+                        // Level-2 heading also ends requirement (same level)
                         if let Some((index, _)) = Self::parse_level2_heading(line) {
                             if index != search_index {
                                 requirement_end_idx = idx;
@@ -1726,9 +1732,15 @@ impl RequirementsServer {
                 in_code_block = !in_code_block;
             }
 
-            // Check for requirement heading (G.R.5, G.R.3)
-            // Only consider markdown level-2 headings that are not inside code blocks
+            // Check for heading boundaries (G.R.5, G.R.3)
+            // Only consider markdown headings that are not inside code blocks
             if !in_code_block {
+                // Level-1 heading ends requirement (higher level than level-2) - G.R.5
+                if heading_start.is_some() && Self::parse_level1_heading(line).is_some() {
+                    req_end = Some(line_start);
+                    break;
+                }
+                // Level-2 heading: either start of our requirement or end boundary
                 if let Some((index, _)) = Self::parse_level2_heading(line) {
                     if index == params.index {
                         // Found the requirement we're updating

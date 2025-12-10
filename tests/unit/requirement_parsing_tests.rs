@@ -212,22 +212,24 @@ fn test_find_requirement_streaming_boundary_next_requirement() {
     assert!(!req.text.contains("Title Two"));
 }
 
-/// Test: find_requirement_streaming with level-1 heading in requirement body
-/// Precondition: System has a category file with level-1 heading inside requirement
-/// Action: Call find_requirement_streaming for requirement containing "# Subheading"
-/// Result: Function includes level-1 heading as part of requirement text
+/// Test: find_requirement_streaming with level-1 heading ends requirement
+/// Precondition: System has a category file with level-1 heading after requirement
+/// Action: Call find_requirement_streaming for requirement before "# NextChapter"
+/// Result: Function does NOT include level-1 heading in requirement text (G.R.5: ends at same or higher level)
 /// Covers Requirement: G.REQLIX_GET_REQUIREMENT.3, G.REQLIX_GET_REQUIREMENT.4, G.R.5
 #[test]
-fn test_find_requirement_streaming_level1_in_body() {
+fn test_find_requirement_streaming_level1_ends_requirement() {
     let temp_dir = TempDir::new().unwrap();
     let file_path = temp_dir.path().join("test.md");
-    fs::write(&file_path, "# Chapter\n## G.G.1: Title\n# Subheading\nText\n").unwrap();
+    fs::write(&file_path, "# Chapter\n## G.G.1: Title\nText before\n# NextChapter\nText after\n").unwrap();
     
     let result = RequirementsServer::find_requirement_streaming(&file_path, "test", "G.G.1");
     assert!(result.is_ok());
     let req = result.unwrap();
-    assert!(req.text.contains("# Subheading"));
-    assert!(req.text.contains("Text"));
+    assert!(req.text.contains("Text before"));
+    // Level-1 heading should NOT be part of requirement text (G.R.5)
+    assert!(!req.text.contains("# NextChapter"), "Level-1 heading should end requirement, not be included in text");
+    assert!(!req.text.contains("Text after"), "Content after level-1 heading should not be in requirement");
 }
 
 /// Test: find_requirement_streaming with requirement not found

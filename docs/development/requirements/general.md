@@ -42,7 +42,7 @@ Category and chapter names must satisfy the following validation rules:
 
 **Chapter name validation:**
 - Must not be empty (enforced by [G.P.1](#gp1-parameter-constraints) max length constraint)
-- Must contain only uppercase and lowercase English letters (A-Z, a-z), spaces, colons (:), and hyphens (-)
+- Must contain only uppercase and lowercase English letters (A-Z, a-z), spaces, colons (:), hyphens (-), and underscores (_)
 - Must not start or end with whitespace
 - Must not contain newline characters (would break markdown heading structure)
 - Must be a valid markdown heading content
