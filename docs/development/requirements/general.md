@@ -99,50 +99,6 @@ When parsing requirements from markdown files, tools must correctly identify req
 
 A requirement starts with a level-2 ATX-style heading (see [G.R.3](#gr3-requirement-definition)). The requirement body is the content of this markdown section. The markdown parser automatically determines section boundaries (section ends at the next heading of the same or higher level, or at end of file).
 
-## G.C.1: Requirements directory location
-
-All tools must locate the requirements directory using the same algorithm as defined in
-[G.REQLIX_GET_I.3](#greqlix_get_i3-requirements-file-search-order) for `reqlix_get_instructions`. If AGENTS.md is not found,
-it must be created as defined in [G.REQLIX_GET_I.4](#greqlix_get_i4-requirements-file-creation).
-
-## G.C.2: Directory creation
-
-If the requirements directory does not exist, it must be created automatically (including parent directories).
-
-## G.C.3: AGENTS.md exclusive access
-
-The file AGENTS.md is used exclusively by `reqlix_get_instructions`. Other tools must not read or modify
-AGENTS.md. The LLM/model cannot modify AGENTS.md directly.
-
-## G.C.4: AGENTS.md protection
-
-The file AGENTS.md must never be deleted.
-
-## G.C.5: JSON response format
-
-All tool responses must be in JSON format. This includes both successful responses and errors.
-
-## G.C.6: Error response format
-
-Error responses must use the following JSON format:
-
-```json
-{
-  "success": false,
-  "error": "Human-readable error message"
-}
-```
-
-## G.C.7: Category lookup by prefix
-
-To find a category file by prefix:
-
-1. List all `*.md` files in the requirements directory (excluding AGENTS.md)
-2. For each file, extract category name from filename (without `.md`)
-3. Calculate what prefix this category would have using the algorithm in [G.R.4](#gr4-index-format)
-4. Return the category whose calculated prefix matches the search prefix
-5. If no category matches the prefix, return an error "Category not found"
-
 ## G.R.8: File encoding
 
 All requirement files must be encoded in UTF-8. All tools must read and write files using UTF-8 encoding. If a file cannot be read as UTF-8, the tool must return an error indicating encoding issues.
@@ -728,3 +684,49 @@ Errors (requirement not found, file system error, validation error): Use error f
 Before executing the deletion algorithm, the tool must validate all input parameters according to the constraints defined in [G.P.1](#gp1-parameter-constraints). If any parameter violates these constraints, the tool must return an error as specified in [G.P.2](#gp2-constraint-violation-error).
 
 This validation must occur before any file system operations or requirement processing.
+
+# Configuration
+
+## G.C.1: Requirements directory location
+
+All tools must locate the requirements directory using the same algorithm as defined in
+[G.REQLIX_GET_I.3](#greqlix_get_i3-requirements-file-search-order) for `reqlix_get_instructions`. If AGENTS.md is not found,
+it must be created as defined in [G.REQLIX_GET_I.4](#greqlix_get_i4-requirements-file-creation).
+
+## G.C.2: Directory creation
+
+If the requirements directory does not exist, it must be created automatically (including parent directories).
+
+## G.C.3: AGENTS.md exclusive access
+
+The file AGENTS.md is used exclusively by `reqlix_get_instructions`. Other tools must not read or modify
+AGENTS.md. The LLM/model cannot modify AGENTS.md directly.
+
+## G.C.4: AGENTS.md protection
+
+The file AGENTS.md must never be deleted.
+
+## G.C.5: JSON response format
+
+All tool responses must be in JSON format. This includes both successful responses and errors.
+
+## G.C.6: Error response format
+
+Error responses must use the following JSON format:
+
+```json
+{
+  "success": false,
+  "error": "Human-readable error message"
+}
+```
+
+## G.C.7: Category lookup by prefix
+
+To find a category file by prefix:
+
+1. List all `*.md` files in the requirements directory (excluding AGENTS.md)
+2. For each file, extract category name from filename (without `.md`)
+3. Calculate what prefix this category would have using the algorithm in [G.R.4](#gr4-index-format)
+4. Return the category whose calculated prefix matches the search prefix
+5. If no category matches the prefix, return an error "Category not found"

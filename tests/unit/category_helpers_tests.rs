@@ -178,3 +178,4 @@ fn test_find_category_by_prefix_empty_dir() {
     assert!(result.unwrap_err().contains("not found"));
 }
 
+
