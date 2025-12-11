@@ -189,7 +189,7 @@ See the [full changelog](https://github.com/${{ github.repository }}/compare/HEA
               echo "Error: Release ${{ github.ref_name }} is already published. Please create a new draft release or use a different tag."
               exit 1
             else
-              echo "Draft release found, will be updated and published"
+              echo "Draft release found, will be updated with artifacts"
             fi
           fi
         env:
