@@ -97,6 +97,13 @@ jobs:
             chmod +x "dist/${{ matrix.binary_name }}"
           fi
 
+      # Remove quarantine attribute for macOS binaries to avoid security warning
+      - name: Remove quarantine attribute (macOS)
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          xattr -d com.apple.quarantine "dist/${{ matrix.binary_name }}" || true
+
       # G.REL.9, G.REL.13: Create ZIP archive
       - name: Create ZIP archive
         shell: bash
