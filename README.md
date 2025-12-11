@@ -87,6 +87,20 @@ The server follows the MCP protocol, allowing LLM assistants to:
 - **Rust** 1.70+ (for building from source)
 - **Cargo** (Rust package manager)
 
+#### Download Pre-built Binaries (Recommended)
+
+Pre-built binaries are available for all major platforms in the [Releases](https://github.com/amogil/reqlix/releases) section:
+
+- **Linux**: x64 and ARM64
+- **macOS**: Intel (x86_64) and Apple Silicon (ARM64)
+- **Windows**: x64 and ARM64
+
+1. Download the appropriate ZIP archive for your platform
+2. Extract the binary from the archive
+3. Add it to your PATH or use it directly in your MCP client configuration
+
+**Note for macOS users**: If you see a security warning, see the [macOS Security Warning](#macos-security-warning) section in Troubleshooting.
+
 #### Building from Source
 
 ```bash
@@ -279,6 +293,22 @@ Another requirement description.
 - **Category names** must contain only lowercase letters (a-z) and underscores (_)
 - **Chapter names** can contain letters, spaces, colons, and hyphens
 - **Indices** must be in the format `CATEGORY.CHAPTER.NUMBER`
+
+### macOS Security Warning
+
+If you see a warning that macOS "could not verify reqlix is free of malware" when downloading the binary:
+
+**Option 1: Remove quarantine attribute (Recommended)**
+```bash
+xattr -d com.apple.quarantine /path/to/reqlix
+```
+
+**Option 2: Open via Finder**
+1. Right-click on the `reqlix` binary
+2. Select "Open" from the context menu
+3. Click "Open" in the security dialog
+
+This warning appears because the binary is not code-signed with an Apple Developer certificate. The binary is safe to use - it's built from open source code and the warning is a standard macOS security feature for unsigned applications.
 
 ## 📜 License
 
