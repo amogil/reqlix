@@ -6,7 +6,7 @@ name: Release
 # G.REL.1, G.REL.15: Trigger on release publication events
 on:
   release:
-    types: [published]
+    types: [ published ]
 
 jobs:
   build:
@@ -61,8 +61,18 @@ jobs:
       - name: Add Rust target
         run: rustup target add ${{ matrix.target }}
 
+      # Install cross-compilation tools for Linux ARM
+      - name: Install cross-compilation tools
+        if: matrix.target == 'aarch64-unknown-linux-gnu' && runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu
+
       # G.REL.12: Step 3 - Build release binary
       - name: Build release binary
+        env:
+          CC_aarch64_unknown_linux_gnu: aarch64-linux-gnu-gcc
+          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
         run: cargo build --release --target ${{ matrix.target }}
 
       # G.REL.12: Step 4 - Locate built binary and prepare directory
@@ -147,3 +157,4 @@ jobs:
           files: artifacts/**/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
