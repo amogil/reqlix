@@ -687,8 +687,11 @@ fn test_get_search_paths_custom_env() {
     std::env::set_var("REQLIX_REQ_REL_PATH", "custom/path");
 
     let result = RequirementsServer::get_search_paths("/test/project");
-    assert!(result.len() >= 1);
-    assert!(result[0] == PathBuf::from("/test/project/custom/path/AGENTS.md"));
+    assert!(!result.is_empty());
+    assert_eq!(
+        result[0],
+        PathBuf::from("/test/project/custom/path/AGENTS.md")
+    );
 
     // Restore original value
     match original {

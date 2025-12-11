@@ -1654,7 +1654,7 @@ fn test_read_requirements_streaming_ignore_level1() {
     assert!(result.is_ok());
     let requirements = result.unwrap();
     // Should include both requirements since Subchapter is treated as part of Chapter
-    assert!(requirements.len() >= 1);
+    assert!(!requirements.is_empty());
 }
 
 /// Test: find_requirement_streaming with simple requirement
