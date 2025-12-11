@@ -3,10 +3,11 @@
 
 name: Release
 
-# G.REL.1, G.REL.15: Trigger on release publication events
+# G.REL.1, G.REL.15: Trigger on tag creation (v* pattern)
 on:
-  release:
-    types: [ published ]
+  push:
+    tags:
+      - 'v*'
 
 jobs:
   build:
@@ -153,15 +154,44 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Setup GitHub CLI
+        uses: cli/cli@v1
+        with:
+          version: latest
+
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
           path: artifacts
 
-      - name: Upload to GitHub Release
+      - name: Check if release exists and delete if published
+        shell: bash
+        run: |
+          # Check if release exists
+          if gh release view "${{ github.ref_name }}" >/dev/null 2>&1; then
+            echo "Release exists, checking status..."
+            RELEASE_DRAFT=$(gh release view "${{ github.ref_name }}" --json isDraft -q .isDraft)
+            if [ "$RELEASE_DRAFT" = "false" ]; then
+              echo "Release is published, deleting to recreate with assets..."
+              gh release delete "${{ github.ref_name }}" --yes || true
+            else
+              echo "Release is draft, will be updated"
+            fi
+          else
+            echo "Release does not exist, will be created"
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create or update GitHub Release
         uses: softprops/action-gh-release@v1
         with:
+          tag_name: ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }}
           files: artifacts/**/*
+          draft: false
+          prerelease: false
+          make_latest: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
