@@ -27,3 +27,6 @@ mod category_helpers_tests;
 
 #[path = "unit/integration_tests.rs"]
 mod integration_tests;
+
+#[path = "unit/search_requirements_tests.rs"]
+mod search_requirements_tests;

@@ -84,6 +84,16 @@ Supports batch deletions with up to 100 indices. \
 Single delete: Returns JSON with \"success\": true and \"data\": {...}. On error, returns \"success\": false. \
 Batch delete: Returns \"success\": true and \"data\": [{...}, ...]. Each element has its own \"success\" and \"data\" or \"error\" field.";
 
+// G.TOOLREQLIXS.1
+const SEARCH_REQUIREMENTS_DESC: &str =
+    "Searches for requirements by keywords across all categories. \
+Accepts from 0 to 100 keywords. Each keyword max 200 characters. \
+Returns all requirements where the title or text contains at least one of the specified keywords. \
+Search is case-insensitive. \
+Returns JSON with \"success\": true and \"data\": {\"keywords\": [...], \"results\": [...]}. \
+If keywords array is empty, returns success with empty results array. \
+On error, returns JSON with \"success\": false and \"error\": \"error message\".";
+
 // =============================================================================
 // Placeholder content (G.REQLIX_GET_I.6)
 // =============================================================================
@@ -121,8 +131,10 @@ const MAX_CHAPTER_LEN: usize = 100;
 const MAX_INDEX_LEN: usize = 100;
 const MAX_TEXT_LEN: usize = 10000;
 const MAX_TITLE_LEN: usize = 100;
-// G.REQLIX_GET_REQUIREMENT.5, G.REQLIX_U.7, G.TOOLREQLIXD.6
+// G.REQLIX_GET_REQUIREMENT.5, G.REQLIX_U.7, G.TOOLREQLIXD.6, G.TOOLREQLIXS.5
 const MAX_BATCH_SIZE: usize = 100;
+// G.TOOLREQLIXS.5, G.P.1
+const MAX_KEYWORD_LEN: usize = 200;
 
 // =============================================================================
 // Parameter structures (G.REQLIX_GET_I.2, G.REQLIX_GET_CA.2, G.REQLIX_GET_CH.2, G.REQLIX_GET_REQUIREMENTS.2, G.REQLIX_GET_REQUIREMENT.2, G.REQLIX_I.2, G.REQLIX_U.2)
@@ -253,6 +265,28 @@ pub struct DeleteRequirementParams {
     pub operation_description: String,
     /// Requirement index or array of indices to delete (max 100). Example: "G.G.1" or ["G.G.1", "G.G.2"].
     pub index: IndexParam,
+}
+
+/// Keywords parameter that can be a single string or array of strings (G.TOOLREQLIXS.2)
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(untagged)]
+pub enum KeywordsParam {
+    /// Single keyword (e.g., "auth")
+    Single(String),
+    /// Array of keywords for search (max 100)
+    Batch(Vec<String>),
+}
+
+/// Parameters for reqlix_search_requirements (G.TOOLREQLIXS.2)
+#[derive(Debug, Serialize, Deserialize, JsonSchema)]
+pub struct SearchRequirementsParams {
+    /// Path to the project root directory.
+    pub project_root: String,
+    /// Brief description of the operation that LLM intends to perform.
+    pub operation_description: String,
+    /// Single keyword (max 200 characters) or array of keywords (0 to 100 elements, each max 200 characters).
+    /// Example: "auth" or ["auth", "user", "login"].
+    pub keywords: KeywordsParam,
 }
 
 // =============================================================================
@@ -539,6 +573,38 @@ impl RequirementsServer {
         }
 
         Ok(())
+    }
+
+    /// Validate keywords parameter (G.TOOLREQLIXS.5, G.TOOLREQLIXS.6)
+    /// Returns filtered non-empty keywords or error
+    #[cfg_attr(test, allow(dead_code))]
+    pub fn validate_keywords(keywords: &KeywordsParam) -> Result<Vec<String>, String> {
+        let keywords_vec = match keywords {
+            KeywordsParam::Single(s) => vec![s.clone()],
+            KeywordsParam::Batch(v) => v.clone(),
+        };
+
+        // G.TOOLREQLIXS.5: Maximum 100 keywords
+        if keywords_vec.len() > MAX_BATCH_SIZE {
+            return Err("Keywords count exceeds maximum limit of 100".to_string());
+        }
+
+        // G.TOOLREQLIXS.5: Validate each keyword length and filter empty strings
+        let mut filtered: Vec<String> = Vec::new();
+        for keyword in keywords_vec {
+            if keyword.len() > MAX_KEYWORD_LEN {
+                return Err(format!(
+                    "Keyword exceeds maximum length of {} characters",
+                    MAX_KEYWORD_LEN
+                ));
+            }
+            // Filter out empty strings (G.TOOLREQLIXS.5)
+            if !keyword.is_empty() {
+                filtered.push(keyword);
+            }
+        }
+
+        Ok(filtered)
     }
 
     // =========================================================================
@@ -2151,6 +2217,104 @@ impl RequirementsServer {
             }
         }
     }
+
+    /// reqlix_search_requirements (G.TOOLREQLIXS)
+    /// Searches for requirements by keywords across all categories (G.TOOLREQLIXS.3)
+    pub fn handle_search_requirements(params: SearchRequirementsParams) -> String {
+        // G.TOOLREQLIXS.6: Validate parameters in order
+        // Step 1: Validate project_root
+        if let Err(e) = Self::validate_project_root(&params.project_root) {
+            return Self::json_error(&e);
+        }
+        // Step 2: Validate operation_description
+        if let Err(e) = Self::validate_operation_description(&params.operation_description) {
+            return Self::json_error(&e);
+        }
+        // Step 3: Validate and filter keywords
+        let keywords = match Self::validate_keywords(&params.keywords) {
+            Ok(k) => k,
+            Err(e) => return Self::json_error(&e),
+        };
+
+        // G.TOOLREQLIXS.5, G.P.4: Empty keywords returns success with empty results
+        if keywords.is_empty() {
+            let empty_results: Vec<RequirementFull> = Vec::new();
+            return Self::json_success(json!({
+                "keywords": keywords,
+                "results": empty_results
+            }));
+        }
+
+        // Get requirements directory
+        let requirements_dir = match Self::get_requirements_dir(&params.project_root) {
+            Ok(d) => d,
+            Err(e) => return Self::json_error(&e),
+        };
+
+        // List all categories (G.TOOLREQLIXS.3 step 1)
+        let categories = match Self::list_categories(&requirements_dir) {
+            Ok(c) => c,
+            Err(e) => return Self::json_error(&e),
+        };
+
+        let mut results: Vec<RequirementFull> = Vec::new();
+
+        // Convert keywords to lowercase for case-insensitive search (G.TOOLREQLIXS.3 step 5)
+        let keywords_lower: Vec<String> = keywords.iter().map(|k| k.to_lowercase()).collect();
+
+        // G.TOOLREQLIXS.3 steps 1-7: Iterate over all categories, chapters, requirements
+        for category in &categories {
+            let category_path = requirements_dir.join(format!("{}.md", category));
+
+            // Read chapters (G.TOOLREQLIXS.3 step 2)
+            let chapters = match Self::read_chapters_streaming(&category_path) {
+                Ok(c) => c,
+                Err(_) => continue, // Skip categories with read errors
+            };
+
+            // For each chapter (G.TOOLREQLIXS.3 step 3)
+            for chapter in &chapters {
+                // Read requirements in chapter
+                let requirements = match Self::read_requirements_streaming(&category_path, chapter)
+                {
+                    Ok(r) => r,
+                    Err(_) => continue, // Skip chapters with read errors
+                };
+
+                // For each requirement (G.TOOLREQLIXS.3 step 4)
+                for req_summary in &requirements {
+                    // Get full requirement
+                    let requirement = match Self::find_requirement_streaming(
+                        &category_path,
+                        category,
+                        &req_summary.index,
+                    ) {
+                        Ok(r) => r,
+                        Err(_) => continue, // Skip requirements with read errors
+                    };
+
+                    // G.TOOLREQLIXS.3 step 5-6: Case-insensitive substring search in title OR text
+                    let title_lower = requirement.title.to_lowercase();
+                    let text_lower = requirement.text.to_lowercase();
+
+                    let matches = keywords_lower
+                        .iter()
+                        .any(|kw| title_lower.contains(kw) || text_lower.contains(kw));
+
+                    if matches {
+                        results.push(requirement);
+                    }
+                }
+            }
+        }
+
+        // G.TOOLREQLIXS.3 step 7, G.TOOLREQLIXS.4: Return results
+        // Note: Order is undefined (G.TOOLREQLIXS.3)
+        Self::json_success(json!({
+            "keywords": keywords,
+            "results": results
+        }))
+    }
 }
 
 // =============================================================================
@@ -2215,6 +2379,10 @@ impl ServerHandler for RequirementsServer {
                 Self::build_tool_schema::<DeleteRequirementParams>(
                     "reqlix_delete_requirement",
                     DELETE_REQUIREMENT_DESC,
+                ),
+                Self::build_tool_schema::<SearchRequirementsParams>(
+                    "reqlix_search_requirements",
+                    SEARCH_REQUIREMENTS_DESC,
                 ),
             ];
 
@@ -2308,6 +2476,15 @@ impl ServerHandler for RequirementsServer {
                                 rmcp::model::ErrorData::invalid_params(e.to_string(), None)
                             })?;
                     Self::handle_delete_requirement(params)
+                }
+                "reqlix_search_requirements" => {
+                    // G.TOOLREQLIXS.2: Parse parameters
+                    let params: SearchRequirementsParams =
+                        serde_json::from_value(request.arguments.unwrap_or_default().into())
+                            .map_err(|e| {
+                                rmcp::model::ErrorData::invalid_params(e.to_string(), None)
+                            })?;
+                    Self::handle_search_requirements(params)
                 }
                 _ => {
                     return Err(rmcp::model::ErrorData::invalid_params(
