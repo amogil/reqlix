@@ -1,4 +1,3 @@
-
 # General Requirements
 
 ## G.G.1: Language requirement
@@ -20,14 +19,16 @@ All tool parameters must satisfy the following constraints:
 - `category` - required, max 100 characters
 - `chapter` - required, max 100 characters
 - `index` - required, max 100 characters per index. Can be:
-  - Single string (e.g., "G.G.1")
-  - Array of strings for batch operations (max 100 elements) in `reqlix_get_requirement` and `reqlix_delete_requirement`
+    - Single string (e.g., "G.G.1")
+    - Array of strings for batch operations (max 100 elements) in `reqlix_get_requirement` and
+      `reqlix_delete_requirement`
 - `text` - required, max 10000 characters
 - `title` - required for `reqlix_insert_requirement`, optional for `reqlix_update_requirement`, max 100 characters
-- `items` - array of update objects for batch `reqlix_update_requirement` (max 100 elements). Each object must satisfy constraints for `index`, `text`, and `title`.
+- `items` - array of update objects for batch `reqlix_update_requirement` (max 100 elements). Each object must satisfy
+  constraints for `index`, `text`, and `title`.
 - `keywords` - required for `reqlix_search_requirements`, max 200 characters per keyword. Can be:
-  - Single string (e.g., "auth")
-  - Array of strings (max 100 elements)
+    - Single string (e.g., "auth")
+    - Array of strings (max 100 elements)
 
 ## G.P.2: Constraint violation error
 
@@ -38,26 +39,32 @@ If any parameter does not satisfy the constraints, the tool must return an error
 Category and chapter names must satisfy the following validation rules:
 
 **Category name validation:**
+
 - Must not be empty (enforced by [G.P.1](#gp1-parameter-constraints) max length constraint)
 - Must contain only lowercase English letters (a-z) and underscore (_)
-- Must be a valid filename (cannot contain characters that are invalid in filenames: `/`, `\`, `:`, `*`, `?`, `"`, `<`, `>`, `|`)
+- Must be a valid filename (cannot contain characters that are invalid in filenames: `/`, `\`, `:`, `*`, `?`, `"`, `<`,
+  `>`, `|`)
 - Must not be `AGENTS` (reserved name)
 - Must not start or end with whitespace
 - Must not contain consecutive dots (`.`)
 - Must not be `.` or `..`
 
 **Chapter name validation:**
+
 - Must not be empty (enforced by [G.P.1](#gp1-parameter-constraints) max length constraint)
-- Must contain only uppercase and lowercase English letters (A-Z, a-z), spaces, colons (:), hyphens (-), and underscores (_)
+- Must contain only uppercase and lowercase English letters (A-Z, a-z), spaces, colons (:), hyphens (-), and
+  underscores (_)
 - Must not start or end with whitespace
 - Must not contain newline characters (would break markdown heading structure)
 - Must be a valid markdown heading content
 
-If validation fails, the tool must return an error in the format specified in [G.C.6](#gc6-error-response-format) with a descriptive message indicating which validation rule was violated.
+If validation fails, the tool must return an error in the format specified in [G.C.6](#gc6-error-response-format) with a
+descriptive message indicating which validation rule was violated.
 
 ## G.P.4: Empty array handling
 
-When a batch parameter (`index` as array or `items`) is an empty array `[]`, the tool must return success with an empty data array:
+When a batch parameter (`index` as array or `items`) is an empty array `[]`, the tool must return success with an empty
+data array:
 
 ```json
 {
@@ -72,14 +79,16 @@ This is not considered an error.
 
 ## G.R.1: Category definition
 
-Category: a file `{category}.md` in the requirements directory (e.g., `general.md`, `testing.md`). The file format is markdown.
+Category: a file `{category}.md` in the requirements directory (e.g., `general.md`, `testing.md`). The file format is
+markdown.
 
 ## G.R.2: Chapter definition
 
 Chapter: a level-1 ATX-style heading in markdown within a category file.
 
-A chapter heading is an ATX-style heading with heading level 1 (one `#` character). 
-The heading content (text after the `#` and required space) is the chapter name. Example: `# Chapter Name` gives `Chapter Name`
+A chapter heading is an ATX-style heading with heading level 1 (one `#` character).
+The heading content (text after the `#` and required space) is the chapter name. Example: `# Chapter Name` gives
+`Chapter Name`
 
 ## G.R.3: Requirement definition
 
@@ -95,8 +104,16 @@ Requirement index format: `{category_prefix}.{chapter_prefix}.{number}`
 
 The dot (`.`) is the delimiter between parts. Each part is parsed by splitting the index on dots.
 
-- `{category_prefix}` - First letter(s) of the category name (uppercase). Algorithm: if the category file already contains requirements, extract the prefix from an existing requirement index; otherwise, calculate a unique prefix that does not conflict with other category files by taking the first letter(s) and adding more letters until unique. **Only ASCII letters (A-Z, a-z) are considered for prefix calculation; all other characters (spaces, underscores, hyphens, colons, numbers, etc.) are ignored.**
-- `{chapter_prefix}` - First letter(s) of the chapter name (uppercase). Algorithm: if the chapter already contains requirements, extract the prefix from an existing requirement index; otherwise, calculate a unique prefix that does not conflict with other chapters in the same category by taking the first letter(s) of the chapter name (using uppercase) and adding more letters until unique. **Only ASCII letters (A-Z, a-z) are considered for prefix calculation; all other characters (spaces, colons, hyphens, numbers, etc.) are ignored.**
+- `{category_prefix}` - First letter(s) of the category name (uppercase). Algorithm: if the category file already
+  contains requirements, extract the prefix from an existing requirement index; otherwise, calculate a unique prefix
+  that does not conflict with other category files by taking the first letter(s) and adding more letters until unique. *
+  *Only ASCII letters (A-Z, a-z) are considered for prefix calculation; all other characters (spaces, underscores,
+  hyphens, colons, numbers, etc.) are ignored.**
+- `{chapter_prefix}` - First letter(s) of the chapter name (uppercase). Algorithm: if the chapter already contains
+  requirements, extract the prefix from an existing requirement index; otherwise, calculate a unique prefix that does
+  not conflict with other chapters in the same category by taking the first letter(s) of the chapter name (using
+  uppercase) and adding more letters until unique. **Only ASCII letters (A-Z, a-z) are considered for prefix
+  calculation; all other characters (spaces, colons, hyphens, numbers, etc.) are ignored.**
 - `{number}` - Sequential number of the requirement within the chapter (1, 2, 3, ...).
 
 Examples:
@@ -110,24 +127,29 @@ Examples:
 - Category `general`, chapter `reqlix_insert_requirement` → G.R.1, G.R.2, ... (if unique) or longer prefix if conflicts
 - Category `general`, chapter `reqlix_update_requirement` → G.R.1, G.R.2, ... (if unique) or longer prefix if conflicts
 - Category `testing`, chapter `Unit Tests` → T.U.1, T.U.2, ...
-- Category `general`, chapter `Chapter: Sub-Chapter Name` → G.C.1, G.C.2, ... (only letters "ChapterSubChapterName" are considered)
+- Category `general`, chapter `Chapter: Sub-Chapter Name` → G.C.1, G.C.2, ... (only letters "ChapterSubChapterName" are
+  considered)
 
 ## G.R.5: Requirement parsing boundaries
 
 When parsing requirements from markdown files, tools must correctly identify requirement boundaries:
 
-A requirement starts with a level-2 ATX-style heading (see [G.R.3](#gr3-requirement-definition)). The requirement body is the content of this markdown section. The markdown parser automatically determines section boundaries (section ends at the next heading of the same or higher level, or at end of file).
+A requirement starts with a level-2 ATX-style heading (see [G.R.3](#gr3-requirement-definition)). The requirement body
+is the content of this markdown section. The markdown parser automatically determines section boundaries (section ends
+at the next heading of the same or higher level, or at end of file).
 
 ## G.R.8: File encoding
 
-All requirement files must be encoded in UTF-8. All tools must read and write files using UTF-8 encoding. If a file cannot be read as UTF-8, the tool must return an error indicating encoding issues.
+All requirement files must be encoded in UTF-8. All tools must read and write files using UTF-8 encoding. If a file
+cannot be read as UTF-8, the tool must return an error indicating encoding issues.
 
 ## G.R.9: File system error handling
 
 All tools must handle file system errors gracefully. Common errors include:
 
 - Permission denied: Return error "Permission denied: {path}"
-- File not found: For read operations, return appropriate error (e.g., "Category not found", "Requirement not found"). For write operations, create files/directories as needed (see [G.C.2](#gc2-directory-creation))
+- File not found: For read operations, return appropriate error (e.g., "Category not found", "Requirement not found").
+  For write operations, create files/directories as needed (see [G.C.2](#gc2-directory-creation))
 - Disk full: Return error "Disk full: cannot write to {path}"
 - Invalid path: Return error "Invalid path: {path}"
 - Encoding errors: Return error "Encoding error: file is not valid UTF-8"
@@ -138,19 +160,26 @@ All file system errors must be returned in the JSON error format specified in [G
 
 Empty files must be handled as follows:
 
-- **Empty category file**: An empty category file (containing only whitespace or no content) is considered valid. It has no chapters and no requirements. Tools must return empty arrays for chapters and requirements when querying an empty category file.
+- **Empty category file**: An empty category file (containing only whitespace or no content) is considered valid. It has
+  no chapters and no requirements. Tools must return empty arrays for chapters and requirements when querying an empty
+  category file.
 
-- **Category file with only whitespace**: Files containing only whitespace (spaces, tabs, newlines) are treated as empty files.
+- **Category file with only whitespace**: Files containing only whitespace (spaces, tabs, newlines) are treated as empty
+  files.
 
-- **Chapter with no requirements**: A chapter that exists but contains no requirements (only the level-1 heading) is valid. Tools must return an empty requirements array for such chapters.
+- **Chapter with no requirements**: A chapter that exists but contains no requirements (only the level-1 heading) is
+  valid. Tools must return an empty requirements array for such chapters.
 
-- **File creation**: When creating a new category file, it must be created as an empty file (or with only the initial chapter heading if a chapter is being added).
+- **File creation**: When creating a new category file, it must be created as an empty file (or with only the initial
+  chapter heading if a chapter is being added).
 
 ## G.R.11: Blank line before headings
 
-When writing requirements to files, there must always be a blank line between the requirement text and the next heading (level-1 or level-2).
+When writing requirements to files, there must always be a blank line between the requirement text and the next
+heading (level-1 or level-2).
 
 **Correct:**
+
 ```markdown
 Requirement text content.
 
@@ -158,8 +187,10 @@ Requirement text content.
 ```
 
 **Incorrect:**
+
 ```markdown
 Requirement text content.
+
 ## G.G.2: Next requirement
 ```
 
@@ -167,17 +198,21 @@ This ensures proper markdown rendering and readability.
 
 ## G.R.12: Exact heading match
 
-When searching for chapters or requirements by name/index, tools must use exact heading match after proper markdown parsing, not substring search.
+When searching for chapters or requirements by name/index, tools must use exact heading match after proper markdown
+parsing, not substring search.
 
 **Correct approach:**
+
 1. Parse file line by line
 2. Identify headings using markdown parser
 3. Extract heading text and compare exactly
 
 **Incorrect approach:**
+
 - Using `content.find("# ChapterName")` which may match `# ChapterName` as substring of `# ChapterNameExtended`
 
-This prevents bugs where chapter "Foo" is incorrectly matched when searching in a file containing both "# Foobar" and "# Foo".
+This prevents bugs where chapter "Foo" is incorrectly matched when searching in a file containing both "# Foobar" and "#
+Foo".
 
 # Tool: reqlix_get_instructions
 
@@ -404,7 +439,8 @@ Parameters:
 
 ## G.REQLIX_GET_REQUIREMENTS.3: Implementation details
 
-The tool must parse requirements according to [G.R.3](#gr3-requirement-definition) within the specified chapter (see [G.R.2](#gr2-chapter-definition), [G.R.5](#gr5-requirement-parsing-boundaries)).
+The tool must parse requirements according to [G.R.3](#gr3-requirement-definition) within the specified chapter (
+see [G.R.2](#gr2-chapter-definition), [G.R.5](#gr5-requirement-parsing-boundaries)).
 
 ## G.REQLIX_GET_REQUIREMENTS.4: Response format
 
@@ -458,19 +494,25 @@ Parameters:
 
 - `project_root` (string, required) - Path to the project root directory.
 - `operation_description` (string, required) - Brief description of the operation that LLM intends to perform.
-- `index` (string | string[], required) - Requirement index or array of indices (max 100). Example: "G.G.1" or ["G.G.1", "G.G.2", "T.U.1"].
+- `index` (string | string[], required) - Requirement index or array of indices (max 100). Example: "G.G.1"
+  or ["G.G.1", "G.G.2", "T.U.1"].
 
 ## G.REQLIX_GET_REQUIREMENT.3: Index parsing and file lookup
 
 The tool must parse the index according to [G.R.4](#gr4-index-format) by splitting on dots (`.`).
 
 **Single index (string):**
+
 1. Use algorithm from [G.C.7](#gc7-category-lookup-by-prefix) to find category by prefix
-2. Find the requirement by full index in the category file (see [G.R.3](#gr3-requirement-definition), [G.R.5](#gr5-requirement-parsing-boundaries)). Return both the title (extracted from the heading content) and body text.
+2. Find the requirement by full index in the category file (
+   see [G.R.3](#gr3-requirement-definition), [G.R.5](#gr5-requirement-parsing-boundaries)). Return both the title (
+   extracted from the heading content) and body text.
 3. If requirement not found, return error "Requirement not found"
 
 **Batch request (array of strings):**
-1. Validate array length does not exceed 100 (see [G.REQLIX_GET_REQUIREMENT.5](#greqlix_get_requirement5-batch-request-limit))
+
+1. Validate array length does not exceed 100 (
+   see [G.REQLIX_GET_REQUIREMENT.5](#greqlix_get_requirement5-batch-request-limit))
 2. Process **all** indices in order using the single index algorithm
 3. For each index, return either success result or error object
 4. Return array of results in the same order as input indices (each element is either success data or error object)
@@ -568,13 +610,18 @@ The tool must execute the following steps:
 
 1. **Find or create category**: Locate the category file `{category}.md`. If not found, create a new empty file.
 
-2. **Find or create chapter**: Search for a chapter heading matching the chapter name (see [G.R.2](#gr2-chapter-definition)). If not found, append a chapter heading to the end of the file.
+2. **Find or create chapter**: Search for a chapter heading matching the chapter name (
+   see [G.R.2](#gr2-chapter-definition)). If not found, append a chapter heading to the end of the file.
 
-3. **Validate title uniqueness**: Check that the title is unique within the chapter (see [G.R.3](#gr3-requirement-definition)). If a requirement with the same title already exists, return an error "Title already exists in chapter".
+3. **Validate title uniqueness**: Check that the title is unique within the chapter (
+   see [G.R.3](#gr3-requirement-definition)). If a requirement with the same title already exists, return an error "
+   Title already exists in chapter".
 
-4. **Generate index**: Create the requirement index according to [G.R.4](#gr4-index-format). Reuse existing prefixes when available, otherwise calculate unique prefixes.
+4. **Generate index**: Create the requirement index according to [G.R.4](#gr4-index-format). Reuse existing prefixes
+   when available, otherwise calculate unique prefixes.
 
-5. **Insert requirement**: Append a requirement heading with content `{index}: {title}` followed by the requirement text (see [G.R.3](#gr3-requirement-definition)).
+5. **Insert requirement**: Append a requirement heading with content `{index}: {title}` followed by the requirement
+   text (see [G.R.3](#gr3-requirement-definition)).
 
 6. **Return result**: Return the full requirement data.
 
@@ -599,7 +646,9 @@ Errors (file system error, title already exists): Use error format from [G.C.6](
 
 ## G.REQLIX_I.6: Parameter validation
 
-Before executing the insertion algorithm, the tool must validate all input parameters according to the constraints defined in [G.P.1](#gp1-parameter-constraints). If any parameter violates these constraints, the tool must return an error as specified in [G.P.2](#gp2-constraint-violation-error).
+Before executing the insertion algorithm, the tool must validate all input parameters according to the constraints
+defined in [G.P.1](#gp1-parameter-constraints). If any parameter violates these constraints, the tool must return an
+error as specified in [G.P.2](#gp2-constraint-violation-error).
 
 This validation must occur before any file system operations or requirement processing.
 
@@ -629,6 +678,7 @@ Each element in the array has its own "success" and "data" or "error" field.
 Parameters:
 
 **Single update:**
+
 - `project_root` (string, required) - Path to the project root directory.
 - `operation_description` (string, required) - Brief description of the operation that LLM intends to perform.
 - `index` (string, required) - Requirement index (e.g., "G.G.1", "T.U.2").
@@ -636,12 +686,13 @@ Parameters:
 - `title` (string, optional) - New requirement title. If provided, must be unique within the chapter.
 
 **Batch update:**
+
 - `project_root` (string, required) - Path to the project root directory.
 - `operation_description` (string, required) - Brief description of the operation that LLM intends to perform.
 - `items` (array, required) - Array of update objects (max 100). Each object contains:
-  - `index` (string, required) - Requirement index.
-  - `text` (string, required) - New requirement text.
-  - `title` (string, optional) - New requirement title.
+    - `index` (string, required) - Requirement index.
+    - `text` (string, required) - New requirement text.
+    - `title` (string, optional) - New requirement title.
 
 Note: Use either `index`+`text`+`title` for single update OR `items` for batch update, not both.
 
@@ -656,12 +707,15 @@ The tool must execute the following steps:
 2. **Parse index**: Extract category prefix, chapter prefix, and requirement number from the index
    (see [G.R.4](#gr4-index-format)).
 
-3. **Find requirement**: Locate the requirement by its index (see [G.REQLIX_GET_REQUIREMENT.3](#greqlix_get_requirement3-index-parsing-and-file-lookup)). If not found, return error.
+3. **Find requirement**: Locate the requirement by its index (
+   see [G.REQLIX_GET_REQUIREMENT.3](#greqlix_get_requirement3-index-parsing-and-file-lookup)). If not found, return
+   error.
 
 4. **Determine new title**: If `title` parameter is provided, use it. Otherwise, keep the existing title.
 
 5. **Validate title uniqueness**: If a new title was provided, check that it is unique within the chapter
-   (excluding the current requirement) (see [G.R.3](#gr3-requirement-definition)). If a requirement with the same title already exists, return an error
+   (excluding the current requirement) (see [G.R.3](#gr3-requirement-definition)). If a requirement with the same title
+   already exists, return an error
    "Title already exists in chapter".
 
 6. **Update requirement**: Replace the existing requirement heading and body with the new title (or keep existing)
@@ -671,13 +725,15 @@ The tool must execute the following steps:
 
 **Batch update (when `items` parameter is provided):**
 
-1. **Validate batch size**: Ensure `items` array length does not exceed 100 (see [G.REQLIX_U.7](#greqlix_u7-batch-update-limit)).
+1. **Validate batch size**: Ensure `items` array length does not exceed 100 (
+   see [G.REQLIX_U.7](#greqlix_u7-batch-update-limit)).
 
 2. **Process all items**: For each item in the array, execute steps 1-6 from single update algorithm.
 
 3. For each item, return either success result or error object.
 
-4. **Return results**: Return array of results in the same order as input items (each element is either success data or error object).
+4. **Return results**: Return array of results in the same order as input items (each element is either success data or
+   error object).
 
 ## G.REQLIX_U.4: Response format
 
@@ -720,11 +776,14 @@ The tool must execute the following steps:
 }
 ```
 
-**Single update error** (requirement not found, file system error, title already exists, validation error): Use error format from [G.C.6](#gc6-error-response-format).
+**Single update error** (requirement not found, file system error, title already exists, validation error): Use error
+format from [G.C.6](#gc6-error-response-format).
 
 ## G.REQLIX_U.6: Parameter validation
 
-Before executing the update algorithm, the tool must validate all input parameters according to the constraints defined in [G.P.1](#gp1-parameter-constraints). If any parameter violates these constraints, the tool must return an error as specified in [G.P.2](#gp2-constraint-violation-error).
+Before executing the update algorithm, the tool must validate all input parameters according to the constraints defined
+in [G.P.1](#gp1-parameter-constraints). If any parameter violates these constraints, the tool must return an error as
+specified in [G.P.2](#gp2-constraint-violation-error).
 
 This validation must occur before any file system operations or requirement processing.
 
@@ -747,6 +806,7 @@ This tool has no parameters.
 
 Returns JSON with "success": true and "data": {"version": "x.y.z"}.
 ```
+
 ## G.TOOLREQLIXGETV.2: Response format
 
 Success:
@@ -761,6 +821,7 @@ Success:
 ```
 
 This tool always succeeds and does not return errors.
+
 ## G.TOOLREQLIXGETV.3: Implementation details
 
 The tool must return the version string from `Cargo.toml` using the `env!("CARGO_PKG_VERSION")` macro at compile time.
@@ -791,7 +852,8 @@ Parameters:
 
 - `project_root` (string, required) - Path to the project root directory.
 - `operation_description` (string, required) - Brief description of the operation that LLM intends to perform.
-- `index` (string | string[], required) - Requirement index or array of indices to delete (max 100). Example: "G.G.1" or ["G.G.1", "G.G.2", "T.U.1"].
+- `index` (string | string[], required) - Requirement index or array of indices to delete (max 100). Example: "G.G.1"
+  or ["G.G.1", "G.G.2", "T.U.1"].
 
 ## G.TOOLREQLIXD.3: Algorithm
 
@@ -799,27 +861,35 @@ The tool must execute the following steps:
 
 **Single delete (when `index` is a string):**
 
-1. **Validate parameters**: Validate all input parameters according to [G.TOOLREQLIXD.5](#gtoolreqlixd5-parameter-validation).
+1. **Validate parameters**: Validate all input parameters according
+   to [G.TOOLREQLIXD.5](#gtoolreqlixd5-parameter-validation).
 
-2. **Parse index**: Extract category prefix, chapter prefix, and requirement number from the index (see [G.R.4](#gr4-index-format)).
+2. **Parse index**: Extract category prefix, chapter prefix, and requirement number from the index (
+   see [G.R.4](#gr4-index-format)).
 
-3. **Find requirement**: Locate the requirement by its index (see [G.REQLIX_GET_REQUIREMENT.3](#greqlix_get_requirement3-index-parsing-and-file-lookup)). If not found, return error "Requirement not found".
+3. **Find requirement**: Locate the requirement by its index (
+   see [G.REQLIX_GET_REQUIREMENT.3](#greqlix_get_requirement3-index-parsing-and-file-lookup)). If not found, return
+   error "Requirement not found".
 
-4. **Delete requirement**: Remove the requirement heading and body from the category file. The requirement boundaries are determined according to [G.R.5](#gr5-requirement-parsing-boundaries).
+4. **Delete requirement**: Remove the requirement heading and body from the category file. The requirement boundaries
+   are determined according to [G.R.5](#gr5-requirement-parsing-boundaries).
 
-5. **Delete empty chapter**: If the chapter becomes empty after deleting the requirement (no more requirements in the chapter), remove the chapter heading from the category file.
+5. **Delete empty chapter**: If the chapter becomes empty after deleting the requirement (no more requirements in the
+   chapter), remove the chapter heading from the category file.
 
 6. **Return result**: Return the deleted requirement metadata (index, title, category, chapter).
 
 **Batch delete (when `index` is an array):**
 
-1. **Validate batch size**: Ensure array length does not exceed 100 (see [G.TOOLREQLIXD.6](#gtoolreqlixd6-batch-delete-limit)).
+1. **Validate batch size**: Ensure array length does not exceed 100 (
+   see [G.TOOLREQLIXD.6](#gtoolreqlixd6-batch-delete-limit)).
 
 2. **Process all indices**: For each index in the array, execute steps 1-5 from single delete algorithm.
 
 3. For each index, return either success result or error object.
 
-4. **Return results**: Return array of results in the same order as input indices (each element is either success data or error object).
+4. **Return results**: Return array of results in the same order as input indices (each element is either success data
+   or error object).
 
 ## G.TOOLREQLIXD.4: Response format
 
@@ -860,11 +930,14 @@ The tool must execute the following steps:
 }
 ```
 
-**Single delete error** (requirement not found, file system error, validation error): Use error format from [G.C.6](#gc6-error-response-format).
+**Single delete error** (requirement not found, file system error, validation error): Use error format
+from [G.C.6](#gc6-error-response-format).
 
 ## G.TOOLREQLIXD.5: Parameter validation
 
-Before executing the deletion algorithm, the tool must validate all input parameters according to the constraints defined in [G.P.1](#gp1-parameter-constraints). If any parameter violates these constraints, the tool must return an error as specified in [G.P.2](#gp2-constraint-violation-error).
+Before executing the deletion algorithm, the tool must validate all input parameters according to the constraints
+defined in [G.P.1](#gp1-parameter-constraints). If any parameter violates these constraints, the tool must return an
+error as specified in [G.P.2](#gp2-constraint-violation-error).
 
 This validation must occur before any file system operations or requirement processing.
 
@@ -879,7 +952,8 @@ If more than 100 indices are provided, return error: "Batch delete exceeds maxim
 ## G.C.1: Requirements directory location
 
 All tools must locate the requirements directory using the same algorithm as defined in
-[G.REQLIX_GET_I.3](#greqlix_get_i3-requirements-file-search-order) for `reqlix_get_instructions`. If AGENTS.md is not found,
+[G.REQLIX_GET_I.3](#greqlix_get_i3-requirements-file-search-order) for `reqlix_get_instructions`. If AGENTS.md is not
+found,
 it must be created as defined in [G.REQLIX_GET_I.4](#greqlix_get_i4-requirements-file-creation).
 
 ## G.C.2: Directory creation
@@ -943,7 +1017,8 @@ Parameters:
 
 - `project_root` (string, required) - Path to the project root directory.
 - `operation_description` (string, required) - Brief description of the operation that LLM intends to perform.
-- `keywords` (string | string[], required) - Single keyword (max 200 characters) or array of keywords (0 to 100 elements, each max 200 characters). Example: "auth" or ["auth", "user", "login"].
+- `keywords` (string | string[], required) - Single keyword (max 200 characters) or array of keywords (0 to 100
+  elements, each max 200 characters). Example: "auth" or ["auth", "user", "login"].
 
 ## G.TOOLREQLIXS.3: Search logic
 
@@ -967,7 +1042,10 @@ Search algorithm:
 {
   "success": true,
   "data": {
-    "keywords": ["auth", "user"],
+    "keywords": [
+      "auth",
+      "user"
+    ],
     "results": [
       {
         "index": "G.G.1",
@@ -994,7 +1072,9 @@ Search algorithm:
 {
   "success": true,
   "data": {
-    "keywords": ["nonexistent"],
+    "keywords": [
+      "nonexistent"
+    ],
     "results": []
   }
 }
@@ -1023,13 +1103,17 @@ The tool accepts from 0 to 100 keywords, each max 200 characters:
 - Maximum: 100 keywords (exceeding returns error: "Keywords count exceeds maximum limit of 100")
 - Maximum keyword length: 200 characters (exceeding returns error)
 
-Empty strings within the keywords array are filtered out before search. If after filtering all keywords are empty, treat as empty array.
+Empty strings within the keywords array are filtered out before search. If after filtering all keywords are empty, treat
+as empty array.
 
 ## G.TOOLREQLIXS.6: Parameter validation
 
-Before executing the search algorithm, the tool must validate all input parameters according to the constraints defined in G.P.1 and G.TOOLREQLIXS.5. If any parameter violates these constraints, the tool must return an error as specified in G.P.2.
+Before executing the search algorithm, the tool must validate all input parameters according to the constraints defined
+in G.P.1 and G.TOOLREQLIXS.5. If any parameter violates these constraints, the tool must return an error as specified in
+G.P.2.
 
 Validation order:
+
 1. Validate `project_root` (required, max 1000 characters)
 2. Validate `operation_description` (required, max 10000 characters)
 3. Validate `keywords` (max 100 elements, each max 200 characters)
@@ -1040,9 +1124,12 @@ This validation must occur before any file system operations or requirement proc
 
 ## G.TE.1: Test file structure and organization
 
-Test files must be organized according to requirement chapters. Each requirement chapter should have a corresponding test file that covers all requirements in that chapter.
+Test files must be organized according to requirement chapters. Each requirement chapter should have a corresponding
+test file that covers all requirements in that chapter.
 
-Test files are located in `tests/unit/` directory. For the complete mapping of requirement chapters to test files, see G.TE.5. Common helper functions are located in `tests/unit/common/mod.rs` and must be used instead of duplicating helper code across test files (see G.TE.6 for details).
+Test files are located in `tests/unit/` directory. For the complete mapping of requirement chapters to test files, see
+G.TE.5. Common helper functions are located in `tests/unit/common/mod.rs` and must be used instead of duplicating helper
+code across test files (see G.TE.6 for details).
 
 ## G.TE.2: Test comment format
 
@@ -1055,12 +1142,13 @@ Each test function must have a documentation comment (`///`) that follows this f
 /// Result: <what result is expected>
 /// Covers Requirement: <requirement_index>
 #[test]
-fn test_<function_name>_<scenario>() {
-    // ...
+fn test_<function_name>_ < scenario>() {
+// ...
 }
 ```
 
 The comment must include:
+
 1. Brief description of what the test verifies
 2. **Precondition** - What state the system is in before the test executes
 3. **Action** - What action is performed during the test
@@ -1068,6 +1156,7 @@ The comment must include:
 5. **Covers Requirement** - List all requirement indices covered by this test
 
 Example:
+
 ```rust
 /// Test: validate_project_root with empty string
 /// Precondition: System has no project_root value
@@ -1092,24 +1181,28 @@ Each test file must start with a header comment that includes:
 2. List of all requirement indices covered by tests in this file
 
 Format:
+
 ```rust
 // Tests for <Chapter Name> (<Requirement Prefix>.*)
 // Covers Requirements: <list of all requirement indices>
 ```
 
 Example:
+
 ```rust
 // Tests for Parameter Constraints (G.P.*)
 // Covers Requirements: G.P.1, G.P.2, G.P.3, G.P.4
 ```
 
 For tool-specific test files:
+
 ```rust
 // Tests for Tool: <tool_name> (<Requirement Prefix>.*)
 // Covers Requirements: <list of all requirement indices>
 ```
 
 Example:
+
 ```rust
 // Tests for Tool: reqlix_search_requirements (G.TOOLREQLIXS.*)
 // Covers Requirements: G.TOOLREQLIXS.1, G.TOOLREQLIXS.2, G.TOOLREQLIXS.3, G.TOOLREQLIXS.4, G.TOOLREQLIXS.5, G.TOOLREQLIXS.6
@@ -1120,6 +1213,7 @@ Example:
 Tests within a file must be grouped by requirement sections using section comments.
 
 Format:
+
 ```rust
 // =============================================================================
 // Tests for <Requirement Index>: <Requirement Title>
@@ -1135,11 +1229,12 @@ Format:
 /// Covers Requirement: ...
 #[test]
 fn test_...() {
-    // ...
+// ...
 }
 ```
 
 Example:
+
 ```rust
 // =============================================================================
 // Tests for G.P.1, G.P.2: Parameter constraints and validation
@@ -1159,22 +1254,26 @@ fn test_validate_project_root_empty() {
 ```
 
 This structure makes it easy to:
+
 - Find tests for specific requirements
 - Understand test coverage
 - Navigate large test files
 
-Note: All test comments must follow the format specified in G.TE.2 (including Precondition, Action, Result, and Covers Requirement).
+Note: All test comments must follow the format specified in G.TE.2 (including Precondition, Action, Result, and Covers
+Requirement).
 
 ## G.TE.5: Requirement chapter to test file mapping
 
 Each requirement chapter must have a corresponding test file. The mapping is as follows:
 
 **General Requirements Chapters:**
+
 - "Parameter Constraints" (G.P.*) → `parameter_constraints_tests.rs`
 - "Requirements Storage Format" (G.R.*) → `requirements_storage_format_tests.rs`
 - "Configuration" (G.C.*) → `configuration_tests.rs`
 
 **Tool-Specific Chapters:**
+
 - "Tool: reqlix_get_instructions" (G.REQLIX_GET_I.*) → `tool_get_instructions_tests.rs`
 - "Tool: reqlix_get_categories" (G.REQLIX_GET_CA.*) → `tool_get_categories_tests.rs`
 - "Tool: reqlix_get_chapters" (G.REQLIX_GET_CH.*) → `tool_get_chapters_tests.rs`
@@ -1193,14 +1292,17 @@ When adding new requirement chapters, create a corresponding test file following
 All test files must use common helper functions from `tests/unit/common/mod.rs` instead of duplicating helper code.
 
 Available helper functions:
+
 - `create_requirements_dir(temp_dir: &TempDir) -> PathBuf` - Creates requirements directory structure
 - `create_category_file(temp_dir: &TempDir, category: &str, content: &str)` - Creates category file in temp directory
 - `create_agents_file(temp_dir: &TempDir, content: &str)` - Creates AGENTS.md in temp directory
-- `create_category_file_in_req_dir(req_dir: &Path, category: &str, content: &str)` - Creates category file in requirements directory
+- `create_category_file_in_req_dir(req_dir: &Path, category: &str, content: &str)` - Creates category file in
+  requirements directory
 - `create_agents_file_in_req_dir(req_dir: &Path, content: &str)` - Creates AGENTS.md in requirements directory
 - `parse_response(response: &str) -> Value` - Parses JSON response string
 
 Import format:
+
 ```rust
 use super::common::{
     create_agents_file_in_req_dir,
@@ -1210,13 +1312,15 @@ use super::common::{
 };
 ```
 
-If a new helper function is needed, add it to `tests/unit/common/mod.rs` instead of creating duplicate code in individual test files.
+If a new helper function is needed, add it to `tests/unit/common/mod.rs` instead of creating duplicate code in
+individual test files.
 
 ## G.TE.7: Test coverage completeness
 
 Each requirement must have at least one test that verifies its implementation.
 
 Test coverage should include:
+
 1. **Happy path** - Normal operation with valid inputs
 2. **Error cases** - Invalid inputs, edge cases, boundary conditions
 3. **Edge cases** - Empty values, maximum lengths, special characters
@@ -1226,33 +1330,40 @@ When adding a new requirement, immediately add corresponding tests to the approp
 
 When modifying existing requirements, update or add tests to ensure the modified behavior is verified.
 
-Test names should follow the naming convention specified in G.TE.12 and clearly indicate what scenario is being tested (e.g., `test_validate_category_empty`, `test_validate_category_too_long`).
+Test names should follow the naming convention specified in G.TE.12 and clearly indicate what scenario is being tested (
+e.g., `test_validate_category_empty`, `test_validate_category_too_long`).
 
 ## G.TE.8: Avoiding test duplication
 
 Tests must not duplicate each other. Before adding a new test, check if similar functionality is already tested.
 
 Guidelines:
-1. **One requirement, multiple scenarios** - If a requirement has multiple scenarios (e.g., empty, valid, too long), create separate tests for each scenario, but group them together.
+
+1. **One requirement, multiple scenarios** - If a requirement has multiple scenarios (e.g., empty, valid, too long),
+   create separate tests for each scenario, but group them together.
 
 2. **Shared setup** - Use helper functions from `common/mod.rs` to avoid duplicating test setup code.
 
-3. **Test consolidation** - If multiple tests verify the same behavior with different inputs, consider using parameterized tests or test cases within a single test function.
+3. **Test consolidation** - If multiple tests verify the same behavior with different inputs, consider using
+   parameterized tests or test cases within a single test function.
 
 4. **Review existing tests** - Before adding a test, search for similar tests to avoid duplication.
 
-If tests are similar but test different requirements, keep them separate but ensure they are clearly documented with their requirement coverage.
+If tests are similar but test different requirements, keep them separate but ensure they are clearly documented with
+their requirement coverage.
 
 ## G.TE.9: Test file registration
 
 All test files must be registered in `tests/unit.rs` using `#[path = "unit/<filename>"]` and `mod` declarations.
 
 Test files are organized in sections:
+
 1. **Common helper functions** - `mod common;`
 2. **Tests grouped by requirement chapters** - Parameter constraints, Requirements storage format, Configuration
 3. **Tool-specific tests** - One module per tool
 
 Format:
+
 ```rust
 // Common helper functions
 #[path = "unit/common/mod.rs"]
@@ -1273,16 +1384,18 @@ When creating a new test file, add it to the appropriate section in `tests/unit.
 
 Before committing test changes, ensure:
 
-1. **No compilation errors** - Run `cargo test --no-run` to check compilation
-2. **All tests pass** - Run `cargo test` and verify all tests pass
-3. **No warnings** - Run `cargo clippy -- -D warnings` to ensure no warnings
-4. **Code formatting** - Run `cargo fmt` to ensure consistent formatting
-5. **Valid requirement references** - Verify that all requirement references in test comments (format: "Covers Requirement: G.X.Y") are:
-   - Valid (refer to existing requirements)
-   - Relevant (the test actually verifies the specified requirement)
-   - Complete (all requirements covered by the test are listed)
+1. **Code formatting** - Run `cargo fmt` to ensure consistent formatting
+2. **No warnings** - Run `cargo clippy -- -D warnings` to ensure no warnings
+3. **No compilation errors** - Run `cargo test --no-run` to check compilation
+4. **All tests pass** - Run `cargo test` and verify all tests pass
+5. **Valid requirement references** - Verify that all requirement references in test comments (format: "Covers
+   Requirement: G.X.Y") are:
+    - Valid (refer to existing requirements)
+    - Relevant (the test actually verifies the specified requirement)
+    - Complete (all requirements covered by the test are listed)
 
 Test files should follow the same code quality standards as production code:
+
 - Clear naming conventions
 - Proper error handling in test setup
 - No unwrap() calls that could panic (use expect() with descriptive messages)
@@ -1291,6 +1404,7 @@ Test files should follow the same code quality standards as production code:
 When modifying tests, run the full test suite to ensure no regressions.
 
 To verify requirement references, check that:
+
 - Each requirement index in "Covers Requirement:" exists in the requirements system
 - The test actually exercises the functionality described in the referenced requirement
 - If a test covers multiple requirements, all are listed (not just one)
@@ -1301,22 +1415,27 @@ To verify requirement references, check that:
 Test function names must follow the pattern: `test_<function_or_feature>_<scenario>()`
 
 Naming guidelines:
+
 1. **Prefix** - Always start with `test_`
-2. **Function/Feature name** - Use the function or feature being tested (e.g., `validate_project_root`, `search_requirements`)
+2. **Function/Feature name** - Use the function or feature being tested (e.g., `validate_project_root`,
+   `search_requirements`)
 3. **Scenario** - Describe the specific scenario being tested (e.g., `empty`, `valid`, `too_long`, `invalid_char`)
 
 Examples:
+
 - `test_validate_project_root_empty()` - Tests validate_project_root with empty input
 - `test_validate_category_too_long()` - Tests validate_category with value exceeding max length
 - `test_search_finds_by_title()` - Tests search functionality finding by title
 - `test_read_chapters_streaming_single()` - Tests read_chapters_streaming with single chapter
 
 Test names should be:
+
 - Descriptive and self-documenting
 - Consistent with the naming pattern
 - Clear about what scenario is being tested
 - Not too long (prefer clarity over brevity)
 
 Avoid:
+
 - Generic names like `test_1()`, `test_basic()`
 - Names that don't indicate the scenario (e.g., `test_validate()` instead of `test_validate_category_empty()`)

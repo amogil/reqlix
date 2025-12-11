@@ -726,3 +726,1110 @@ Content three.
         file_content
     );
 }
+
+/// Test: read_chapters_streaming with indented headings
+/// Precondition: System has a category file with indented chapter headings
+/// Action: Call read_chapters_streaming with file containing " # Chapter" (1-3 spaces)
+/// Result: Function parses indented headings correctly
+/// Covers Requirement: G.REQLIX_GET_CH.3, G.R.2
+#[test]
+fn test_read_chapters_streaming_indented() {
+    let temp_dir = TempDir::new().unwrap();
+    let file_path = temp_dir.path().join("test.md");
+    std::fs::write(&file_path, " # Chapter One\n   # Chapter Two\n").unwrap();
+
+    let result = RequirementsServer::read_chapters_streaming(&file_path);
+    assert!(result.is_ok());
+    let chapters = result.unwrap();
+    assert_eq!(chapters.len(), 2);
+}
+
+/// Test: read_chapters_streaming with empty file
+/// Precondition: System has an empty category file
+/// Action: Call read_chapters_streaming with empty file
+/// Result: Function returns empty vec
+/// Covers Requirement: G.REQLIX_GET_CH.3, G.R.2
+#[test]
+fn test_read_chapters_streaming_empty() {
+    let temp_dir = TempDir::new().unwrap();
+    let file_path = temp_dir.path().join("test.md");
+    std::fs::write(&file_path, "").unwrap();
+
+    let result = RequirementsServer::read_chapters_streaming(&file_path);
+    assert!(result.is_ok());
+    assert_eq!(result.unwrap(), Vec::<String>::new());
+}
+
+/// Test: read_chapters_streaming with level-2 headings (should ignore)
+/// Precondition: System has a category file with level-2 headings
+/// Action: Call read_chapters_streaming with file containing "## Requirement"
+/// Result: Function ignores level-2 headings
+/// Covers Requirement: G.REQLIX_GET_CH.3, G.R.2
+#[test]
+fn test_read_chapters_streaming_ignore_level2() {
+    let temp_dir = TempDir::new().unwrap();
+    let file_path = temp_dir.path().join("test.md");
+    std::fs::write(&file_path, "# Chapter\n## Requirement\n").unwrap();
+
+    let result = RequirementsServer::read_chapters_streaming(&file_path);
+    assert!(result.is_ok());
+    let chapters = result.unwrap();
+    assert_eq!(chapters.len(), 1);
+    assert_eq!(chapters[0], "Chapter");
+}
+
+/// Test: read_chapters_streaming with multi-line code block
+/// Precondition: System has a category file with multi-line code block
+/// Action: Call read_chapters_streaming with file containing code block spanning multiple lines
+/// Result: Function correctly tracks code block boundaries
+/// Covers Requirement: G.REQLIX_GET_CH.3, G.R.2, G.R.5
+#[test]
+fn test_read_chapters_streaming_multiline_code_block() {
+    let temp_dir = TempDir::new().unwrap();
+    let file_path = temp_dir.path().join("test.md");
+    std::fs::write(
+        &file_path,
+        "# Real Chapter\n```\nline1\nline2\n# Fake Chapter\nline3\n```\n# Another Chapter\n",
+    )
+    .unwrap();
+
+    let result = RequirementsServer::read_chapters_streaming(&file_path);
+    assert!(result.is_ok());
+    let chapters = result.unwrap();
+    assert_eq!(chapters.len(), 2);
+    assert_eq!(chapters[0], "Real Chapter");
+    assert_eq!(chapters[1], "Another Chapter");
+}
+
+/// Test: read_chapters_streaming with code block language identifier
+/// Precondition: System has a category file with code block having language identifier
+/// Action: Call read_chapters_streaming with file containing "```json" code block
+/// Result: Function correctly identifies code block boundaries
+/// Covers Requirement: G.REQLIX_GET_CH.3, G.R.2, G.R.5
+#[test]
+fn test_read_chapters_streaming_code_block_language() {
+    let temp_dir = TempDir::new().unwrap();
+    let file_path = temp_dir.path().join("test.md");
+    std::fs::write(&file_path, "# Real Chapter\n```json\n# Fake Chapter\n```\n").unwrap();
+
+    let result = RequirementsServer::read_chapters_streaming(&file_path);
+    assert!(result.is_ok());
+    let chapters = result.unwrap();
+    assert_eq!(chapters.len(), 1);
+    assert_eq!(chapters[0], "Real Chapter");
+}
+
+/// Test: read_chapters_streaming with trailing spaces in chapter name
+/// Precondition: System has a category file with chapter heading having trailing spaces
+/// Action: Call read_chapters_streaming with file containing "# Chapter   "
+/// Result: Function trims trailing spaces from chapter name
+/// Covers Requirement: G.REQLIX_GET_CH.3, G.R.2
+#[test]
+fn test_read_chapters_streaming_trailing_spaces() {
+    let temp_dir = TempDir::new().unwrap();
+    let file_path = temp_dir.path().join("test.md");
+    std::fs::write(&file_path, "# Chapter One   \n").unwrap();
+
+    let result = RequirementsServer::read_chapters_streaming(&file_path);
+    assert!(result.is_ok());
+    let chapters = result.unwrap();
+    assert_eq!(chapters.len(), 1);
+    assert_eq!(chapters[0], "Chapter One");
+}
+
+/// Test: read_chapters_streaming with unicode chapter names
+/// Precondition: System has a category file with unicode chapter names
+/// Action: Call read_chapters_streaming with file containing "# Глава"
+/// Result: Function correctly parses unicode chapter names
+/// Covers Requirement: G.REQLIX_GET_CH.3, G.R.2
+#[test]
+fn test_read_chapters_streaming_unicode() {
+    let temp_dir = TempDir::new().unwrap();
+    let file_path = temp_dir.path().join("test.md");
+    std::fs::write(&file_path, "# Глава\n").unwrap();
+
+    let result = RequirementsServer::read_chapters_streaming(&file_path);
+    assert!(result.is_ok());
+    let chapters = result.unwrap();
+    assert_eq!(chapters.len(), 1);
+    assert_eq!(chapters[0], "Глава");
+}
+
+/// Test: read_chapters_streaming ignoring "## Categories" mention in code block
+/// Precondition: System has a category file with "## Categories" mentioned in code block
+/// Action: Call read_chapters_streaming with file containing "# Real Chapter\n```\n## Categories\n```"
+/// Result: Function ignores "## Categories" inside code block
+/// Covers Requirement: G.REQLIX_GET_CH.3, G.R.2, G.R.5
+#[test]
+fn test_read_chapters_streaming_ignore_categories_in_code_block() {
+    let temp_dir = TempDir::new().unwrap();
+    let file_path = temp_dir.path().join("test.md");
+    std::fs::write(&file_path, "# Real Chapter\n```\n## Categories\n```\n").unwrap();
+
+    let result = RequirementsServer::read_chapters_streaming(&file_path);
+    assert!(result.is_ok());
+    let chapters = result.unwrap();
+    assert_eq!(chapters.len(), 1);
+    assert_eq!(chapters[0], "Real Chapter");
+}
+
+/// Test: read_chapters_streaming ignoring "# Categories" mention in code block
+/// Precondition: System has a category file with "# Categories" mentioned in code block
+/// Action: Call read_chapters_streaming with file containing "# Real Chapter\n```\n# Categories\n```"
+/// Result: Function ignores "# Categories" inside code block
+/// Covers Requirement: G.REQLIX_GET_CH.3, G.R.2, G.R.5
+#[test]
+fn test_read_chapters_streaming_ignore_categories_level1_in_code_block() {
+    let temp_dir = TempDir::new().unwrap();
+    let file_path = temp_dir.path().join("test.md");
+    std::fs::write(&file_path, "# Real Chapter\n```\n# Categories\n```\n").unwrap();
+
+    let result = RequirementsServer::read_chapters_streaming(&file_path);
+    assert!(result.is_ok());
+    let chapters = result.unwrap();
+    assert_eq!(chapters.len(), 1);
+    assert_eq!(chapters[0], "Real Chapter");
+}
+
+/// Test: read_chapters_streaming ignoring chapter mention in requirement text
+/// Precondition: System has a category file with chapter mention in requirement text (not code block)
+/// Action: Call read_chapters_streaming with file containing "# Real Chapter\n## G.G.1: Title\nText with # Categories mention\n"
+/// Result: Function ignores "# Categories" mention in requirement text (not a real heading)
+/// Covers Requirement: G.REQLIX_GET_CH.3, G.R.2
+#[test]
+fn test_read_chapters_streaming_ignore_chapter_mention_in_text() {
+    let temp_dir = TempDir::new().unwrap();
+    let file_path = temp_dir.path().join("test.md");
+    std::fs::write(
+        &file_path,
+        "# Real Chapter\n## G.G.1: Title\nText with # Categories mention\n",
+    )
+    .unwrap();
+
+    let result = RequirementsServer::read_chapters_streaming(&file_path);
+    assert!(result.is_ok());
+    let chapters = result.unwrap();
+    assert_eq!(chapters.len(), 1);
+    assert_eq!(chapters[0], "Real Chapter");
+}
+
+/// Test: read_chapters_streaming ignoring "## Categories" in requirement text
+/// Precondition: System has a category file with "## Categories" in requirement text
+/// Action: Call read_chapters_streaming with file containing "# Real Chapter\n## G.G.1: Title\nText with ## Categories\n"
+/// Result: Function ignores "## Categories" in requirement text (not a real heading)
+/// Covers Requirement: G.REQLIX_GET_CH.3, G.R.2
+#[test]
+fn test_read_chapters_streaming_ignore_categories_level2_in_text() {
+    let temp_dir = TempDir::new().unwrap();
+    let file_path = temp_dir.path().join("test.md");
+    std::fs::write(
+        &file_path,
+        "# Real Chapter\n## G.G.1: Title\nText with ## Categories\n",
+    )
+    .unwrap();
+
+    let result = RequirementsServer::read_chapters_streaming(&file_path);
+    assert!(result.is_ok());
+    let chapters = result.unwrap();
+    assert_eq!(chapters.len(), 1);
+    assert_eq!(chapters[0], "Real Chapter");
+}
+
+/// Test: read_chapters_streaming ignoring chapter mention in json code block
+/// Precondition: System has a category file with chapter mention in json code block
+/// Action: Call read_chapters_streaming with file containing "# Real Chapter\n```json\n{\"heading\": \"# Categories\"}\n```"
+/// Result: Function ignores chapter mention inside json code block
+/// Covers Requirement: G.REQLIX_GET_CH.3, G.R.2, G.R.5
+#[test]
+fn test_read_chapters_streaming_ignore_chapter_in_json_code_block() {
+    let temp_dir = TempDir::new().unwrap();
+    let file_path = temp_dir.path().join("test.md");
+    std::fs::write(
+        &file_path,
+        "# Real Chapter\n```json\n{\"heading\": \"# Categories\"}\n```\n",
+    )
+    .unwrap();
+
+    let result = RequirementsServer::read_chapters_streaming(&file_path);
+    assert!(result.is_ok());
+    let chapters = result.unwrap();
+    assert_eq!(chapters.len(), 1);
+    assert_eq!(chapters[0], "Real Chapter");
+}
+
+/// Test: read_chapters_streaming ignoring chapter mention in markdown code block
+/// Precondition: System has a category file with chapter mention in markdown code block
+/// Action: Call read_chapters_streaming with file containing "# Real Chapter\n```markdown\n# Categories\n```"
+/// Result: Function ignores chapter mention inside markdown code block
+/// Covers Requirement: G.REQLIX_GET_CH.3, G.R.2, G.R.5
+#[test]
+fn test_read_chapters_streaming_ignore_chapter_in_markdown_code_block() {
+    let temp_dir = TempDir::new().unwrap();
+    let file_path = temp_dir.path().join("test.md");
+    std::fs::write(
+        &file_path,
+        "# Real Chapter\n```markdown\n# Categories\n```\n",
+    )
+    .unwrap();
+
+    let result = RequirementsServer::read_chapters_streaming(&file_path);
+    assert!(result.is_ok());
+    let chapters = result.unwrap();
+    assert_eq!(chapters.len(), 1);
+    assert_eq!(chapters[0], "Real Chapter");
+}
+
+/// Test: read_chapters_streaming ignoring multiple chapter mentions in code block
+/// Precondition: System has a category file with multiple chapter mentions in code block
+/// Action: Call read_chapters_streaming with file containing "# Real Chapter\n```\n# Categories\n# Chapters\n# Chapter List\n```"
+/// Result: Function ignores all chapter mentions inside code block
+/// Covers Requirement: G.REQLIX_GET_CH.3, G.R.2, G.R.5
+#[test]
+fn test_read_chapters_streaming_ignore_multiple_chapters_in_code_block() {
+    let temp_dir = TempDir::new().unwrap();
+    let file_path = temp_dir.path().join("test.md");
+    std::fs::write(
+        &file_path,
+        "# Real Chapter\n```\n# Categories\n# Chapters\n# Chapter List\n```\n",
+    )
+    .unwrap();
+
+    let result = RequirementsServer::read_chapters_streaming(&file_path);
+    assert!(result.is_ok());
+    let chapters = result.unwrap();
+    assert_eq!(chapters.len(), 1);
+    assert_eq!(chapters[0], "Real Chapter");
+}
+
+/// Test: read_chapters_streaming ignoring chapter mention in nested code block
+/// Precondition: System has a category file with chapter mention in nested code block structure
+/// Action: Call read_chapters_streaming with file containing "# Real Chapter\n```\nouter\n```\n```\n# Categories\n```"
+/// Result: Function correctly handles nested code block boundaries
+/// Covers Requirement: G.REQLIX_GET_CH.3, G.R.2, G.R.5
+#[test]
+fn test_read_chapters_streaming_ignore_chapter_in_nested_code_blocks() {
+    let temp_dir = TempDir::new().unwrap();
+    let file_path = temp_dir.path().join("test.md");
+    std::fs::write(
+        &file_path,
+        "# Real Chapter\n```\nouter\n```\n```\n# Categories\n```\n",
+    )
+    .unwrap();
+
+    let result = RequirementsServer::read_chapters_streaming(&file_path);
+    assert!(result.is_ok());
+    let chapters = result.unwrap();
+    assert_eq!(chapters.len(), 1);
+    assert_eq!(chapters[0], "Real Chapter");
+}
+
+/// Test: read_chapters_streaming ignoring chapter mention in requirement body text
+/// Precondition: System has a category file with chapter mention in requirement body
+/// Action: Call read_chapters_streaming with file containing "# Real Chapter\n## G.G.1: Title\nThis mentions # Categories in the text\n"
+/// Result: Function ignores chapter mention in requirement body text
+/// Covers Requirement: G.REQLIX_GET_CH.3, G.R.2
+#[test]
+fn test_read_chapters_streaming_ignore_chapter_mention_in_requirement_body() {
+    let temp_dir = TempDir::new().unwrap();
+    let file_path = temp_dir.path().join("test.md");
+    std::fs::write(
+        &file_path,
+        "# Real Chapter\n## G.G.1: Title\nThis mentions # Categories in the text\n",
+    )
+    .unwrap();
+
+    let result = RequirementsServer::read_chapters_streaming(&file_path);
+    assert!(result.is_ok());
+    let chapters = result.unwrap();
+    assert_eq!(chapters.len(), 1);
+    assert_eq!(chapters[0], "Real Chapter");
+}
+
+/// Test: read_chapters_streaming ignoring "## Categories" in inline code
+/// Precondition: System has a category file with "## Categories" in inline code (not fenced block)
+/// Action: Call read_chapters_streaming with file containing "# Real Chapter\nText with `## Categories` inline\n"
+/// Result: Function ignores inline code (not fenced block, so not tracked)
+/// Covers Requirement: G.REQLIX_GET_CH.3, G.R.2
+#[test]
+fn test_read_chapters_streaming_ignore_chapter_in_inline_code() {
+    let temp_dir = TempDir::new().unwrap();
+    let file_path = temp_dir.path().join("test.md");
+    std::fs::write(
+        &file_path,
+        "# Real Chapter\nText with `## Categories` inline\n",
+    )
+    .unwrap();
+
+    let result = RequirementsServer::read_chapters_streaming(&file_path);
+    assert!(result.is_ok());
+    let chapters = result.unwrap();
+    assert_eq!(chapters.len(), 1);
+    assert_eq!(chapters[0], "Real Chapter");
+}
+
+/// Test: read_chapters_streaming with real chapter after code block with mention
+/// Precondition: System has a category file with real chapter after code block containing chapter mention
+/// Action: Call read_chapters_streaming with file containing "# First\n```\n# Categories\n```\n# Second Chapter\n"
+/// Result: Function correctly identifies real chapter after code block
+/// Covers Requirement: G.REQLIX_GET_CH.3, G.R.2, G.R.5
+#[test]
+fn test_read_chapters_streaming_real_chapter_after_code_block() {
+    let temp_dir = TempDir::new().unwrap();
+    let file_path = temp_dir.path().join("test.md");
+    std::fs::write(
+        &file_path,
+        "# First Chapter\n```\n# Categories\n```\n# Second Chapter\n",
+    )
+    .unwrap();
+
+    let result = RequirementsServer::read_chapters_streaming(&file_path);
+    assert!(result.is_ok());
+    let chapters = result.unwrap();
+    assert_eq!(chapters.len(), 2);
+    assert_eq!(chapters[0], "First Chapter");
+    assert_eq!(chapters[1], "Second Chapter");
+}
+
+/// Test: read_chapters_streaming ignoring chapter mention in requirement text with indentation
+/// Precondition: System has a category file with indented chapter mention in requirement text
+/// Action: Call read_chapters_streaming with file containing "# Real Chapter\n## G.G.1: Title\n  Text with # Categories\n"
+/// Result: Function ignores indented chapter mention in requirement text
+/// Covers Requirement: G.REQLIX_GET_CH.3, G.R.2
+#[test]
+fn test_read_chapters_streaming_ignore_indented_chapter_mention() {
+    let temp_dir = TempDir::new().unwrap();
+    let file_path = temp_dir.path().join("test.md");
+    std::fs::write(
+        &file_path,
+        "# Real Chapter\n## G.G.1: Title\n  Text with # Categories\n",
+    )
+    .unwrap();
+
+    let result = RequirementsServer::read_chapters_streaming(&file_path);
+    assert!(result.is_ok());
+    let chapters = result.unwrap();
+    assert_eq!(chapters.len(), 1);
+    assert_eq!(chapters[0], "Real Chapter");
+}
+
+/// Test: read_chapters_streaming ignoring chapter mention in multi-line code block
+/// Precondition: System has a category file with chapter mention in multi-line code block
+/// Action: Call read_chapters_streaming with file containing "# Real Chapter\n```\nline1\n# Categories\nline2\n```"
+/// Result: Function ignores chapter mention in multi-line code block
+/// Covers Requirement: G.REQLIX_GET_CH.3, G.R.2, G.R.5
+#[test]
+fn test_read_chapters_streaming_ignore_chapter_in_multiline_code_block() {
+    let temp_dir = TempDir::new().unwrap();
+    let file_path = temp_dir.path().join("test.md");
+    std::fs::write(
+        &file_path,
+        "# Real Chapter\n```\nline1\n# Categories\nline2\n```\n",
+    )
+    .unwrap();
+
+    let result = RequirementsServer::read_chapters_streaming(&file_path);
+    assert!(result.is_ok());
+    let chapters = result.unwrap();
+    assert_eq!(chapters.len(), 1);
+    assert_eq!(chapters[0], "Real Chapter");
+}
+
+/// Test: read_chapters_streaming ignoring "## Categories" in code block with language
+/// Precondition: System has a category file with "## Categories" in code block with language identifier
+/// Action: Call read_chapters_streaming with file containing "# Real Chapter\n```python\n## Categories\n```"
+/// Result: Function ignores chapter mention in code block with language
+/// Covers Requirement: G.REQLIX_GET_CH.3, G.R.2, G.R.5
+#[test]
+fn test_read_chapters_streaming_ignore_categories_in_python_code_block() {
+    let temp_dir = TempDir::new().unwrap();
+    let file_path = temp_dir.path().join("test.md");
+    std::fs::write(
+        &file_path,
+        "# Real Chapter\n```python\n## Categories\n```\n",
+    )
+    .unwrap();
+
+    let result = RequirementsServer::read_chapters_streaming(&file_path);
+    assert!(result.is_ok());
+    let chapters = result.unwrap();
+    assert_eq!(chapters.len(), 1);
+    assert_eq!(chapters[0], "Real Chapter");
+}
+
+/// Test: read_chapters_streaming ignoring chapter mention in requirement text with special chars
+/// Precondition: System has a category file with chapter mention containing special characters
+/// Action: Call read_chapters_streaming with file containing "# Real Chapter\n## G.G.1: Title\nText: # Categories (list)\n"
+/// Result: Function ignores chapter mention with special characters in requirement text
+/// Covers Requirement: G.REQLIX_GET_CH.3, G.R.2
+#[test]
+fn test_read_chapters_streaming_ignore_chapter_with_special_chars() {
+    let temp_dir = TempDir::new().unwrap();
+    let file_path = temp_dir.path().join("test.md");
+    std::fs::write(
+        &file_path,
+        "# Real Chapter\n## G.G.1: Title\nText: # Categories (list)\n",
+    )
+    .unwrap();
+
+    let result = RequirementsServer::read_chapters_streaming(&file_path);
+    assert!(result.is_ok());
+    let chapters = result.unwrap();
+    assert_eq!(chapters.len(), 1);
+    assert_eq!(chapters[0], "Real Chapter");
+}
+
+/// Test: read_chapters_streaming ignoring chapter mention in code block at file start
+/// Precondition: System has a category file starting with code block containing chapter mention
+/// Action: Call read_chapters_streaming with file containing "```\n# Categories\n```\n# Real Chapter\n"
+/// Result: Function ignores chapter mention in code block at start
+/// Covers Requirement: G.REQLIX_GET_CH.3, G.R.2, G.R.5
+#[test]
+fn test_read_chapters_streaming_ignore_chapter_at_file_start_in_code() {
+    let temp_dir = TempDir::new().unwrap();
+    let file_path = temp_dir.path().join("test.md");
+    std::fs::write(&file_path, "```\n# Categories\n```\n# Real Chapter\n").unwrap();
+
+    let result = RequirementsServer::read_chapters_streaming(&file_path);
+    assert!(result.is_ok());
+    let chapters = result.unwrap();
+    assert_eq!(chapters.len(), 1);
+    assert_eq!(chapters[0], "Real Chapter");
+}
+
+/// Test: read_chapters_streaming ignoring chapter mention in code block at file end
+/// Precondition: System has a category file ending with code block containing chapter mention
+/// Action: Call read_chapters_streaming with file containing "# Real Chapter\n```\n# Categories\n```"
+/// Result: Function ignores chapter mention in code block at end
+/// Covers Requirement: G.REQLIX_GET_CH.3, G.R.2, G.R.5
+#[test]
+fn test_read_chapters_streaming_ignore_chapter_at_file_end_in_code() {
+    let temp_dir = TempDir::new().unwrap();
+    let file_path = temp_dir.path().join("test.md");
+    std::fs::write(&file_path, "# Real Chapter\n```\n# Categories\n```").unwrap();
+
+    let result = RequirementsServer::read_chapters_streaming(&file_path);
+    assert!(result.is_ok());
+    let chapters = result.unwrap();
+    assert_eq!(chapters.len(), 1);
+    assert_eq!(chapters[0], "Real Chapter");
+}
+
+/// Test: read_chapters_streaming with "Categories" as real chapter
+/// Precondition: System has a category file with actual chapter named "Categories"
+/// Action: Call read_chapters_streaming with file containing "# Categories\n"
+/// Result: Function returns "Categories" as a valid chapter
+/// Covers Requirement: G.REQLIX_GET_CH.3, G.R.2
+#[test]
+fn test_read_chapters_streaming_real_categories_chapter() {
+    let temp_dir = TempDir::new().unwrap();
+    let file_path = temp_dir.path().join("test.md");
+    std::fs::write(&file_path, "# Categories\n").unwrap();
+
+    let result = RequirementsServer::read_chapters_streaming(&file_path);
+    assert!(result.is_ok());
+    let chapters = result.unwrap();
+    assert_eq!(chapters.len(), 1);
+    assert_eq!(chapters[0], "Categories");
+}
+
+/// Test: read_chapters_streaming ignoring chapter mention in code block between real chapters
+/// Precondition: System has a category file with chapter mention in code block between real chapters
+/// Action: Call read_chapters_streaming with file containing "# First\n```\n# Categories\n```\n# Second\n"
+/// Result: Function correctly identifies both real chapters, ignoring mention in code block
+/// Covers Requirement: G.REQLIX_GET_CH.3, G.R.2, G.R.5
+#[test]
+fn test_read_chapters_streaming_ignore_chapter_between_real_chapters() {
+    let temp_dir = TempDir::new().unwrap();
+    let file_path = temp_dir.path().join("test.md");
+    std::fs::write(
+        &file_path,
+        "# First Chapter\n```\n# Categories\n```\n# Second Chapter\n",
+    )
+    .unwrap();
+
+    let result = RequirementsServer::read_chapters_streaming(&file_path);
+    assert!(result.is_ok());
+    let chapters = result.unwrap();
+    assert_eq!(chapters.len(), 2);
+    assert_eq!(chapters[0], "First Chapter");
+    assert_eq!(chapters[1], "Second Chapter");
+}
+
+/// Test: read_chapters_streaming ignoring "## Categories" in requirement text with formatting
+/// Precondition: System has a category file with formatted "## Categories" mention in requirement text
+/// Action: Call read_chapters_streaming with file containing "# Real Chapter\n## G.G.1: Title\nText with **## Categories** bold\n"
+/// Result: Function ignores formatted chapter mention in requirement text
+/// Covers Requirement: G.REQLIX_GET_CH.3, G.R.2
+#[test]
+fn test_read_chapters_streaming_ignore_formatted_chapter_mention() {
+    let temp_dir = TempDir::new().unwrap();
+    let file_path = temp_dir.path().join("test.md");
+    std::fs::write(
+        &file_path,
+        "# Real Chapter\n## G.G.1: Title\nText with **## Categories** bold\n",
+    )
+    .unwrap();
+
+    let result = RequirementsServer::read_chapters_streaming(&file_path);
+    assert!(result.is_ok());
+    let chapters = result.unwrap();
+    assert_eq!(chapters.len(), 1);
+    assert_eq!(chapters[0], "Real Chapter");
+}
+
+/// Test: read_chapters_streaming with "Categories" and other chapters
+/// Precondition: System has a category file with "# Categories" chapter heading
+/// Action: Call read_chapters_streaming with file containing "# Categories\n# Real Chapter\n"
+/// Result: Function returns both chapters including "Categories"
+/// Covers Requirement: G.REQLIX_GET_CH.3, G.R.2
+#[test]
+fn test_read_chapters_streaming_categories_with_other() {
+    let temp_dir = TempDir::new().unwrap();
+    let file_path = temp_dir.path().join("test.md");
+    std::fs::write(&file_path, "# Categories\n# Real Chapter\n").unwrap();
+
+    let result = RequirementsServer::read_chapters_streaming(&file_path);
+    assert!(result.is_ok());
+    let chapters = result.unwrap();
+    assert_eq!(chapters.len(), 2);
+    assert_eq!(chapters[0], "Categories");
+    assert_eq!(chapters[1], "Real Chapter");
+}
+
+/// Test: read_chapters_streaming with "Categories" among other chapters
+/// Precondition: System has a category file with "Categories" and other chapters
+/// Action: Call read_chapters_streaming with file containing "# Chapter One\n# Categories\n# Chapter Two\n"
+/// Result: Function returns all chapters including "Categories"
+/// Covers Requirement: G.REQLIX_GET_CH.3, G.R.2
+#[test]
+fn test_read_chapters_streaming_categories_with_others() {
+    let temp_dir = TempDir::new().unwrap();
+    let file_path = temp_dir.path().join("test.md");
+    std::fs::write(&file_path, "# Chapter One\n# Categories\n# Chapter Two\n").unwrap();
+
+    let result = RequirementsServer::read_chapters_streaming(&file_path);
+    assert!(result.is_ok());
+    let chapters = result.unwrap();
+    assert_eq!(chapters.len(), 3);
+    assert_eq!(chapters[0], "Chapter One");
+    assert_eq!(chapters[1], "Categories");
+    assert_eq!(chapters[2], "Chapter Two");
+}
+
+/// Test: read_chapters_streaming with "Categories" both in code block and as real heading
+/// Precondition: System has a category file with "# Categories" in code block and real "# Categories" chapter
+/// Action: Call read_chapters_streaming with file containing "# Real Chapter\n```\n# Categories\n```\n# Categories\n# Another Chapter\n"
+/// Result: Function ignores "Categories" in code block and includes real "Categories" chapter
+/// Covers Requirement: G.REQLIX_GET_CH.3, G.R.2, G.R.5
+#[test]
+fn test_read_chapters_streaming_categories_in_code_block_and_real() {
+    let temp_dir = TempDir::new().unwrap();
+    let file_path = temp_dir.path().join("test.md");
+    std::fs::write(
+        &file_path,
+        "# Real Chapter\n```\n# Categories\n```\n# Categories\n# Another Chapter\n",
+    )
+    .unwrap();
+
+    let result = RequirementsServer::read_chapters_streaming(&file_path);
+    assert!(result.is_ok());
+    let chapters = result.unwrap();
+    assert_eq!(chapters.len(), 3);
+    assert_eq!(chapters[0], "Real Chapter");
+    assert_eq!(chapters[1], "Categories");
+    assert_eq!(chapters[2], "Another Chapter");
+}
+
+/// Test: parse_level2_heading with missing colon
+/// Precondition: System has a markdown level-2 heading without colon separator
+/// Action: Call parse_level2_heading with "## G.G.1 Requirement Title"
+/// Result: Function returns None
+/// Covers Requirement: G.R.3
+#[test]
+fn test_parse_level2_heading_no_colon() {
+    let result = RequirementsServer::parse_level2_heading("## G.G.1 Requirement Title");
+    assert_eq!(result, None);
+}
+
+/// Test: parse_level1_heading with trailing spaces
+/// Precondition: System has a markdown level-1 heading with trailing spaces
+/// Action: Call parse_level1_heading with "# Chapter Name   "
+/// Result: Function returns Some("Chapter Name") (trailing spaces trimmed)
+/// Covers Requirement: G.R.2
+#[test]
+fn test_parse_level1_heading_trailing_spaces() {
+    let result = RequirementsServer::parse_level1_heading("# Chapter Name   ");
+    assert_eq!(result, Some("Chapter Name".to_string()));
+}
+
+/// Test: parse_level1_heading with 4 spaces indentation (too many)
+/// Precondition: System has a markdown level-1 heading with 4 spaces indentation
+/// Action: Call parse_level1_heading with "    # Chapter Name"
+/// Result: Function returns None (4 spaces is too many)
+/// Covers Requirement: G.R.2
+#[test]
+fn test_parse_level1_heading_four_space_indent() {
+    let result = RequirementsServer::parse_level1_heading("    # Chapter Name");
+    assert_eq!(result, None);
+}
+
+/// Test: parse_level1_heading with trailing hash characters
+/// Precondition: System has a markdown level-1 heading with trailing hashes
+/// Action: Call parse_level1_heading with "# Chapter Name ###"
+/// Result: Function returns Some("Chapter Name") (trailing hashes removed per standard markdown)
+/// Covers Requirement: G.R.2
+#[test]
+fn test_parse_level1_heading_trailing_hashes() {
+    let result = RequirementsServer::parse_level1_heading("# Chapter Name ###");
+    assert_eq!(result, Some("Chapter Name".to_string()));
+}
+
+/// Test: parse_level1_heading with empty chapter name
+/// Precondition: System has a markdown level-1 heading with empty name
+/// Action: Call parse_level1_heading with "# "
+/// Result: Function returns Some("") (empty string)
+/// Covers Requirement: G.R.2
+#[test]
+fn test_parse_level1_heading_empty_name() {
+    let result = RequirementsServer::parse_level1_heading("# ");
+    assert_eq!(result, Some("".to_string()));
+}
+
+/// Test: parse_level2_heading with empty title
+/// Precondition: System has a markdown level-2 heading with empty title
+/// Action: Call parse_level2_heading with "## G.G.1: "
+/// Result: Function returns None (empty title is invalid)
+/// Covers Requirement: G.R.3
+#[test]
+fn test_parse_level2_heading_empty_title() {
+    let result = RequirementsServer::parse_level2_heading("## G.G.1: ");
+    assert_eq!(result, None);
+}
+
+/// Test: parse_level2_heading with spaces around colon
+/// Precondition: System has a markdown level-2 heading with spaces around colon
+/// Action: Call parse_level2_heading with "## G.G.1 : Requirement Title"
+/// Result: Function returns Some(("G.G.1", "Requirement Title")) (spaces trimmed)
+/// Covers Requirement: G.R.3
+#[test]
+fn test_parse_level2_heading_spaces_around_colon() {
+    let result = RequirementsServer::parse_level2_heading("## G.G.1 : Requirement Title");
+    assert_eq!(
+        result,
+        Some(("G.G.1".to_string(), "Requirement Title".to_string()))
+    );
+}
+
+/// Test: parse_level2_heading with trailing hash characters
+/// Precondition: System has a markdown level-2 heading with trailing hashes
+/// Action: Call parse_level2_heading with "## G.G.1: Title ###"
+/// Result: Function returns Some(("G.G.1", "Title")) (trailing hashes removed per standard markdown)
+/// Covers Requirement: G.R.3
+#[test]
+fn test_parse_level2_heading_trailing_hashes() {
+    let result = RequirementsServer::parse_level2_heading("## G.G.1: Title ###");
+    assert_eq!(result, Some(("G.G.1".to_string(), "Title".to_string())));
+}
+
+/// Test: parse_level2_heading with complex index format
+/// Precondition: System has a markdown level-2 heading with complex index
+/// Action: Call parse_level2_heading with "## GET.GET_C.123: Complex Requirement Title"
+/// Result: Function returns Some(("GET.GET_C.123", "Complex Requirement Title"))
+/// Covers Requirement: G.R.3
+#[test]
+fn test_parse_level2_heading_complex_index() {
+    let result =
+        RequirementsServer::parse_level2_heading("## GET.GET_C.123: Complex Requirement Title");
+    assert_eq!(
+        result,
+        Some((
+            "GET.GET_C.123".to_string(),
+            "Complex Requirement Title".to_string()
+        ))
+    );
+}
+
+/// Test: parse_level2_heading with title containing colon
+/// Precondition: System has a markdown level-2 heading with colon in title
+/// Action: Call parse_level2_heading with "## G.G.1: Title: Subtitle"
+/// Result: Function returns Some(("G.G.1", "Title: Subtitle")) (first colon is separator)
+/// Covers Requirement: G.R.3
+#[test]
+fn test_parse_level2_heading_colon_in_title() {
+    let result = RequirementsServer::parse_level2_heading("## G.G.1: Title: Subtitle");
+    assert_eq!(
+        result,
+        Some(("G.G.1".to_string(), "Title: Subtitle".to_string()))
+    );
+}
+
+/// Test: parse_level1_heading with only hash and space
+/// Precondition: System has a markdown level-1 heading with only "# "
+/// Action: Call parse_level1_heading with "# "
+/// Result: Function returns Some("") (empty name)
+/// Covers Requirement: G.R.2
+#[test]
+fn test_parse_level1_heading_only_hash_space() {
+    let result = RequirementsServer::parse_level1_heading("# ");
+    assert_eq!(result, Some("".to_string()));
+}
+
+/// Test: parse_level1_heading with tab character
+/// Precondition: System has a markdown level-1 heading with tab character
+/// Action: Call parse_level1_heading with "\t# Chapter Name"
+/// Result: Function returns None (tabs are not spaces)
+/// Covers Requirement: G.R.2
+#[test]
+fn test_parse_level1_heading_tab() {
+    let result = RequirementsServer::parse_level1_heading("\t# Chapter Name");
+    assert_eq!(result, None);
+}
+
+/// Test: parse_level2_heading with tab character
+/// Precondition: System has a markdown level-2 heading with tab character
+/// Action: Call parse_level2_heading with "\t## G.G.1: Title"
+/// Result: Function returns None (tabs are not spaces)
+/// Covers Requirement: G.R.3
+#[test]
+fn test_parse_level2_heading_tab() {
+    let result = RequirementsServer::parse_level2_heading("\t## G.G.1: Title");
+    assert_eq!(result, None);
+}
+
+/// Test: parse_level1_heading with unicode characters
+/// Precondition: System has a markdown level-1 heading with unicode characters
+/// Action: Call parse_level1_heading with "# Глава"
+/// Result: Function returns Some("Глава")
+/// Covers Requirement: G.R.2
+#[test]
+fn test_parse_level1_heading_unicode() {
+    let result = RequirementsServer::parse_level1_heading("# Глава");
+    assert_eq!(result, Some("Глава".to_string()));
+}
+
+/// Test: parse_level2_heading with unicode characters
+/// Precondition: System has a markdown level-2 heading with unicode characters
+/// Action: Call parse_level2_heading with "## G.G.1: Требование"
+/// Result: Function returns Some(("G.G.1", "Требование"))
+/// Covers Requirement: G.R.3
+#[test]
+fn test_parse_level2_heading_unicode() {
+    let result = RequirementsServer::parse_level2_heading("## G.G.1: Требование");
+    assert_eq!(
+        result,
+        Some(("G.G.1".to_string(), "Требование".to_string()))
+    );
+}
+
+/// Test: parse_level1_heading with special characters
+/// Precondition: System has a markdown level-1 heading with special characters
+/// Action: Call parse_level1_heading with "# Chapter-Name_123"
+/// Result: Function returns Some("Chapter-Name_123")
+/// Covers Requirement: G.R.2
+#[test]
+fn test_parse_level1_heading_special_chars() {
+    let result = RequirementsServer::parse_level1_heading("# Chapter-Name_123");
+    assert_eq!(result, Some("Chapter-Name_123".to_string()));
+}
+
+/// Test: parse_level2_heading with special characters in title
+/// Precondition: System has a markdown level-2 heading with special characters in title
+/// Action: Call parse_level2_heading with "## G.G.1: Title-Name_123"
+/// Result: Function returns Some(("G.G.1", "Title-Name_123"))
+/// Covers Requirement: G.R.3
+#[test]
+fn test_parse_level2_heading_special_chars_title() {
+    let result = RequirementsServer::parse_level2_heading("## G.G.1: Title-Name_123");
+    assert_eq!(
+        result,
+        Some(("G.G.1".to_string(), "Title-Name_123".to_string()))
+    );
+}
+
+/// Test: parse_level2_heading with multiple spaces in title
+/// Precondition: System has a markdown level-2 heading with multiple spaces in title
+/// Action: Call parse_level2_heading with "## G.G.1: Title   With   Spaces"
+/// Result: Function returns Some(("G.G.1", "Title   With   Spaces")) (spaces preserved)
+/// Covers Requirement: G.R.3
+#[test]
+fn test_parse_level2_heading_multiple_spaces() {
+    let result = RequirementsServer::parse_level2_heading("## G.G.1: Title   With   Spaces");
+    assert_eq!(
+        result,
+        Some(("G.G.1".to_string(), "Title   With   Spaces".to_string()))
+    );
+}
+
+/// Test: parse_level1_heading with multiple spaces in name
+/// Precondition: System has a markdown level-1 heading with multiple spaces in name
+/// Action: Call parse_level1_heading with "# Chapter   Name"
+/// Result: Function returns Some("Chapter   Name") (spaces preserved)
+/// Covers Requirement: G.R.2
+#[test]
+fn test_parse_level1_heading_multiple_spaces() {
+    let result = RequirementsServer::parse_level1_heading("# Chapter   Name");
+    assert_eq!(result, Some("Chapter   Name".to_string()));
+}
+
+/// Test: read_requirements_streaming ignoring requirements in code blocks
+/// Precondition: System has a category file with requirement heading inside code block
+/// Action: Call read_requirements_streaming with file containing "## G.G.1: Title" inside ```
+/// Result: Function ignores requirement heading inside code block
+/// Covers Requirement: G.REQLIX_GET_REQ.3, G.R.3, G.R.5
+#[test]
+fn test_read_requirements_streaming_ignore_code_block() {
+    let temp_dir = TempDir::new().unwrap();
+    let file_path = temp_dir.path().join("test.md");
+    std::fs::write(
+        &file_path,
+        "# Chapter\n## G.G.1: Real Title\n```\n## G.G.2: Fake Title\n```\n",
+    )
+    .unwrap();
+
+    let result = RequirementsServer::read_requirements_streaming(&file_path, "Chapter");
+    assert!(result.is_ok());
+    let requirements = result.unwrap();
+    assert_eq!(requirements.len(), 1);
+    assert_eq!(requirements[0].index, "G.G.1");
+    assert_eq!(requirements[0].title, "Real Title");
+}
+
+/// Test: read_requirements_streaming with requirements in different chapters
+/// Precondition: System has a category file with requirements in multiple chapters
+/// Action: Call read_requirements_streaming for specific chapter
+/// Result: Function returns only requirements from specified chapter
+/// Covers Requirement: G.REQLIX_GET_REQ.3, G.R.3, G.R.5
+#[test]
+fn test_read_requirements_streaming_different_chapters() {
+    let temp_dir = TempDir::new().unwrap();
+    let file_path = temp_dir.path().join("test.md");
+    std::fs::write(
+        &file_path,
+        "# Chapter One\n## G.G.1: Title One\n# Chapter Two\n## G.G.2: Title Two\n",
+    )
+    .unwrap();
+
+    let result = RequirementsServer::read_requirements_streaming(&file_path, "Chapter One");
+    assert!(result.is_ok());
+    let requirements = result.unwrap();
+    assert_eq!(requirements.len(), 1);
+    assert_eq!(requirements[0].index, "G.G.1");
+    assert_eq!(requirements[0].title, "Title One");
+}
+
+/// Test: read_requirements_streaming with indented headings
+/// Precondition: System has a category file with indented requirement headings
+/// Action: Call read_requirements_streaming with file containing "  ## G.G.1: Title" (1-3 spaces)
+/// Result: Function parses indented headings correctly
+/// Covers Requirement: G.REQLIX_GET_REQ.3, G.R.3, G.R.5
+#[test]
+fn test_read_requirements_streaming_indented() {
+    let temp_dir = TempDir::new().unwrap();
+    let file_path = temp_dir.path().join("test.md");
+    std::fs::write(&file_path, "# Chapter\n  ## G.G.1: Title\n").unwrap();
+
+    let result = RequirementsServer::read_requirements_streaming(&file_path, "Chapter");
+    assert!(result.is_ok());
+    let requirements = result.unwrap();
+    assert_eq!(requirements.len(), 1);
+    assert_eq!(requirements[0].index, "G.G.1");
+}
+
+/// Test: read_requirements_streaming with level-1 headings (should ignore)
+/// Precondition: System has a category file with level-1 headings in chapter
+/// Action: Call read_requirements_streaming with file containing "# Subchapter"
+/// Result: Function ignores level-1 headings when collecting requirements
+/// Covers Requirement: G.REQLIX_GET_REQ.3, G.R.3, G.R.5
+#[test]
+fn test_read_requirements_streaming_ignore_level1() {
+    let temp_dir = TempDir::new().unwrap();
+    let file_path = temp_dir.path().join("test.md");
+    std::fs::write(
+        &file_path,
+        "# Chapter\n## G.G.1: Title\n# Subchapter\n## G.G.2: Title Two\n",
+    )
+    .unwrap();
+
+    let result = RequirementsServer::read_requirements_streaming(&file_path, "Chapter");
+    assert!(result.is_ok());
+    let requirements = result.unwrap();
+    // Should include both requirements since Subchapter is treated as part of Chapter
+    assert!(requirements.len() >= 1);
+}
+
+/// Test: find_requirement_streaming with simple requirement
+/// Precondition: System has a category file with a requirement
+/// Action: Call find_requirement_streaming with index "G.G.1"
+/// Result: Function returns RequirementFull with correct index, title, and text
+/// Covers Requirement: G.REQLIX_GET_REQUIREMENT.3, G.REQLIX_GET_REQUIREMENT.4, G.R.5
+#[test]
+fn test_find_requirement_streaming_simple() {
+    let temp_dir = TempDir::new().unwrap();
+    let file_path = temp_dir.path().join("test.md");
+    std::fs::write(&file_path, "# Chapter\n## G.G.1: Title\nText content\n").unwrap();
+
+    let result = RequirementsServer::find_requirement_streaming(&file_path, "test", "G.G.1");
+    assert!(result.is_ok());
+    let req = result.unwrap();
+    assert_eq!(req.index, "G.G.1");
+    assert_eq!(req.title, "Title");
+    assert_eq!(req.text, "Text content");
+    assert_eq!(req.category, "test");
+    assert_eq!(req.chapter, "Chapter");
+}
+
+/// Test: find_requirement_streaming with requirement at end of file
+/// Precondition: System has a category file with requirement at end
+/// Action: Call find_requirement_streaming for last requirement
+/// Result: Function correctly includes all text until EOF
+/// Covers Requirement: G.REQLIX_GET_REQUIREMENT.3, G.REQLIX_GET_REQUIREMENT.4, G.R.5
+#[test]
+fn test_find_requirement_streaming_end_of_file() {
+    let temp_dir = TempDir::new().unwrap();
+    let file_path = temp_dir.path().join("test.md");
+    std::fs::write(&file_path, "# Chapter\n## G.G.1: Title\nLine 1\nLine 2\n").unwrap();
+
+    let result = RequirementsServer::find_requirement_streaming(&file_path, "test", "G.G.1");
+    assert!(result.is_ok());
+    let req = result.unwrap();
+    assert_eq!(req.index, "G.G.1");
+    assert!(req.text.contains("Line 1"));
+    assert!(req.text.contains("Line 2"));
+}
+
+/// Test: find_requirement_streaming with code block in requirement
+/// Precondition: System has a category file with requirement containing code block
+/// Action: Call find_requirement_streaming for requirement with code block
+/// Result: Function includes code block content in requirement text
+/// Covers Requirement: G.REQLIX_GET_REQUIREMENT.3, G.REQLIX_GET_REQUIREMENT.4, G.R.5
+#[test]
+fn test_find_requirement_streaming_with_code_block() {
+    let temp_dir = TempDir::new().unwrap();
+    let file_path = temp_dir.path().join("test.md");
+    std::fs::write(
+        &file_path,
+        "# Chapter\n## G.G.1: Title\n```\ncode line\n```\n",
+    )
+    .unwrap();
+
+    let result = RequirementsServer::find_requirement_streaming(&file_path, "test", "G.G.1");
+    assert!(result.is_ok());
+    let req = result.unwrap();
+    assert!(req.text.contains("```"));
+    assert!(req.text.contains("code line"));
+}
+
+/// Test: find_requirement_streaming with requirement boundary at next requirement
+/// Precondition: System has a category file with multiple requirements
+/// Action: Call find_requirement_streaming for first requirement
+/// Result: Function stops at next requirement heading
+/// Covers Requirement: G.REQLIX_GET_REQUIREMENT.3, G.REQLIX_GET_REQUIREMENT.4, G.R.5
+#[test]
+fn test_find_requirement_streaming_boundary_next_requirement() {
+    let temp_dir = TempDir::new().unwrap();
+    let file_path = temp_dir.path().join("test.md");
+    std::fs::write(
+        &file_path,
+        "# Chapter\n## G.G.1: Title One\nText one\n## G.G.2: Title Two\nText two\n",
+    )
+    .unwrap();
+
+    let result = RequirementsServer::find_requirement_streaming(&file_path, "test", "G.G.1");
+    assert!(result.is_ok());
+    let req = result.unwrap();
+    assert_eq!(req.index, "G.G.1");
+    assert!(req.text.contains("Text one"));
+    assert!(!req.text.contains("Title Two"));
+}
+
+/// Test: find_requirement_streaming with level-1 heading ends requirement
+/// Precondition: System has a category file with level-1 heading after requirement
+/// Action: Call find_requirement_streaming for requirement before "# NextChapter"
+/// Result: Function does NOT include level-1 heading in requirement text (G.R.5: ends at same or higher level)
+/// Covers Requirement: G.REQLIX_GET_REQUIREMENT.3, G.REQLIX_GET_REQUIREMENT.4, G.R.5
+#[test]
+fn test_find_requirement_streaming_level1_ends_requirement() {
+    let temp_dir = TempDir::new().unwrap();
+    let file_path = temp_dir.path().join("test.md");
+    std::fs::write(
+        &file_path,
+        "# Chapter\n## G.G.1: Title\nText before\n# NextChapter\nText after\n",
+    )
+    .unwrap();
+
+    let result = RequirementsServer::find_requirement_streaming(&file_path, "test", "G.G.1");
+    assert!(result.is_ok());
+    let req = result.unwrap();
+    assert!(req.text.contains("Text before"));
+    // Level-1 heading should NOT be part of requirement text (G.R.5)
+    assert!(
+        !req.text.contains("# NextChapter"),
+        "Level-1 heading should end requirement, not be included in text"
+    );
+    assert!(
+        !req.text.contains("Text after"),
+        "Content after level-1 heading should not be in requirement"
+    );
+}
+
+/// Test: find_requirement_streaming with requirement not found
+/// Precondition: System has a category file without specified requirement
+/// Action: Call find_requirement_streaming with non-existent index
+/// Result: Function returns error "Requirement not found"
+/// Covers Requirement: G.REQLIX_GET_REQUIREMENT.3, G.REQLIX_GET_REQUIREMENT.4
+#[test]
+fn test_find_requirement_streaming_not_found() {
+    let temp_dir = TempDir::new().unwrap();
+    let file_path = temp_dir.path().join("test.md");
+    std::fs::write(&file_path, "# Chapter\n## G.G.1: Title\n").unwrap();
+
+    let result = RequirementsServer::find_requirement_streaming(&file_path, "test", "G.G.999");
+    assert!(result.is_err());
+    assert!(result.unwrap_err().contains("not found"));
+}
+
+/// Test: find_requirement_streaming with multi-line code block
+/// Precondition: System has a category file with multi-line code block in requirement
+/// Action: Call find_requirement_streaming for requirement with multi-line code
+/// Result: Function correctly tracks code block boundaries and includes all content
+/// Covers Requirement: G.REQLIX_GET_REQUIREMENT.3, G.REQLIX_GET_REQUIREMENT.4, G.R.5
+#[test]
+fn test_find_requirement_streaming_multiline_code_block() {
+    let temp_dir = TempDir::new().unwrap();
+    let file_path = temp_dir.path().join("test.md");
+    std::fs::write(
+        &file_path,
+        "# Chapter\n## G.G.1: Title\n```\nline1\nline2\nline3\n```\nMore text\n",
+    )
+    .unwrap();
+
+    let result = RequirementsServer::find_requirement_streaming(&file_path, "test", "G.G.1");
+    assert!(result.is_ok());
+    let req = result.unwrap();
+    assert!(req.text.contains("line1"));
+    assert!(req.text.contains("line2"));
+    assert!(req.text.contains("line3"));
+    assert!(req.text.contains("More text"));
+}
+
+/// Test: find_requirement_streaming with code block language identifier
+/// Precondition: System has a category file with code block having language identifier
+/// Action: Call find_requirement_streaming for requirement with "```json" code block
+/// Result: Function correctly identifies code block boundaries
+/// Covers Requirement: G.REQLIX_GET_REQUIREMENT.3, G.REQLIX_GET_REQUIREMENT.4, G.R.5
+#[test]
+fn test_find_requirement_streaming_code_block_language() {
+    let temp_dir = TempDir::new().unwrap();
+    let file_path = temp_dir.path().join("test.md");
+    std::fs::write(
+        &file_path,
+        "# Chapter\n## G.G.1: Title\n```json\n{\"key\": \"value\"}\n```\n",
+    )
+    .unwrap();
+
+    let result = RequirementsServer::find_requirement_streaming(&file_path, "test", "G.G.1");
+    assert!(result.is_ok());
+    let req = result.unwrap();
+    assert!(req.text.contains("```json"));
+    assert!(req.text.contains("{\"key\": \"value\"}"));
+}

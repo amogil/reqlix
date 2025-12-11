@@ -2,6 +2,7 @@
 // Covers Requirements: G.P.1, G.P.2, G.P.3, G.P.4
 
 use reqlix::RequirementsServer;
+use tempfile::TempDir;
 
 // =============================================================================
 // Tests for G.P.1, G.P.2: Parameter constraints and validation
@@ -68,6 +69,18 @@ fn test_validate_project_root_whitespace() {
     assert!(result.is_ok());
 }
 
+/// Test: validate_project_root with value one over max length
+/// Precondition: System has a project_root value exactly 1001 characters
+/// Action: Call validate_project_root with string exactly 1001 characters
+/// Result: Function returns error
+/// Covers Requirement: G.P.1, G.P.2
+#[test]
+fn test_validate_project_root_one_over_max() {
+    let over_max_path = "a".repeat(1001);
+    let result = RequirementsServer::validate_project_root(&over_max_path);
+    assert!(result.is_err());
+}
+
 // Tests for validate_operation_description (G.P.1, G.P.2)
 
 /// Test: validate_operation_description with empty string
@@ -127,6 +140,18 @@ fn test_validate_operation_description_max_length() {
 fn test_validate_operation_description_newlines() {
     let result = RequirementsServer::validate_operation_description("Line 1\nLine 2");
     assert!(result.is_ok());
+}
+
+/// Test: validate_operation_description with value one over max length
+/// Precondition: System has an operation_description value exactly 10001 characters
+/// Action: Call validate_operation_description with string exactly 10001 characters
+/// Result: Function returns error
+/// Covers Requirement: G.P.1, G.P.2
+#[test]
+fn test_validate_operation_description_one_over_max() {
+    let over_max_desc = "a".repeat(10001);
+    let result = RequirementsServer::validate_operation_description(&over_max_desc);
+    assert!(result.is_err());
 }
 
 // Tests for validate_category - length constraints (G.P.1, G.P.2)
@@ -269,6 +294,75 @@ fn test_validate_index_realistic_long_format() {
     assert!(result.is_ok());
 }
 
+/// Test: validate_index with value one over max length
+/// Precondition: System has an index value exactly 101 characters
+/// Action: Call validate_index with string exactly 101 characters
+/// Result: Function returns error
+/// Covers Requirement: G.P.1, G.P.2
+#[test]
+fn test_validate_index_one_over_max() {
+    let over_max_index = "a".repeat(101);
+    let result = RequirementsServer::validate_index(&over_max_index);
+    assert!(result.is_err());
+}
+
+/// Test: validate_index with value just under max length
+/// Precondition: System has an index value exactly 99 characters
+/// Action: Call validate_index with string exactly 99 characters
+/// Result: Function returns Ok(())
+/// Covers Requirement: G.P.1, G.P.2
+#[test]
+fn test_validate_index_just_under_max() {
+    let just_under_max_index = "a".repeat(99);
+    let result = RequirementsServer::validate_index(&just_under_max_index);
+    assert!(result.is_ok());
+}
+
+/// Test: validate_index with complex format at max length
+/// Precondition: System has an index value with realistic format exactly 100 characters
+/// Action: Call validate_index with complex index format exactly 100 characters
+/// Result: Function returns Ok(())
+/// Covers Requirement: G.P.1, G.P.2
+#[test]
+fn test_validate_index_complex_format_at_max() {
+    // Create a realistic index format that's exactly 100 characters
+    // Format: CATEGORY_PREFIX.CHAPTER_PREFIX.NUMBER
+    let category_part = "VERY_LONG_CATEGORY_NAME";
+    let chapter_part = "EXTREMELY_LONG_CHAPTER_NAME_FOR_TESTING";
+    let number_part = "12345";
+    let separator = ".";
+    let total_len = category_part.len()
+        + separator.len()
+        + chapter_part.len()
+        + separator.len()
+        + number_part.len();
+    // Adjust to exactly 100 characters
+    let padding_needed = 100 - total_len;
+    let complex_index = format!(
+        "{}{}{}{}{}{}",
+        category_part,
+        separator,
+        chapter_part,
+        separator,
+        number_part,
+        "x".repeat(padding_needed.max(0))
+    );
+    assert_eq!(complex_index.len(), 100);
+    let result = RequirementsServer::validate_index(&complex_index);
+    assert!(result.is_ok());
+}
+
+/// Test: validate_index with single characters
+/// Precondition: System has an index value with single character parts
+/// Action: Call validate_index with "A.B.1"
+/// Result: Function returns Ok(())
+/// Covers Requirement: G.P.1, G.P.2
+#[test]
+fn test_validate_index_single_chars() {
+    let result = RequirementsServer::validate_index("A.B.1");
+    assert!(result.is_ok());
+}
+
 // Tests for validate_text (G.P.1, G.P.2)
 
 /// Test: validate_text with empty string
@@ -327,6 +421,29 @@ fn test_validate_text_max_length() {
 #[test]
 fn test_validate_text_newlines() {
     let result = RequirementsServer::validate_text("Line 1\nLine 2\nLine 3");
+    assert!(result.is_ok());
+}
+
+/// Test: validate_text with value one over max length
+/// Precondition: System has a text value exactly 10001 characters
+/// Action: Call validate_text with string exactly 10001 characters
+/// Result: Function returns error
+/// Covers Requirement: G.P.1, G.P.2
+#[test]
+fn test_validate_text_one_over_max() {
+    let over_max_text = "a".repeat(10001);
+    let result = RequirementsServer::validate_text(&over_max_text);
+    assert!(result.is_err());
+}
+
+/// Test: validate_text with single character
+/// Precondition: System has a text value with single character
+/// Action: Call validate_text with "a"
+/// Result: Function returns Ok(())
+/// Covers Requirement: G.P.1, G.P.2
+#[test]
+fn test_validate_text_single_char() {
+    let result = RequirementsServer::validate_text("a");
     assert!(result.is_ok());
 }
 
@@ -391,6 +508,40 @@ fn test_validate_title_max_length() {
     assert!(result.is_ok());
 }
 
+/// Test: validate_title with value one over max length
+/// Precondition: System has a title value exactly 101 characters
+/// Action: Call validate_title with string exactly 101 characters
+/// Result: Function returns error
+/// Covers Requirement: G.P.1, G.P.2
+#[test]
+fn test_validate_title_one_over_max() {
+    let over_max_title = "a".repeat(101);
+    let result = RequirementsServer::validate_title(&over_max_title, true);
+    assert!(result.is_err());
+}
+
+/// Test: validate_title with single character when required
+/// Precondition: System has a title value with single character and title is required
+/// Action: Call validate_title with "a" and required=true
+/// Result: Function returns Ok(())
+/// Covers Requirement: G.P.1, G.P.2
+#[test]
+fn test_validate_title_single_char_required() {
+    let result = RequirementsServer::validate_title("a", true);
+    assert!(result.is_ok());
+}
+
+/// Test: validate_title with single character when optional
+/// Precondition: System has a title value with single character and title is optional
+/// Action: Call validate_title with "a" and required=false
+/// Result: Function returns Ok(())
+/// Covers Requirement: G.P.1, G.P.2
+#[test]
+fn test_validate_title_single_char_optional() {
+    let result = RequirementsServer::validate_title("a", false);
+    assert!(result.is_ok());
+}
+
 // =============================================================================
 // Tests for G.P.3: Name validation
 // =============================================================================
@@ -417,6 +568,18 @@ fn test_validate_category_valid_name() {
 fn test_validate_category_single_char() {
     let result = RequirementsServer::validate_category("a");
     assert!(result.is_ok());
+}
+
+/// Test: validate_category with value one over max length
+/// Precondition: System has a category value exactly 101 characters
+/// Action: Call validate_category with string exactly 101 characters
+/// Result: Function returns error
+/// Covers Requirement: G.P.1, G.P.2
+#[test]
+fn test_validate_category_one_over_max() {
+    let over_max_category = "a".repeat(101);
+    let result = RequirementsServer::validate_category(&over_max_category);
+    assert!(result.is_err());
 }
 
 /// Test: validate_category with uppercase letters
@@ -601,401 +764,413 @@ fn test_validate_category_all_invalid_chars() {
         let result = RequirementsServer::validate_category(&name);
         assert!(result.is_err(), "Should reject character: {}", ch);
     }
-}
 
-// Tests for validate_chapter - name validation (G.P.3)
+    // Tests for validate_chapter - name validation (G.P.3)
 
-/// Test: validate_chapter with valid name
-/// Precondition: System has a valid chapter name
-/// Action: Call validate_chapter with valid name
-/// Result: Function returns Ok(())
-/// Covers Requirement: G.P.3
-#[test]
-fn test_validate_chapter_valid_name() {
-    let result = RequirementsServer::validate_chapter("General Requirements");
-    assert!(result.is_ok());
-}
+    /// Test: validate_chapter with valid name
+    /// Precondition: System has a valid chapter name
+    /// Action: Call validate_chapter with valid name
+    /// Result: Function returns Ok(())
+    /// Covers Requirement: G.P.3
+    #[test]
+    fn test_validate_chapter_valid_name() {
+        let result = RequirementsServer::validate_chapter("General Requirements");
+        assert!(result.is_ok());
+    }
 
-/// Test: validate_chapter with single character
-/// Precondition: System has a chapter value with single character
-/// Action: Call validate_chapter with "A"
-/// Result: Function returns Ok(())
-/// Covers Requirement: G.P.3
-#[test]
-fn test_validate_chapter_single_char() {
-    let result = RequirementsServer::validate_chapter("A");
-    assert!(result.is_ok());
-}
+    /// Test: validate_chapter with single character
+    /// Precondition: System has a chapter value with single character
+    /// Action: Call validate_chapter with "A"
+    /// Result: Function returns Ok(())
+    /// Covers Requirement: G.P.3
+    #[test]
+    fn test_validate_chapter_single_char() {
+        let result = RequirementsServer::validate_chapter("A");
+        assert!(result.is_ok());
+    }
 
-/// Test: validate_chapter with name containing newline
-/// Precondition: System has chapter name with newline
-/// Action: Call validate_chapter with name containing '\n'
-/// Result: Function returns error about newline
-/// Covers Requirement: G.P.3
-#[test]
-fn test_validate_chapter_newline() {
-    let result = RequirementsServer::validate_chapter("Chapter\nName");
-    assert!(result.is_err());
-    let err_msg = result.unwrap_err();
-    assert!(
-        err_msg.contains("uppercase and lowercase English letters") || err_msg.contains("newline")
-    );
-}
+    /// Test: validate_chapter with value one over max length
+    /// Precondition: System has a chapter value exactly 101 characters
+    /// Action: Call validate_chapter with string exactly 101 characters
+    /// Result: Function returns error
+    /// Covers Requirement: G.P.1, G.P.2
+    #[test]
+    fn test_validate_chapter_one_over_max() {
+        let over_max_chapter = "a".repeat(101);
+        let result = RequirementsServer::validate_chapter(&over_max_chapter);
+        assert!(result.is_err());
+    }
 
-/// Test: validate_chapter with name starting with whitespace
-/// Precondition: System has chapter name starting with space
-/// Action: Call validate_chapter with " Chapter"
-/// Result: Function returns error about whitespace
-/// Covers Requirement: G.P.3
-#[test]
-fn test_validate_chapter_leading_whitespace() {
-    let result = RequirementsServer::validate_chapter(" Chapter");
-    assert!(result.is_err());
-    assert!(result.unwrap_err().contains("whitespace"));
-}
+    /// Test: validate_chapter with name containing newline
+    /// Precondition: System has chapter name with newline
+    /// Action: Call validate_chapter with name containing '\n'
+    /// Result: Function returns error about newline
+    /// Covers Requirement: G.P.3
+    #[test]
+    fn test_validate_chapter_newline() {
+        let result = RequirementsServer::validate_chapter("Chapter\nName");
+        assert!(result.is_err());
+        let err_msg = result.unwrap_err();
+        assert!(
+            err_msg.contains("uppercase and lowercase English letters")
+                || err_msg.contains("newline")
+        );
+    }
 
-/// Test: validate_chapter with name ending with whitespace
-/// Precondition: System has chapter name ending with space
-/// Action: Call validate_chapter with "Chapter "
-/// Result: Function returns error about whitespace
-/// Covers Requirement: G.P.3
-#[test]
-fn test_validate_chapter_trailing_whitespace() {
-    let result = RequirementsServer::validate_chapter("Chapter ");
-    assert!(result.is_err());
-    assert!(result.unwrap_err().contains("whitespace"));
-}
+    /// Test: validate_chapter with name starting with whitespace
+    /// Precondition: System has chapter name starting with space
+    /// Action: Call validate_chapter with " Chapter"
+    /// Result: Function returns error about whitespace
+    /// Covers Requirement: G.P.3
+    #[test]
+    fn test_validate_chapter_leading_whitespace() {
+        let result = RequirementsServer::validate_chapter(" Chapter");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("whitespace"));
+    }
 
-/// Test: validate_chapter with unicode characters
-/// Precondition: System has a chapter value containing unicode characters
-/// Action: Call validate_chapter with string containing unicode
-/// Result: Function returns error (only A-Z, a-z, spaces, colons, and hyphens allowed)
-/// Covers Requirement: G.P.3
-#[test]
-fn test_validate_chapter_unicode() {
-    let result = RequirementsServer::validate_chapter("Глава");
-    assert!(result.is_err());
-    assert!(result
-        .unwrap_err()
-        .contains("uppercase and lowercase English letters"));
-}
+    /// Test: validate_chapter with name ending with whitespace
+    /// Precondition: System has chapter name ending with space
+    /// Action: Call validate_chapter with "Chapter "
+    /// Result: Function returns error about whitespace
+    /// Covers Requirement: G.P.3
+    #[test]
+    fn test_validate_chapter_trailing_whitespace() {
+        let result = RequirementsServer::validate_chapter("Chapter ");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("whitespace"));
+    }
 
-/// Test: validate_chapter with numbers
-/// Precondition: System has a chapter value containing numbers
-/// Action: Call validate_chapter with "Chapter 123"
-/// Result: Function returns error (numbers not allowed)
-/// Covers Requirement: G.P.3
-#[test]
-fn test_validate_chapter_with_numbers() {
-    let result = RequirementsServer::validate_chapter("Chapter 123");
-    assert!(result.is_err());
-    assert!(result
-        .unwrap_err()
-        .contains("uppercase and lowercase English letters"));
-}
+    /// Test: validate_chapter with unicode characters
+    /// Precondition: System has a chapter value containing unicode characters
+    /// Action: Call validate_chapter with string containing unicode
+    /// Result: Function returns error (only A-Z, a-z, spaces, colons, and hyphens allowed)
+    /// Covers Requirement: G.P.3
+    #[test]
+    fn test_validate_chapter_unicode() {
+        let result = RequirementsServer::validate_chapter("Глава");
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .contains("uppercase and lowercase English letters"));
+    }
 
-/// Test: validate_chapter with underscore
-/// Precondition: System has a chapter value containing underscore
-/// Action: Call validate_chapter with "Chapter_Name"
-/// Result: Function returns Ok (underscore is allowed per G.P.3)
-/// Covers Requirement: G.P.3
-#[test]
-fn test_validate_chapter_with_underscore() {
-    let result = RequirementsServer::validate_chapter("Chapter_Name");
-    assert!(result.is_ok());
-}
+    /// Test: validate_chapter with numbers
+    /// Precondition: System has a chapter value containing numbers
+    /// Action: Call validate_chapter with "Chapter 123"
+    /// Result: Function returns error (numbers not allowed)
+    /// Covers Requirement: G.P.3
+    #[test]
+    fn test_validate_chapter_with_numbers() {
+        let result = RequirementsServer::validate_chapter("Chapter 123");
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .contains("uppercase and lowercase English letters"));
+    }
 
-/// Test: validate_chapter with valid colon
-/// Precondition: System has a chapter value containing colon
-/// Action: Call validate_chapter with "Chapter: Subchapter"
-/// Result: Function returns Ok(())
-/// Covers Requirement: G.P.3
-#[test]
-fn test_validate_chapter_with_colon() {
-    let result = RequirementsServer::validate_chapter("Chapter: Subchapter");
-    assert!(result.is_ok());
-}
+    /// Test: validate_chapter with underscore
+    /// Precondition: System has a chapter value containing underscore
+    /// Action: Call validate_chapter with "Chapter_Name"
+    /// Result: Function returns Ok (underscore is allowed per G.P.3)
+    /// Covers Requirement: G.P.3
+    #[test]
+    fn test_validate_chapter_with_underscore() {
+        let result = RequirementsServer::validate_chapter("Chapter_Name");
+        assert!(result.is_ok());
+    }
 
-/// Test: validate_chapter with valid hyphen
-/// Precondition: System has a chapter value containing hyphen
-/// Action: Call validate_chapter with "Chapter-Subchapter"
-/// Result: Function returns Ok(())
-/// Covers Requirement: G.P.3
-#[test]
-fn test_validate_chapter_with_hyphen() {
-    let result = RequirementsServer::validate_chapter("Chapter-Subchapter");
-    assert!(result.is_ok());
-}
+    /// Test: validate_chapter with valid colon
+    /// Precondition: System has a chapter value containing colon
+    /// Action: Call validate_chapter with "Chapter: Subchapter"
+    /// Result: Function returns Ok(())
+    /// Covers Requirement: G.P.3
+    #[test]
+    fn test_validate_chapter_with_colon() {
+        let result = RequirementsServer::validate_chapter("Chapter: Subchapter");
+        assert!(result.is_ok());
+    }
 
-/// Test: validate_chapter with valid combination of allowed characters
-/// Precondition: System has a chapter value with spaces, colons, and hyphens
-/// Action: Call validate_chapter with "Chapter: Sub-Chapter Name"
-/// Result: Function returns Ok(())
-/// Covers Requirement: G.P.3
-#[test]
-fn test_validate_chapter_with_all_allowed_chars() {
-    let result = RequirementsServer::validate_chapter("Chapter: Sub-Chapter Name");
-    assert!(result.is_ok());
-}
+    /// Test: validate_chapter with valid hyphen
+    /// Precondition: System has a chapter value containing hyphen
+    /// Action: Call validate_chapter with "Chapter-Subchapter"
+    /// Result: Function returns Ok(())
+    /// Covers Requirement: G.P.3
+    #[test]
+    fn test_validate_chapter_with_hyphen() {
+        let result = RequirementsServer::validate_chapter("Chapter-Subchapter");
+        assert!(result.is_ok());
+    }
 
-/// Test: validate_chapter with complex valid markdown heading
-/// Precondition: System has complex but valid chapter name
-/// Action: Call validate_chapter with complex name (with colon and spaces)
-/// Result: Function returns Ok(())
-/// Covers Requirement: G.P.3
-#[test]
-fn test_validate_chapter_complex_valid() {
-    let result = RequirementsServer::validate_chapter("Tool: Get Instructions");
-    assert!(result.is_ok());
-}
+    /// Test: validate_chapter with valid combination of allowed characters
+    /// Precondition: System has a chapter value with spaces, colons, and hyphens
+    /// Action: Call validate_chapter with "Chapter: Sub-Chapter Name"
+    /// Result: Function returns Ok(())
+    /// Covers Requirement: G.P.3
+    #[test]
+    fn test_validate_chapter_with_all_allowed_chars() {
+        let result = RequirementsServer::validate_chapter("Chapter: Sub-Chapter Name");
+        assert!(result.is_ok());
+    }
 
-// =============================================================================
-// Tests for G.P.4: Empty array handling
-// =============================================================================
+    /// Test: validate_chapter with complex valid markdown heading
+    /// Precondition: System has complex but valid chapter name
+    /// Action: Call validate_chapter with complex name (with colon and spaces)
+    /// Result: Function returns Ok(())
+    /// Covers Requirement: G.P.3
+    #[test]
+    fn test_validate_chapter_complex_valid() {
+        let result = RequirementsServer::validate_chapter("Tool: Get Instructions");
+        assert!(result.is_ok());
+    }
 
-// Note: G.P.4 tests are covered in tool-specific test files
-// (e.g., tool_get_requirement_tests.rs, tool_update_requirement_tests.rs)
+    // =============================================================================
+    // Tests for G.P.4: Empty array handling
+    // =============================================================================
 
-// =============================================================================
-// Parameter validation tests
-// =============================================================================
+    // Note: G.P.4 tests are covered in tool-specific test files
+    // (e.g., tool_get_requirement_tests.rs, tool_update_requirement_tests.rs)
 
-// =============================================================================
-// Tests for parameter validation in tools (G.REQLIX_I.6, G.REQLIX_U.6)
-// =============================================================================
+    // =============================================================================
+    // Parameter validation tests
+    // =============================================================================
 
-/// Test: reqlix_insert_requirement validates all parameters
-/// Precondition: System has invalid parameters
-/// Action: Call reqlix_insert_requirement with invalid parameters
-/// Result: Function returns validation error before processing
-/// Covers Requirement: G.REQLIX_I.6, G.P.1, G.P.2
-#[test]
-fn test_insert_requirement_validation() {
-    // Test that validation functions work correctly
-    assert!(RequirementsServer::validate_project_root("").is_err());
-    assert!(RequirementsServer::validate_category("").is_err());
-    assert!(RequirementsServer::validate_chapter("").is_err());
-    assert!(RequirementsServer::validate_text("").is_err());
-    assert!(RequirementsServer::validate_title("", true).is_err());
-}
+    // =============================================================================
+    // Tests for parameter validation in tools (G.REQLIX_I.6, G.REQLIX_U.6)
+    // =============================================================================
 
-/// Test: reqlix_update_requirement validates all parameters
-/// Precondition: System has invalid parameters
-/// Action: Call reqlix_update_requirement with invalid parameters
-/// Result: Function returns validation error before processing
-/// Covers Requirement: G.REQLIX_U.6, G.P.1, G.P.2
-#[test]
-fn test_update_requirement_validation() {
-    // Test that validation functions work correctly
-    assert!(RequirementsServer::validate_project_root("").is_err());
-    assert!(RequirementsServer::validate_index("").is_err());
-    assert!(RequirementsServer::validate_text("").is_err());
-    // Title is optional for update, so empty is OK when required=false
-    assert!(RequirementsServer::validate_title("", false).is_ok());
-}
+    /// Test: reqlix_insert_requirement validates all parameters
+    /// Precondition: System has invalid parameters
+    /// Action: Call reqlix_insert_requirement with invalid parameters
+    /// Result: Function returns validation error before processing
+    /// Covers Requirement: G.REQLIX_I.6, G.P.1, G.P.2
+    #[test]
+    fn test_insert_requirement_validation() {
+        // Test that validation functions work correctly
+        assert!(RequirementsServer::validate_project_root("").is_err());
+        assert!(RequirementsServer::validate_category("").is_err());
+        assert!(RequirementsServer::validate_chapter("").is_err());
+        assert!(RequirementsServer::validate_text("").is_err());
+        assert!(RequirementsServer::validate_title("", true).is_err());
+    }
 
-// =============================================================================
-// Error response format tests (G.C.6)
-// =============================================================================
+    /// Test: reqlix_update_requirement validates all parameters
+    /// Precondition: System has invalid parameters
+    /// Action: Call reqlix_update_requirement with invalid parameters
+    /// Result: Function returns validation error before processing
+    /// Covers Requirement: G.REQLIX_U.6, G.P.1, G.P.2
+    #[test]
+    fn test_update_requirement_validation() {
+        // Test that validation functions work correctly
+        assert!(RequirementsServer::validate_project_root("").is_err());
+        assert!(RequirementsServer::validate_index("").is_err());
+        assert!(RequirementsServer::validate_text("").is_err());
+        // Title is optional for update, so empty is OK when required=false
+        assert!(RequirementsServer::validate_title("", false).is_ok());
+    }
 
-// =============================================================================
-// Tests for error response format (G.C.6)
-// =============================================================================
+    // =============================================================================
+    // Error response format tests (G.C.6)
+    // =============================================================================
 
-/// Test: Error response format validation
-/// Precondition: System encounters an error condition
-/// Action: Verify error JSON structure
-/// Result: Error JSON has "success": false and "error" field
-/// Covers Requirement: G.C.6
-#[test]
-fn test_error_response_format() {
-    // Verify error format structure by checking validation errors return proper format
-    let result = RequirementsServer::validate_project_root("");
-    assert!(result.is_err());
-    // Error message should be human-readable
-    let error_msg = result.unwrap_err();
-    assert!(!error_msg.is_empty());
-    assert!(error_msg.contains("required") || error_msg.contains("exceeds"));
-}
+    // =============================================================================
+    // Tests for error response format (G.C.6)
+    // =============================================================================
 
-// =============================================================================
-// Additional validation and edge case tests
-// =============================================================================
+    /// Test: Error response format validation
+    /// Precondition: System encounters an error condition
+    /// Action: Verify error JSON structure
+    /// Result: Error JSON has "success": false and "error" field
+    /// Covers Requirement: G.C.6
+    #[test]
+    fn test_error_response_format() {
+        // Verify error format structure by checking validation errors return proper format
+        let result = RequirementsServer::validate_project_root("");
+        assert!(result.is_err());
+        // Error message should be human-readable
+        let error_msg = result.unwrap_err();
+        assert!(!error_msg.is_empty());
+        assert!(error_msg.contains("required") || error_msg.contains("exceeds"));
+    }
 
-// =============================================================================
-// Additional validation and edge case tests
-// =============================================================================
+    // =============================================================================
+    // Additional validation and edge case tests
+    // =============================================================================
 
-use tempfile::TempDir;
+    // =============================================================================
+    // Additional validation and edge case tests
+    // =============================================================================
 
-use super::common::{
-    create_agents_file_in_req_dir, create_category_file_in_req_dir, create_requirements_dir,
-};
+    use tempfile::TempDir;
 
-/// Test: parse_level1_heading with valid heading
-#[test]
-fn test_parse_level1_heading_valid() {
-    let result = RequirementsServer::parse_level1_heading("# Chapter Name");
-    assert!(result.is_some());
-    assert_eq!(result.unwrap(), "Chapter Name");
-}
-
-/// Test: parse_level1_heading with level2
-#[test]
-fn test_parse_level1_heading_level2() {
-    let result = RequirementsServer::parse_level1_heading("## Not Level 1");
-    assert!(result.is_none());
-}
-
-/// Test: parse_level1_heading with no space
-#[test]
-fn test_parse_level1_heading_no_space() {
-    let result = RequirementsServer::parse_level1_heading("#NoSpace");
-    assert!(result.is_none());
-}
-
-/// Test: parse_level2_heading with valid heading
-#[test]
-fn test_parse_level2_heading_valid() {
-    let result = RequirementsServer::parse_level2_heading("## G.C.1: Title");
-    assert!(result.is_some());
-    let (index, title) = result.unwrap();
-    assert_eq!(index, "G.C.1");
-    assert_eq!(title, "Title");
-}
-
-/// Test: parse_level2_heading with level1
-#[test]
-fn test_parse_level2_heading_level1() {
-    let result = RequirementsServer::parse_level2_heading("# Not Level 2");
-    assert!(result.is_none());
-}
-
-/// Test: parse_level2_heading with level3
-#[test]
-fn test_parse_level2_heading_level3() {
-    let result = RequirementsServer::parse_level2_heading("### Not Level 2");
-    assert!(result.is_none());
-}
-
-/// Test: parse_index with valid index
-#[test]
-fn test_parse_index_valid() {
-    let result = RequirementsServer::parse_index("G.C.1");
-    assert!(result.is_ok());
-    let (cat, chap, num) = result.unwrap();
-    assert_eq!(cat, "G");
-    assert_eq!(chap, "C");
-    assert_eq!(num, "1");
-}
-
-/// Test: parse_index with invalid format
-#[test]
-fn test_parse_index_invalid() {
-    let result = RequirementsServer::parse_index("invalid");
-    assert!(result.is_err());
-}
-
-/// Test: parse_index with two parts
-#[test]
-fn test_parse_index_two_parts() {
-    let result = RequirementsServer::parse_index("G.C");
-    assert!(result.is_err());
-}
-
-/// Test: insert requirement creates new chapter
-#[test]
-fn test_insert_creates_chapter() {
-    let temp_dir = TempDir::new().unwrap();
-    let req_dir = create_requirements_dir(&temp_dir);
-    create_agents_file_in_req_dir(&req_dir, "# Instructions\n");
-    create_category_file_in_req_dir(
-        &req_dir,
-        "general",
-        "# Existing\n\n## G.E.1: Test\n\nContent.\n",
-    );
-
-    let params = reqlix::InsertRequirementParams {
-        project_root: temp_dir.path().to_string_lossy().to_string(),
-        operation_description: "Test".to_string(),
-        category: "general".to_string(),
-        chapter: "New Chapter".to_string(),
-        title: "New Req".to_string(),
-        text: "New content".to_string(),
+    use super::common::{
+        create_agents_file_in_req_dir, create_category_file_in_req_dir, create_requirements_dir,
     };
-    let result = RequirementsServer::handle_insert_requirement(params);
-    let parsed: serde_json::Value = serde_json::from_str(&result).unwrap();
 
-    assert_eq!(parsed["success"], true);
-    let file_content = std::fs::read_to_string(req_dir.join("general.md")).unwrap();
-    assert!(file_content.contains("# New Chapter"));
-}
+    /// Test: parse_level1_heading with valid heading
+    #[test]
+    fn test_parse_level1_heading_valid() {
+        let result = RequirementsServer::parse_level1_heading("# Chapter Name");
+        assert!(result.is_some());
+        assert_eq!(result.unwrap(), "Chapter Name");
+    }
 
-/// Test: update with new title changes heading
-#[test]
-fn test_update_changes_title() {
-    let temp_dir = TempDir::new().unwrap();
-    let req_dir = create_requirements_dir(&temp_dir);
-    create_agents_file_in_req_dir(&req_dir, "# Instructions\n");
-    create_category_file_in_req_dir(
-        &req_dir,
-        "general",
-        "# Chapter\n\n## G.C.1: Old Title\n\nContent.\n",
-    );
+    /// Test: parse_level1_heading with level2
+    #[test]
+    fn test_parse_level1_heading_level2() {
+        let result = RequirementsServer::parse_level1_heading("## Not Level 1");
+        assert!(result.is_none());
+    }
 
-    let params = reqlix::UpdateRequirementParams {
-        project_root: temp_dir.path().to_string_lossy().to_string(),
-        operation_description: "Test".to_string(),
-        index: Some("G.C.1".to_string()),
-        text: Some("Content".to_string()),
-        title: Some("New Title".to_string()),
-        items: None,
-    };
-    let result = RequirementsServer::handle_update_requirement(params);
-    let parsed: serde_json::Value = serde_json::from_str(&result).unwrap();
+    /// Test: parse_level1_heading with no space
+    #[test]
+    fn test_parse_level1_heading_no_space() {
+        let result = RequirementsServer::parse_level1_heading("#NoSpace");
+        assert!(result.is_none());
+    }
 
-    assert_eq!(parsed["success"], true);
-    assert_eq!(parsed["data"]["title"], "New Title");
+    /// Test: parse_level2_heading with valid heading
+    #[test]
+    fn test_parse_level2_heading_valid() {
+        let result = RequirementsServer::parse_level2_heading("## G.C.1: Title");
+        assert!(result.is_some());
+        let (index, title) = result.unwrap();
+        assert_eq!(index, "G.C.1");
+        assert_eq!(title, "Title");
+    }
 
-    let file_content = std::fs::read_to_string(req_dir.join("general.md")).unwrap();
-    assert!(file_content.contains("## G.C.1: New Title"));
-    assert!(!file_content.contains("Old Title"));
-}
+    /// Test: parse_level2_heading with level1
+    #[test]
+    fn test_parse_level2_heading_level1() {
+        let result = RequirementsServer::parse_level2_heading("# Not Level 2");
+        assert!(result.is_none());
+    }
 
-/// Test: update without title keeps existing title
-#[test]
-fn test_update_keeps_title() {
-    let temp_dir = TempDir::new().unwrap();
-    let req_dir = create_requirements_dir(&temp_dir);
-    create_agents_file_in_req_dir(&req_dir, "# Instructions\n");
-    create_category_file_in_req_dir(
-        &req_dir,
-        "general",
-        "# Chapter\n\n## G.C.1: Original Title\n\nOld content.\n",
-    );
+    /// Test: parse_level2_heading with level3
+    #[test]
+    fn test_parse_level2_heading_level3() {
+        let result = RequirementsServer::parse_level2_heading("### Not Level 2");
+        assert!(result.is_none());
+    }
 
-    let params = reqlix::UpdateRequirementParams {
-        project_root: temp_dir.path().to_string_lossy().to_string(),
-        operation_description: "Test".to_string(),
-        index: Some("G.C.1".to_string()),
-        text: Some("New content".to_string()),
-        title: None,
-        items: None,
-    };
-    let result = RequirementsServer::handle_update_requirement(params);
-    let parsed: serde_json::Value = serde_json::from_str(&result).unwrap();
+    /// Test: parse_index with valid index
+    #[test]
+    fn test_parse_index_valid() {
+        let result = RequirementsServer::parse_index("G.C.1");
+        assert!(result.is_ok());
+        let (cat, chap, num) = result.unwrap();
+        assert_eq!(cat, "G");
+        assert_eq!(chap, "C");
+        assert_eq!(num, "1");
+    }
 
-    assert_eq!(parsed["success"], true);
-    assert_eq!(parsed["data"]["title"], "Original Title");
-}
+    /// Test: parse_index with invalid format
+    #[test]
+    fn test_parse_index_invalid() {
+        let result = RequirementsServer::parse_index("invalid");
+        assert!(result.is_err());
+    }
 
-/// Test: delete removes empty chapter
-#[test]
-fn test_delete_removes_empty_chapter() {
-    let temp_dir = TempDir::new().unwrap();
-    let req_dir = create_requirements_dir(&temp_dir);
-    create_agents_file_in_req_dir(&req_dir, "# Instructions\n");
-    let content = r#"# Chapter One
+    /// Test: parse_index with two parts
+    #[test]
+    fn test_parse_index_two_parts() {
+        let result = RequirementsServer::parse_index("G.C");
+        assert!(result.is_err());
+    }
+
+    /// Test: insert requirement creates new chapter
+    #[test]
+    fn test_insert_creates_chapter() {
+        let temp_dir = TempDir::new().unwrap();
+        let req_dir = create_requirements_dir(&temp_dir);
+        create_agents_file_in_req_dir(&req_dir, "# Instructions\n");
+        create_category_file_in_req_dir(
+            &req_dir,
+            "general",
+            "# Existing\n\n## G.E.1: Test\n\nContent.\n",
+        );
+
+        let params = reqlix::InsertRequirementParams {
+            project_root: temp_dir.path().to_string_lossy().to_string(),
+            operation_description: "Test".to_string(),
+            category: "general".to_string(),
+            chapter: "New Chapter".to_string(),
+            title: "New Req".to_string(),
+            text: "New content".to_string(),
+        };
+        let result = RequirementsServer::handle_insert_requirement(params);
+        let parsed: serde_json::Value = serde_json::from_str(&result).unwrap();
+
+        assert_eq!(parsed["success"], true);
+        let file_content = std::fs::read_to_string(req_dir.join("general.md")).unwrap();
+        assert!(file_content.contains("# New Chapter"));
+    }
+
+    /// Test: update with new title changes heading
+    #[test]
+    fn test_update_changes_title() {
+        let temp_dir = TempDir::new().unwrap();
+        let req_dir = create_requirements_dir(&temp_dir);
+        create_agents_file_in_req_dir(&req_dir, "# Instructions\n");
+        create_category_file_in_req_dir(
+            &req_dir,
+            "general",
+            "# Chapter\n\n## G.C.1: Old Title\n\nContent.\n",
+        );
+
+        let params = reqlix::UpdateRequirementParams {
+            project_root: temp_dir.path().to_string_lossy().to_string(),
+            operation_description: "Test".to_string(),
+            index: Some("G.C.1".to_string()),
+            text: Some("Content".to_string()),
+            title: Some("New Title".to_string()),
+            items: None,
+        };
+        let result = RequirementsServer::handle_update_requirement(params);
+        let parsed: serde_json::Value = serde_json::from_str(&result).unwrap();
+
+        assert_eq!(parsed["success"], true);
+        assert_eq!(parsed["data"]["title"], "New Title");
+
+        let file_content = std::fs::read_to_string(req_dir.join("general.md")).unwrap();
+        assert!(file_content.contains("## G.C.1: New Title"));
+        assert!(!file_content.contains("Old Title"));
+    }
+
+    /// Test: update without title keeps existing title
+    #[test]
+    fn test_update_keeps_title() {
+        let temp_dir = TempDir::new().unwrap();
+        let req_dir = create_requirements_dir(&temp_dir);
+        create_agents_file_in_req_dir(&req_dir, "# Instructions\n");
+        create_category_file_in_req_dir(
+            &req_dir,
+            "general",
+            "# Chapter\n\n## G.C.1: Original Title\n\nOld content.\n",
+        );
+
+        let params = reqlix::UpdateRequirementParams {
+            project_root: temp_dir.path().to_string_lossy().to_string(),
+            operation_description: "Test".to_string(),
+            index: Some("G.C.1".to_string()),
+            text: Some("New content".to_string()),
+            title: None,
+            items: None,
+        };
+        let result = RequirementsServer::handle_update_requirement(params);
+        let parsed: serde_json::Value = serde_json::from_str(&result).unwrap();
+
+        assert_eq!(parsed["success"], true);
+        assert_eq!(parsed["data"]["title"], "Original Title");
+    }
+
+    /// Test: delete removes empty chapter
+    #[test]
+    fn test_delete_removes_empty_chapter() {
+        let temp_dir = TempDir::new().unwrap();
+        let req_dir = create_requirements_dir(&temp_dir);
+        create_agents_file_in_req_dir(&req_dir, "# Instructions\n");
+        let content = r#"# Chapter One
 
 ## G.O.1: Only Req
 
@@ -1007,47 +1182,367 @@ Content.
 
 Content.
 "#;
-    create_category_file_in_req_dir(&req_dir, "general", content);
+        create_category_file_in_req_dir(&req_dir, "general", content);
 
-    let params = reqlix::DeleteRequirementParams {
-        project_root: temp_dir.path().to_string_lossy().to_string(),
-        operation_description: "Test".to_string(),
-        index: reqlix::IndexParam::Single("G.O.1".to_string()),
-    };
-    let result = RequirementsServer::handle_delete_requirement(params);
-    let parsed: serde_json::Value = serde_json::from_str(&result).unwrap();
+        let params = reqlix::DeleteRequirementParams {
+            project_root: temp_dir.path().to_string_lossy().to_string(),
+            operation_description: "Test".to_string(),
+            index: reqlix::IndexParam::Single("G.O.1".to_string()),
+        };
+        let result = RequirementsServer::handle_delete_requirement(params);
+        let parsed: serde_json::Value = serde_json::from_str(&result).unwrap();
 
-    assert_eq!(parsed["success"], true);
+        assert_eq!(parsed["success"], true);
 
-    let file_content = std::fs::read_to_string(req_dir.join("general.md")).unwrap();
-    assert!(!file_content.contains("# Chapter One"));
-    assert!(file_content.contains("# Chapter Two"));
+        let file_content = std::fs::read_to_string(req_dir.join("general.md")).unwrap();
+        assert!(!file_content.contains("# Chapter One"));
+        assert!(file_content.contains("# Chapter Two"));
+    }
+
+    /// Test: validate category name with invalid characters
+    #[test]
+    fn test_validate_category_invalid_chars() {
+        let result = RequirementsServer::validate_category("General");
+        assert!(result.is_err());
+    }
+
+    /// Test: validate category name valid
+    #[test]
+    fn test_validate_category_valid() {
+        let result = RequirementsServer::validate_category("general_test");
+        assert!(result.is_ok());
+    }
+
+    /// Test: validate chapter name with invalid characters
+    #[test]
+    fn test_validate_chapter_invalid_chars() {
+        let result = RequirementsServer::validate_chapter("Chapter\nName");
+        assert!(result.is_err());
+    }
+
+    /// Test: validate chapter name valid
+    #[test]
+    fn test_validate_chapter_valid() {
+        let result = RequirementsServer::validate_chapter("Tool: test-chapter");
+        assert!(result.is_ok());
+    }
+
+    /// Test: parse_index with multi-character parts
+    /// Precondition: System has a requirement index with multi-character parts
+    /// Action: Call parse_index with "GET.GET_C.123"
+    /// Result: Function returns Ok(("GET", "GET_C", "123"))
+    /// Covers Requirement: G.REQLIX_GET_REQUIREMENT.3
+    #[test]
+    fn test_parse_index_multi_char() {
+        let result = RequirementsServer::parse_index("GET.GET_C.123");
+        assert_eq!(
+            result,
+            Ok(("GET".to_string(), "GET_C".to_string(), "123".to_string()))
+        );
+    }
+
+    /// Test: parse_index with invalid format (too few parts)
+    /// Precondition: System has an index with only 2 parts instead of 3
+    /// Action: Call parse_index with "G.G"
+    /// Result: Function returns error indicating invalid format
+    /// Covers Requirement: G.REQLIX_GET_REQUIREMENT.3
+    #[test]
+    fn test_parse_index_too_few_parts() {
+        let result = RequirementsServer::parse_index("G.G");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("Invalid index format"));
+    }
+
+    /// Test: parse_index with invalid format (too many parts)
+    /// Precondition: System has an index with 4 parts instead of 3
+    /// Action: Call parse_index with "G.G.1.2"
+    /// Result: Function returns error indicating invalid format
+    /// Covers Requirement: G.REQLIX_GET_REQUIREMENT.3
+    #[test]
+    fn test_parse_index_too_many_parts() {
+        let result = RequirementsServer::parse_index("G.G.1.2");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("Invalid index format"));
+    }
+
+    /// Test: parse_index with empty string
+    /// Precondition: System has an empty index string
+    /// Action: Call parse_index with ""
+    /// Result: Function returns error indicating invalid format
+    /// Covers Requirement: G.REQLIX_GET_REQUIREMENT.3
+    #[test]
+    fn test_parse_index_empty() {
+        let result = RequirementsServer::parse_index("");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("Invalid index format"));
+    }
+
+    /// Test: parse_index with only dots
+    /// Precondition: System has an index string with only dots
+    /// Action: Call parse_index with "..."
+    /// Result: Function returns error indicating invalid format
+    /// Covers Requirement: G.REQLIX_GET_REQUIREMENT.3
+    #[test]
+    fn test_parse_index_only_dots() {
+        let result = RequirementsServer::parse_index("...");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("Invalid index format"));
+    }
+
+    /// Test: parse_index with leading dot
+    /// Precondition: System has an index string with leading dot
+    /// Action: Call parse_index with ".G.1"
+    /// Result: Function returns Ok with empty first part (parsing succeeds, validation should catch this)
+    /// Covers Requirement: G.REQLIX_GET_REQUIREMENT.3
+    #[test]
+    fn test_parse_index_leading_dot() {
+        let result = RequirementsServer::parse_index(".G.1");
+        // parse_index only splits by dots, doesn't validate empty parts
+        // Empty parts will be caught by validate_index
+        assert_eq!(
+            result,
+            Ok(("".to_string(), "G".to_string(), "1".to_string()))
+        );
+    }
+
+    /// Test: parse_index with trailing dot
+    /// Precondition: System has an index string with trailing dot
+    /// Action: Call parse_index with "G.G."
+    /// Result: Function returns Ok with empty third part (parsing succeeds, validation should catch this)
+    /// Covers Requirement: G.REQLIX_GET_REQUIREMENT.3
+    #[test]
+    fn test_parse_index_trailing_dot() {
+        let result = RequirementsServer::parse_index("G.G.");
+        // parse_index only splits by dots, doesn't validate empty parts
+        // Empty parts will be caught by validate_index
+        assert_eq!(
+            result,
+            Ok(("G".to_string(), "G".to_string(), "".to_string()))
+        );
+    }
+
+    /// Test: parse_index with consecutive dots
+    /// Precondition: System has an index string with consecutive dots
+    /// Action: Call parse_index with "G..1"
+    /// Result: Function returns Ok with empty second part (parsing succeeds, validation should catch this)
+    /// Covers Requirement: G.REQLIX_GET_REQUIREMENT.3
+    #[test]
+    fn test_parse_index_consecutive_dots() {
+        let result = RequirementsServer::parse_index("G..1");
+        // parse_index only splits by dots, doesn't validate empty parts
+        // Empty parts will be caught by validate_index
+        assert_eq!(
+            result,
+            Ok(("G".to_string(), "".to_string(), "1".to_string()))
+        );
+    }
+
+    /// Test: parse_index with single character parts
+    /// Precondition: System has an index with single character parts
+    /// Action: Call parse_index with "A.B.1"
+    /// Result: Function returns Ok(("A", "B", "1"))
+    /// Covers Requirement: G.REQLIX_GET_REQUIREMENT.3
+    #[test]
+    fn test_parse_index_single_chars() {
+        let result = RequirementsServer::parse_index("A.B.1");
+        assert_eq!(
+            result,
+            Ok(("A".to_string(), "B".to_string(), "1".to_string()))
+        );
+    }
+
+    /// Test: parse_index with large number
+    /// Precondition: System has an index with large number part
+    /// Action: Call parse_index with "G.G.999999"
+    /// Result: Function returns Ok(("G", "G", "999999"))
+    /// Covers Requirement: G.REQLIX_GET_REQUIREMENT.3
+    #[test]
+    fn test_parse_index_large_number() {
+        let result = RequirementsServer::parse_index("G.G.999999");
+        assert_eq!(
+            result,
+            Ok(("G".to_string(), "G".to_string(), "999999".to_string()))
+        );
+    }
+
+    /// Test: parse_index with zero as number
+    /// Precondition: System has an index with zero as number part
+    /// Action: Call parse_index with "G.G.0"
+    /// Result: Function returns Ok(("G", "G", "0"))
+    /// Covers Requirement: G.REQLIX_GET_REQUIREMENT.3
+    #[test]
+    fn test_parse_index_zero_number() {
+        let result = RequirementsServer::parse_index("G.G.0");
+        assert_eq!(
+            result,
+            Ok(("G".to_string(), "G".to_string(), "0".to_string()))
+        );
+    }
+
+    /// Test: parse_index with underscore in parts
+    /// Precondition: System has an index with underscores in parts
+    /// Action: Call parse_index with "GET.GET_C.1"
+    /// Result: Function returns Ok(("GET", "GET_C", "1"))
+    /// Covers Requirement: G.REQLIX_GET_REQUIREMENT.3
+    #[test]
+    fn test_parse_index_underscores() {
+        let result = RequirementsServer::parse_index("GET.GET_C.1");
+        assert_eq!(
+            result,
+            Ok(("GET".to_string(), "GET_C".to_string(), "1".to_string()))
+        );
+    }
+
+    /// Test: parse_index with whitespace (should fail validation before parsing)
+    /// Precondition: System has an index with whitespace
+    /// Action: Call parse_index with "G .G.1"
+    /// Result: Function may return error or parse with whitespace (implementation dependent)
+    /// Covers Requirement: G.REQLIX_GET_REQUIREMENT.3
+    #[test]
+    fn test_parse_index_with_whitespace() {
+        let result = RequirementsServer::parse_index("G .G.1");
+        // This might parse or fail depending on implementation
+        // The important thing is it doesn't crash
+        let _ = result;
+    }
 }
 
-/// Test: validate category name with invalid characters
+/// Test: read_file_utf8 with valid UTF-8 file
+/// Precondition: System has a valid UTF-8 file
+/// Action: Call read_file_utf8 with valid file
+/// Result: Function returns file content
+/// Covers Requirement: G.R.8
 #[test]
-fn test_validate_category_invalid_chars() {
-    let result = RequirementsServer::validate_category("General");
-    assert!(result.is_err());
-}
+fn test_read_file_utf8_valid() {
+    let temp_dir = TempDir::new().unwrap();
+    let file_path = temp_dir.path().join("test.md");
+    std::fs::write(&file_path, "Test content").unwrap();
 
-/// Test: validate category name valid
-#[test]
-fn test_validate_category_valid() {
-    let result = RequirementsServer::validate_category("general_test");
+    let result = RequirementsServer::read_file_utf8(&file_path);
     assert!(result.is_ok());
+    assert_eq!(result.unwrap(), "Test content");
 }
 
-/// Test: validate chapter name with invalid characters
+/// Test: read_file_utf8 with UTF-8 special characters
+/// Precondition: System has UTF-8 file with special characters
+/// Action: Call read_file_utf8 with file containing emoji and unicode
+/// Result: Function returns file content correctly
+/// Covers Requirement: G.R.8
 #[test]
-fn test_validate_chapter_invalid_chars() {
-    let result = RequirementsServer::validate_chapter("Chapter\nName");
-    assert!(result.is_err());
-}
+fn test_read_file_utf8_unicode() {
+    let temp_dir = TempDir::new().unwrap();
+    let file_path = temp_dir.path().join("test.md");
+    let content = "Test with émojis 🎉 and 中文";
+    std::fs::write(&file_path, content).unwrap();
 
-/// Test: validate chapter name valid
-#[test]
-fn test_validate_chapter_valid() {
-    let result = RequirementsServer::validate_chapter("Tool: test-chapter");
+    let result = RequirementsServer::read_file_utf8(&file_path);
     assert!(result.is_ok());
+    assert_eq!(result.unwrap(), content);
+}
+
+/// Test: read_file_utf8 with non-existent file
+/// Precondition: System has non-existent file path
+/// Action: Call read_file_utf8 with non-existent file
+/// Result: Function returns error
+/// Covers Requirement: G.R.8, G.R.9
+#[test]
+fn test_read_file_utf8_not_found() {
+    let temp_dir = TempDir::new().unwrap();
+    let file_path = temp_dir.path().join("nonexistent.md");
+
+    let result = RequirementsServer::read_file_utf8(&file_path);
+    assert!(result.is_err());
+    assert!(result.unwrap_err().contains("File not found"));
+}
+
+/// Test: write_file_utf8 creates parent directories
+/// Precondition: System has path with non-existent parent directories
+/// Action: Call write_file_utf8 with nested path
+/// Result: Function creates directories and writes file
+/// Covers Requirement: G.R.9, G.C.2
+#[test]
+fn test_write_file_utf8_creates_dirs() {
+    let temp_dir = TempDir::new().unwrap();
+    let file_path = temp_dir.path().join("nested").join("path").join("test.md");
+
+    let result = RequirementsServer::write_file_utf8(&file_path, "Content");
+    assert!(result.is_ok());
+    assert!(file_path.exists());
+}
+
+/// Test: write_file_utf8 with valid content
+/// Precondition: System has valid file path
+/// Action: Call write_file_utf8 with content
+/// Result: Function writes file successfully
+/// Covers Requirement: G.R.9
+#[test]
+fn test_write_file_utf8_valid() {
+    let temp_dir = TempDir::new().unwrap();
+    let file_path = temp_dir.path().join("test.md");
+
+    let result = RequirementsServer::write_file_utf8(&file_path, "Test content");
+    assert!(result.is_ok());
+
+    let content = std::fs::read_to_string(&file_path).unwrap();
+    assert_eq!(content, "Test content");
+}
+
+/// Test: is_file_empty_or_whitespace with empty string
+/// Precondition: System has empty string
+/// Action: Call is_file_empty_or_whitespace with ""
+/// Result: Function returns true
+/// Covers Requirement: G.R.10
+#[test]
+fn test_is_file_empty_or_whitespace_empty() {
+    assert!(RequirementsServer::is_file_empty_or_whitespace(""));
+}
+
+/// Test: is_file_empty_or_whitespace with only spaces
+/// Precondition: System has string with only spaces
+/// Action: Call is_file_empty_or_whitespace with "   "
+/// Result: Function returns true
+/// Covers Requirement: G.R.10
+#[test]
+fn test_is_file_empty_or_whitespace_spaces() {
+    assert!(RequirementsServer::is_file_empty_or_whitespace("   "));
+}
+
+/// Test: is_file_empty_or_whitespace with only newlines
+/// Precondition: System has string with only newlines
+/// Action: Call is_file_empty_or_whitespace with "\n\n"
+/// Result: Function returns true
+/// Covers Requirement: G.R.10
+#[test]
+fn test_is_file_empty_or_whitespace_newlines() {
+    assert!(RequirementsServer::is_file_empty_or_whitespace("\n\n"));
+}
+
+/// Test: is_file_empty_or_whitespace with tabs
+/// Precondition: System has string with only tabs
+/// Action: Call is_file_empty_or_whitespace with "\t\t"
+/// Result: Function returns true
+/// Covers Requirement: G.R.10
+#[test]
+fn test_is_file_empty_or_whitespace_tabs() {
+    assert!(RequirementsServer::is_file_empty_or_whitespace("\t\t"));
+}
+
+/// Test: is_file_empty_or_whitespace with mixed whitespace
+/// Precondition: System has string with mixed whitespace
+/// Action: Call is_file_empty_or_whitespace with " \n\t "
+/// Result: Function returns true
+/// Covers Requirement: G.R.10
+#[test]
+fn test_is_file_empty_or_whitespace_mixed() {
+    assert!(RequirementsServer::is_file_empty_or_whitespace(" \n\t "));
+}
+
+/// Test: is_file_empty_or_whitespace with content
+/// Precondition: System has string with content
+/// Action: Call is_file_empty_or_whitespace with "content"
+/// Result: Function returns false
+/// Covers Requirement: G.R.10
+#[test]
+fn test_is_file_empty_or_whitespace_with_content() {
+    assert!(!RequirementsServer::is_file_empty_or_whitespace("content"));
 }
