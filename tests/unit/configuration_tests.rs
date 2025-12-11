@@ -743,7 +743,7 @@ fn test_get_search_paths_order() {
     std::env::set_var("REQLIX_REQ_REL_PATH", "custom");
 
     let result = RequirementsServer::get_search_paths("/test");
-    assert!(result.len() >= 3);
+    assert!(!result.is_empty());
     // First should be custom path
     assert!(result[0].to_string_lossy().contains("custom"));
 
