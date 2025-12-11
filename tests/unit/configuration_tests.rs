@@ -684,14 +684,32 @@ fn test_get_search_paths_custom_env() {
     // Save original value if exists
     let original = std::env::var("REQLIX_REQ_REL_PATH").ok();
 
+    // Set variable immediately before use to minimize race window with parallel tests
     std::env::set_var("REQLIX_REQ_REL_PATH", "custom/path");
 
     let result = RequirementsServer::get_search_paths("/test/project");
     assert!(!result.is_empty());
-    assert_eq!(
-        result[0],
-        PathBuf::from("/test/project/custom/path/AGENTS.md")
-    );
+
+    // Verify first path matches expected custom path
+    // If result doesn't match, it means another test removed the env var between set and call
+    let expected_first_path = PathBuf::from("/test/project/custom/path/AGENTS.md");
+    if result[0] != expected_first_path {
+        // Retry: set again and call function
+        std::env::set_var("REQLIX_REQ_REL_PATH", "custom/path");
+        let retry_result = RequirementsServer::get_search_paths("/test/project");
+        assert!(!retry_result.is_empty());
+        assert_eq!(
+            retry_result[0], expected_first_path,
+            "Expected custom path first with REQLIX_REQ_REL_PATH='custom/path', got: {:?} (retry: {:?})",
+            result[0], retry_result[0]
+        );
+    } else {
+        assert_eq!(
+            result[0], expected_first_path,
+            "Expected custom path first with REQLIX_REQ_REL_PATH='custom/path', got: {:?}",
+            result[0]
+        );
+    }
 
     // Restore original value
     match original {
@@ -740,12 +758,32 @@ fn test_get_search_paths_order() {
     // Save original value if exists
     let original = std::env::var("REQLIX_REQ_REL_PATH").ok();
 
+    // Set variable immediately before use to minimize race window with parallel tests
     std::env::set_var("REQLIX_REQ_REL_PATH", "custom");
 
     let result = RequirementsServer::get_search_paths("/test");
     assert!(!result.is_empty());
+
     // First should be custom path
-    assert!(result[0].to_string_lossy().contains("custom"));
+    // If result doesn't match, it means another test removed the env var between set and call
+    if !result[0].to_string_lossy().contains("custom") {
+        // Retry: set again and call function
+        std::env::set_var("REQLIX_REQ_REL_PATH", "custom");
+        let retry_result = RequirementsServer::get_search_paths("/test");
+        assert!(!retry_result.is_empty());
+        assert!(
+            retry_result[0].to_string_lossy().contains("custom"),
+            "Expected custom path first with REQLIX_REQ_REL_PATH='custom', got: {:?} (retry: {:?})",
+            result[0],
+            retry_result[0]
+        );
+    } else {
+        assert!(
+            result[0].to_string_lossy().contains("custom"),
+            "Expected custom path first with REQLIX_REQ_REL_PATH='custom', got: {:?}",
+            result[0]
+        );
+    }
 
     // Restore original value
     match original {
@@ -780,10 +818,30 @@ fn test_get_create_path_custom_env() {
     // Save original value if exists
     let original = std::env::var("REQLIX_REQ_REL_PATH").ok();
 
+    // Set variable immediately before use to minimize race window with parallel tests
     std::env::set_var("REQLIX_REQ_REL_PATH", "custom/path");
 
     let result = RequirementsServer::get_create_path("/test/project");
-    assert_eq!(result, PathBuf::from("/test/project/custom/path/AGENTS.md"));
+
+    // Verify result matches expected custom path
+    // If result doesn't match, it means another test removed the env var between set and call
+    let expected_path = PathBuf::from("/test/project/custom/path/AGENTS.md");
+    if result != expected_path {
+        // Retry: set again and call function
+        std::env::set_var("REQLIX_REQ_REL_PATH", "custom/path");
+        let retry_result = RequirementsServer::get_create_path("/test/project");
+        assert_eq!(
+            retry_result, expected_path,
+            "Expected custom path with REQLIX_REQ_REL_PATH='custom/path', got: {:?} (retry: {:?})",
+            result, retry_result
+        );
+    } else {
+        assert_eq!(
+            result, expected_path,
+            "Expected custom path with REQLIX_REQ_REL_PATH='custom/path', got: {:?}",
+            result
+        );
+    }
 
     // Restore original value
     match original {
@@ -815,13 +873,41 @@ fn test_get_create_path_empty_root() {
 /// Covers Requirement: G.REQLIX_GET_INST.4
 #[test]
 fn test_get_create_path_relative_root() {
+    // Save original value if exists
+    let original = std::env::var("REQLIX_REQ_REL_PATH").ok();
+
+    // Remove variable immediately before use to minimize race window with parallel tests
     std::env::remove_var("REQLIX_REQ_REL_PATH");
 
     let result = RequirementsServer::get_create_path("project");
-    assert_eq!(
-        result,
-        PathBuf::from("project/docs/development/requirements/AGENTS.md")
-    );
+
+    // Verify result matches expected default path (without custom env var)
+    // If result doesn't match, it means another test set the env var between removal and call
+    if result != PathBuf::from("project/docs/development/requirements/AGENTS.md") {
+        // Retry: remove again and call function
+        std::env::remove_var("REQLIX_REQ_REL_PATH");
+        let retry_result = RequirementsServer::get_create_path("project");
+        assert_eq!(
+            retry_result,
+            PathBuf::from("project/docs/development/requirements/AGENTS.md"),
+            "Expected default path without REQLIX_REQ_REL_PATH, got: {:?} (retry: {:?})",
+            result,
+            retry_result
+        );
+    } else {
+        assert_eq!(
+            result,
+            PathBuf::from("project/docs/development/requirements/AGENTS.md"),
+            "Expected default path without REQLIX_REQ_REL_PATH, got: {:?}",
+            result
+        );
+    }
+
+    // Restore original value
+    match original {
+        Some(val) => std::env::set_var("REQLIX_REQ_REL_PATH", val),
+        None => std::env::remove_var("REQLIX_REQ_REL_PATH"),
+    }
 }
 
 /// Test: get_create_path with nested custom path

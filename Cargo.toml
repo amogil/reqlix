@@ -1,6 +1,6 @@
 [package]
 name = "reqlix"
-version = "0.1.6"
+version = "0.1.7"
 edition = "2021"
 
 [dependencies]
@@ -12,7 +12,6 @@ schemars = "1"
 anyhow = "1"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-async-trait = "0.1"
 pulldown-cmark = "0.9"
 
 [dev-dependencies]
