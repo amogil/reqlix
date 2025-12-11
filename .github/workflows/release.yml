@@ -1,0 +1,149 @@
+# GitHub Actions workflow for automatic binary builds on release publication
+# Implements: G.REL.1, G.REL.2-G.REL.7, G.REL.8, G.REL.9, G.REL.10, G.REL.11, G.REL.12, G.REL.13, G.REL.14, G.REL.15
+
+name: Release
+
+# G.REL.1, G.REL.15: Trigger on release publication events
+on:
+  release:
+    types: [published]
+
+jobs:
+  build:
+    # G.REL.10: Use matrix strategy for parallel builds
+    strategy:
+      matrix:
+        include:
+          # G.REL.2, G.REL.11: Linux x64
+          - target: x86_64-unknown-linux-gnu
+            platform: linux-x64
+            binary_name: reqlix
+            os: ubuntu-latest
+          # G.REL.3, G.REL.11: Linux ARM
+          - target: aarch64-unknown-linux-gnu
+            platform: linux-arm64
+            binary_name: reqlix
+            os: ubuntu-latest
+          # G.REL.4, G.REL.11: macOS Intel
+          - target: x86_64-apple-darwin
+            platform: macos-x64
+            binary_name: reqlix
+            os: macos-latest
+          # G.REL.5, G.REL.11: macOS Apple Silicon
+          - target: aarch64-apple-darwin
+            platform: macos-arm64
+            binary_name: reqlix
+            os: macos-latest
+          # G.REL.6, G.REL.11: Windows x64
+          - target: x86_64-pc-windows-msvc
+            platform: windows-x64
+            binary_name: reqlix.exe
+            os: windows-latest
+          # G.REL.7, G.REL.11: Windows ARM
+          - target: aarch64-pc-windows-msvc
+            platform: windows-arm64
+            binary_name: reqlix.exe
+            os: windows-latest
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # G.REL.12: Step 1 - Install Rust toolchain
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      # G.REL.11, G.REL.12: Step 2 - Add required target using rustup
+      - name: Add Rust target
+        run: rustup target add ${{ matrix.target }}
+
+      # G.REL.12: Step 3 - Build release binary
+      - name: Build release binary
+        run: cargo build --release --target ${{ matrix.target }}
+
+      # G.REL.12: Step 4 - Locate built binary and prepare directory
+      - name: Prepare binary directory
+        shell: bash
+        run: |
+          mkdir -p dist
+          BINARY_PATH="target/${{ matrix.target }}/release/${{ matrix.binary_name }}"
+          if [ ! -f "$BINARY_PATH" ]; then
+            echo "Error: Binary not found at $BINARY_PATH"
+            exit 1
+          fi
+          echo "BINARY_PATH=$BINARY_PATH" >> $GITHUB_ENV
+
+      # G.REL.8, G.REL.12: Step 5 - Copy binary to dist with correct name
+      - name: Copy binary
+        shell: bash
+        run: |
+          cp "$BINARY_PATH" "dist/${{ matrix.binary_name }}"
+          # Only chmod on Unix-like systems
+          if [[ "${{ runner.os }}" != "Windows" ]]; then
+            chmod +x "dist/${{ matrix.binary_name }}"
+          fi
+
+      # G.REL.9, G.REL.13: Create ZIP archive
+      - name: Create ZIP archive
+        shell: bash
+        run: |
+          # Extract version from tag (remove 'v' prefix if present)
+          VERSION="${{ github.ref_name }}"
+          VERSION=${VERSION#v}
+          ZIP_NAME="reqlix-${VERSION}-${{ matrix.platform }}.zip"
+          echo "ZIP_NAME=$ZIP_NAME" >> $GITHUB_ENV
+          
+          # Create ZIP based on OS
+          cd dist
+          if [[ "${{ runner.os }}" == "Windows" ]]; then
+            # On Windows, use PowerShell for ZIP creation
+            pwsh -Command "Compress-Archive -Path '${{ matrix.binary_name }}' -DestinationPath '../$ZIP_NAME' -Force"
+          else
+            # On Unix-like systems, use zip command
+            zip "../$ZIP_NAME" "${{ matrix.binary_name }}"
+          fi
+          cd ..
+
+      # G.REL.13: Verify ZIP contains only binary at root level
+      - name: Verify ZIP structure
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          # Verify ZIP contains only the binary file at root level
+          ZIP_NAME="${{ env.ZIP_NAME }}"
+          unzip -l "$ZIP_NAME" | grep -E "^\s+[0-9]+\s+[0-9-]+\s+[0-9:]+\s+${{ matrix.binary_name }}$" || exit 1
+
+      # G.REL.14: Upload artifact for later release attachment
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.platform }}
+          path: ${{ env.ZIP_NAME }}
+          retention-days: 1
+
+  # G.REL.14: Upload all artifacts to GitHub release
+  upload-release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Upload to GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: artifacts/**/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
