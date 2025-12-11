@@ -3,11 +3,13 @@
 
 name: Release
 
-# G.REL.1, G.REL.15: Trigger on tag creation (v* pattern)
+# G.REL.1, G.REL.15: Trigger only on tag creation (v* pattern), not on branch pushes
 on:
   push:
     tags:
       - 'v*'
+    branches-ignore:
+      - '*'
 
 jobs:
   build:
