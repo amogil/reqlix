@@ -19,9 +19,12 @@ All tool parameters must satisfy the following constraints:
 - `operation_description` - required, max 10000 characters
 - `category` - required, max 100 characters
 - `chapter` - required, max 100 characters
-- `index` - required, max 100 characters
+- `index` - required, max 100 characters per index. Can be:
+  - Single string (e.g., "G.G.1")
+  - Array of strings for batch operations (max 100 elements) in `reqlix_get_requirement` and `reqlix_delete_requirement`
 - `text` - required, max 10000 characters
 - `title` - required for `reqlix_insert_requirement`, optional for `reqlix_update_requirement`, max 100 characters
+- `items` - array of update objects for batch `reqlix_update_requirement` (max 100 elements). Each object must satisfy constraints for `index`, `text`, and `title`.
 
 ## G.P.2: Constraint violation error
 
@@ -48,6 +51,19 @@ Category and chapter names must satisfy the following validation rules:
 - Must be a valid markdown heading content
 
 If validation fails, the tool must return an error in the format specified in [G.C.6](#gc6-error-response-format) with a descriptive message indicating which validation rule was violated.
+
+## G.P.4: Empty array handling
+
+When a batch parameter (`index` as array or `items`) is an empty array `[]`, the tool must return success with an empty data array:
+
+```json
+{
+  "success": true,
+  "data": []
+}
+```
+
+This is not considered an error.
 
 # Requirements Storage Format
 
@@ -422,11 +438,15 @@ Errors (category/chapter not found): Use error format from [G.C.6](#gc6-error-re
 Description (shown to LLM in tool list):
 
 ```
-Returns the full content (title and text) of a requirement by its index.
-Use this to read a specific requirement when you know its index.
+Returns the full content (title and text) of one or more requirements by index.
+Index format: {CATEGORY}.{CHAPTER}.{NUMBER} (e.g., G.G.1, T.U.2).
+Supports batch requests with up to 100 indices.
 
-Returns JSON with "success": true and "data": {"index": "...", "title": "...", "text": "...", "category": "...", "chapter": "..."}.
-On error (requirement not found), returns JSON with "success": false and "error": "error message".
+Single request: Returns JSON with "success": true and "data": {...}.
+On error, returns JSON with "success": false and "error": "error message".
+
+Batch request: Returns JSON with "success": true and "data": [{...}, ...].
+Each element in the array has its own "success" and "data" or "error" field.
 ```
 
 ## G.REQLIX_GET_REQUIREMENT.2: Parameters
@@ -435,19 +455,26 @@ Parameters:
 
 - `project_root` (string, required) - Path to the project root directory.
 - `operation_description` (string, required) - Brief description of the operation that LLM intends to perform.
-- `index` (string, required) - Requirement index (e.g., "G.G.1", "T.U.2").
+- `index` (string | string[], required) - Requirement index or array of indices (max 100). Example: "G.G.1" or ["G.G.1", "G.G.2", "T.U.1"].
 
 ## G.REQLIX_GET_REQUIREMENT.3: Index parsing and file lookup
 
-The tool must parse the index according to [G.R.4](#gr4-index-format) by splitting on dots (`.`). To find the requirement:
+The tool must parse the index according to [G.R.4](#gr4-index-format) by splitting on dots (`.`).
 
+**Single index (string):**
 1. Use algorithm from [G.C.7](#gc7-category-lookup-by-prefix) to find category by prefix
 2. Find the requirement by full index in the category file (see [G.R.3](#gr3-requirement-definition), [G.R.5](#gr5-requirement-parsing-boundaries)). Return both the title (extracted from the heading content) and body text.
 3. If requirement not found, return error "Requirement not found"
 
+**Batch request (array of strings):**
+1. Validate array length does not exceed 100 (see [G.REQLIX_GET_REQUIREMENT.5](#greqlix_get_requirement5-batch-request-limit))
+2. Process **all** indices in order using the single index algorithm
+3. For each index, return either success result or error object
+4. Return array of results in the same order as input indices (each element is either success data or error object)
+
 ## G.REQLIX_GET_REQUIREMENT.4: Response format
 
-Success:
+**Single request success:**
 
 ```json
 {
@@ -462,7 +489,47 @@ Success:
 }
 ```
 
-Error (requirement not found): Use error format from [G.C.6](#gc6-error-response-format).
+**Batch request (always returns array, each element has its own success/error):**
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "success": true,
+      "data": {
+        "index": "G.G.1",
+        "title": "Language requirement",
+        "text": "All requirements must be written in English.",
+        "category": "general",
+        "chapter": "General Requirements"
+      }
+    },
+    {
+      "success": false,
+      "error": "Requirement not found"
+    },
+    {
+      "success": true,
+      "data": {
+        "index": "G.G.3",
+        "title": "Another requirement",
+        "text": "Requirement body text.",
+        "category": "general",
+        "chapter": "General Requirements"
+      }
+    }
+  ]
+}
+```
+
+**Single request error** (requirement not found): Use error format from [G.C.6](#gc6-error-response-format).
+
+## G.REQLIX_GET_REQUIREMENT.5: Batch request limit
+
+When `index` parameter is an array, the maximum number of indices allowed is **100**.
+
+If more than 100 indices are provided, return error: "Batch request exceeds maximum limit of 100 indices".
 
 # Tool: reqlix_insert_requirement
 
@@ -540,27 +607,46 @@ This validation must occur before any file system operations or requirement proc
 Description (shown to LLM in tool list):
 
 ```
-Updates an existing requirement by its index with new text and optional new title.
+Updates one or more existing requirements by index with new text and optional new title.
 If title is provided, it must be unique within the chapter. If not provided, the existing title is kept.
+Supports batch updates with up to 100 requirements.
 
-Returns JSON with "success": true and "data": {"index": "...", "title": "...", "text": "...", "category": "...", "chapter": "..."}.
-On error (requirement not found, title already exists, file system error, validation error), returns JSON with "success": false and "error": "error message".
+Category must contain only lowercase English letters (a-z) and underscore (_).
+Chapter must contain only uppercase and lowercase English letters (A-Z, a-z), spaces, colons (:), and hyphens (-).
+
+Single update: Returns JSON with "success": true and "data": {...}.
+On error, returns JSON with "success": false and "error": "error message".
+
+Batch update: Returns JSON with "success": true and "data": [{...}, ...].
+Each element in the array has its own "success" and "data" or "error" field.
 ```
 
 ## G.REQLIX_U.2: Parameters
 
 Parameters:
 
+**Single update:**
 - `project_root` (string, required) - Path to the project root directory.
 - `operation_description` (string, required) - Brief description of the operation that LLM intends to perform.
 - `index` (string, required) - Requirement index (e.g., "G.G.1", "T.U.2").
 - `text` (string, required) - New requirement text (body content).
-- `title` (string, optional) - New requirement title. A concise name that reflects the essence of the requirement.
-   If provided, must be unique within the chapter. If not provided, the existing title is kept.
+- `title` (string, optional) - New requirement title. If provided, must be unique within the chapter.
+
+**Batch update:**
+- `project_root` (string, required) - Path to the project root directory.
+- `operation_description` (string, required) - Brief description of the operation that LLM intends to perform.
+- `items` (array, required) - Array of update objects (max 100). Each object contains:
+  - `index` (string, required) - Requirement index.
+  - `text` (string, required) - New requirement text.
+  - `title` (string, optional) - New requirement title.
+
+Note: Use either `index`+`text`+`title` for single update OR `items` for batch update, not both.
 
 ## G.REQLIX_U.3: Algorithm
 
 The tool must execute the following steps:
+
+**Single update (when `index` parameter is provided):**
 
 1. **Validate parameters**: Validate all input parameters according to [G.REQLIX_U.6](#greqlix_u6-parameter-validation).
 
@@ -580,9 +666,19 @@ The tool must execute the following steps:
 
 7. **Return result**: Return the full updated requirement data.
 
+**Batch update (when `items` parameter is provided):**
+
+1. **Validate batch size**: Ensure `items` array length does not exceed 100 (see [G.REQLIX_U.7](#greqlix_u7-batch-update-limit)).
+
+2. **Process all items**: For each item in the array, execute steps 1-6 from single update algorithm.
+
+3. For each item, return either success result or error object.
+
+4. **Return results**: Return array of results in the same order as input items (each element is either success data or error object).
+
 ## G.REQLIX_U.4: Response format
 
-Success:
+**Single update success:**
 
 ```json
 {
@@ -597,14 +693,43 @@ Success:
 }
 ```
 
-Errors (requirement not found, file system error, title already exists): Use error format from
-[G.C.6](#gc6-error-response-format).
+**Batch update (always returns array, each element has its own success/error):**
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "success": true,
+      "data": {
+        "index": "G.G.1",
+        "title": "Updated title 1",
+        "text": "Updated text 1...",
+        "category": "general",
+        "chapter": "General Requirements"
+      }
+    },
+    {
+      "success": false,
+      "error": "Requirement not found"
+    }
+  ]
+}
+```
+
+**Single update error** (requirement not found, file system error, title already exists, validation error): Use error format from [G.C.6](#gc6-error-response-format).
 
 ## G.REQLIX_U.6: Parameter validation
 
 Before executing the update algorithm, the tool must validate all input parameters according to the constraints defined in [G.P.1](#gp1-parameter-constraints). If any parameter violates these constraints, the tool must return an error as specified in [G.P.2](#gp2-constraint-violation-error).
 
 This validation must occur before any file system operations or requirement processing.
+
+## G.REQLIX_U.7: Batch update limit
+
+When `items` parameter is provided, the maximum number of items allowed is **100**.
+
+If more than 100 items are provided, return error: "Batch update exceeds maximum limit of 100 items".
 
 # Tool: reqlix_get_version
 
@@ -646,11 +771,15 @@ This tool has no parameters and does not require validation.
 Description (shown to LLM in tool list):
 
 ```
-Deletes an existing requirement by its index.
-The requirement will be permanently removed from the category file.
+Deletes one or more existing requirements by index.
+The requirements will be permanently removed from the category file.
+Supports batch deletions with up to 100 indices.
 
-Returns JSON with "success": true and "data": {"index": "...", "title": "...", "category": "...", "chapter": "..."}.
-On error (requirement not found, file system error, validation error), returns JSON with "success": false and "error": "error message".
+Single delete: Returns JSON with "success": true and "data": {...}.
+On error, returns JSON with "success": false and "error": "error message".
+
+Batch delete: Returns JSON with "success": true and "data": [{...}, ...].
+Each element in the array has its own "success" and "data" or "error" field.
 ```
 
 ## G.TOOLREQLIXD.2: Parameters
@@ -659,11 +788,13 @@ Parameters:
 
 - `project_root` (string, required) - Path to the project root directory.
 - `operation_description` (string, required) - Brief description of the operation that LLM intends to perform.
-- `index` (string, required) - Requirement index to delete (e.g., "G.G.1", "T.U.2").
+- `index` (string | string[], required) - Requirement index or array of indices to delete (max 100). Example: "G.G.1" or ["G.G.1", "G.G.2", "T.U.1"].
 
 ## G.TOOLREQLIXD.3: Algorithm
 
 The tool must execute the following steps:
+
+**Single delete (when `index` is a string):**
 
 1. **Validate parameters**: Validate all input parameters according to [G.TOOLREQLIXD.5](#gtoolreqlixd5-parameter-validation).
 
@@ -676,9 +807,20 @@ The tool must execute the following steps:
 5. **Delete empty chapter**: If the chapter becomes empty after deleting the requirement (no more requirements in the chapter), remove the chapter heading from the category file.
 
 6. **Return result**: Return the deleted requirement metadata (index, title, category, chapter).
+
+**Batch delete (when `index` is an array):**
+
+1. **Validate batch size**: Ensure array length does not exceed 100 (see [G.TOOLREQLIXD.6](#gtoolreqlixd6-batch-delete-limit)).
+
+2. **Process all indices**: For each index in the array, execute steps 1-5 from single delete algorithm.
+
+3. For each index, return either success result or error object.
+
+4. **Return results**: Return array of results in the same order as input indices (each element is either success data or error object).
+
 ## G.TOOLREQLIXD.4: Response format
 
-Success:
+**Single delete success:**
 
 ```json
 {
@@ -692,12 +834,42 @@ Success:
 }
 ```
 
-Errors (requirement not found, file system error, validation error): Use error format from [G.C.6](#gc6-error-response-format).
+**Batch delete (always returns array, each element has its own success/error):**
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "success": true,
+      "data": {
+        "index": "G.G.1",
+        "title": "Deleted title 1",
+        "category": "general",
+        "chapter": "General Requirements"
+      }
+    },
+    {
+      "success": false,
+      "error": "Requirement not found"
+    }
+  ]
+}
+```
+
+**Single delete error** (requirement not found, file system error, validation error): Use error format from [G.C.6](#gc6-error-response-format).
+
 ## G.TOOLREQLIXD.5: Parameter validation
 
 Before executing the deletion algorithm, the tool must validate all input parameters according to the constraints defined in [G.P.1](#gp1-parameter-constraints). If any parameter violates these constraints, the tool must return an error as specified in [G.P.2](#gp2-constraint-violation-error).
 
 This validation must occur before any file system operations or requirement processing.
+
+## G.TOOLREQLIXD.6: Batch delete limit
+
+When `index` parameter is an array, the maximum number of indices allowed is **100**.
+
+If more than 100 indices are provided, return error: "Batch delete exceeds maximum limit of 100 indices".
 
 # Configuration
 
