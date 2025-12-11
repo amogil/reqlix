@@ -164,30 +164,29 @@ jobs:
         with:
           path: artifacts
 
-      - name: Check if release exists and delete if published
+      - name: Verify draft release exists
         shell: bash
         run: |
-          # Check if release exists
-          if gh release view "${{ github.ref_name }}" >/dev/null 2>&1; then
-            echo "Release exists, checking status..."
-            RELEASE_DRAFT=$(gh release view "${{ github.ref_name }}" --json isDraft -q .isDraft)
-            if [ "$RELEASE_DRAFT" = "false" ]; then
-              echo "Release is published, deleting to recreate with assets..."
-              gh release delete "${{ github.ref_name }}" --yes || true
-            else
-              echo "Release is draft, will be updated"
-            fi
-          else
-            echo "Release does not exist, will be created"
+          # Check if draft release exists
+          if ! gh release view "${{ github.ref_name }}" >/dev/null 2>&1; then
+            echo "Error: Release ${{ github.ref_name }} does not exist. Please create it as a draft first."
+            exit 1
           fi
+          
+          RELEASE_DRAFT=$(gh release view "${{ github.ref_name }}" --json isDraft -q .isDraft)
+          if [ "$RELEASE_DRAFT" != "true" ]; then
+            echo "Error: Release ${{ github.ref_name }} is not a draft. Please create it as a draft first."
+            exit 1
+          fi
+          
+          echo "Draft release found, will be updated and published"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Create or update GitHub Release
+      - name: Update and publish GitHub Release
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ github.ref_name }}
-          name: Release ${{ github.ref_name }}
           files: artifacts/**/*
           draft: false
           prerelease: false
