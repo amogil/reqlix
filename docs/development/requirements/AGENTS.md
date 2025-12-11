@@ -13,6 +13,6 @@ These instructions are mandatory for all code operations:
 
 4. All requirements must be written in English.
 
-5. Never edit files in /Users/amogil/Documents/projects/reqlix/docs/development/requirements directly. Always use this MCP server for all
+5. Never edit files in docs/development/requirements directly. Always use this MCP server for all
    requirements operations.
 

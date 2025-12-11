@@ -1,40 +1,23 @@
-// Unit tests for reqlix_search_requirements tool
+// Tests for Tool: reqlix_search_requirements (G.TOOLREQLIXS.*)
 // Covers Requirements: G.TOOLREQLIXS.1, G.TOOLREQLIXS.2, G.TOOLREQLIXS.3, G.TOOLREQLIXS.4, G.TOOLREQLIXS.5, G.TOOLREQLIXS.6
 
 use reqlix::{KeywordsParam, RequirementsServer, SearchRequirementsParams};
 use serde_json::Value;
-use std::fs;
 use tempfile::TempDir;
 
-// Helper function to create requirements directory structure
-fn create_requirements_dir(temp_dir: &TempDir) -> std::path::PathBuf {
-    let req_dir = temp_dir.path().join("docs/development/requirements");
-    fs::create_dir_all(&req_dir).unwrap();
-    req_dir
-}
-
-// Helper function to create a category file in requirements directory
-fn create_category_file(req_dir: &std::path::Path, category: &str, content: &str) {
-    let file_path = req_dir.join(format!("{}.md", category));
-    fs::write(&file_path, content).unwrap();
-}
-
-// Helper function to create AGENTS.md in requirements directory
-fn create_agents_file(req_dir: &std::path::Path, content: &str) {
-    let file_path = req_dir.join("AGENTS.md");
-    fs::write(&file_path, content).unwrap();
-}
-
-// Helper to parse JSON response
-fn parse_response(response: &str) -> Value {
-    serde_json::from_str(response).unwrap()
-}
+use super::common::{
+    create_agents_file_in_req_dir, create_category_file_in_req_dir, create_requirements_dir,
+    parse_response,
+};
 
 // =============================================================================
 // Tests for validate_keywords (G.TOOLREQLIXS.5, G.TOOLREQLIXS.6)
 // =============================================================================
 
-/// Test 1: validate_keywords accepts single keyword
+/// Test: validate_keywords accepts single keyword
+/// Precondition: System has KeywordsParam::Single with valid keyword
+/// Action: Call validate_keywords with Single("auth")
+/// Result: Function returns Ok with vector containing one keyword "auth"
 /// Covers Requirement: G.TOOLREQLIXS.2, G.TOOLREQLIXS.5
 #[test]
 fn test_validate_keywords_single() {
@@ -46,7 +29,10 @@ fn test_validate_keywords_single() {
     assert_eq!(filtered[0], "auth");
 }
 
-/// Test 2: validate_keywords accepts array of keywords
+/// Test: validate_keywords accepts array of keywords
+/// Precondition: System has KeywordsParam::Batch with multiple valid keywords
+/// Action: Call validate_keywords with Batch containing 3 keywords
+/// Result: Function returns Ok with vector containing all 3 keywords
 /// Covers Requirement: G.TOOLREQLIXS.2, G.TOOLREQLIXS.5
 #[test]
 fn test_validate_keywords_batch() {
@@ -61,7 +47,10 @@ fn test_validate_keywords_batch() {
     assert_eq!(filtered.len(), 3);
 }
 
-/// Test 3: validate_keywords filters out empty strings
+/// Test: validate_keywords filters out empty strings
+/// Precondition: System has KeywordsParam::Batch with some empty strings
+/// Action: Call validate_keywords with Batch containing empty strings mixed with valid keywords
+/// Result: Function returns Ok with vector containing only non-empty keywords
 /// Covers Requirement: G.TOOLREQLIXS.5
 #[test]
 fn test_validate_keywords_filters_empty_strings() {
@@ -79,7 +68,10 @@ fn test_validate_keywords_filters_empty_strings() {
     assert_eq!(filtered[1], "user");
 }
 
-/// Test 4: validate_keywords returns empty vec for empty string
+/// Test: validate_keywords returns empty vec for empty string
+/// Precondition: System has KeywordsParam::Single with empty string
+/// Action: Call validate_keywords with Single("")
+/// Result: Function returns Ok with empty vector
 /// Covers Requirement: G.TOOLREQLIXS.5
 #[test]
 fn test_validate_keywords_empty_string() {
@@ -90,7 +82,10 @@ fn test_validate_keywords_empty_string() {
     assert!(filtered.is_empty());
 }
 
-/// Test 5: validate_keywords returns empty vec for empty array
+/// Test: validate_keywords returns empty vec for empty array
+/// Precondition: System has KeywordsParam::Batch with empty vector
+/// Action: Call validate_keywords with Batch([])
+/// Result: Function returns Ok with empty vector
 /// Covers Requirement: G.TOOLREQLIXS.5, G.P.4
 #[test]
 fn test_validate_keywords_empty_array() {
@@ -101,7 +96,10 @@ fn test_validate_keywords_empty_array() {
     assert!(filtered.is_empty());
 }
 
-/// Test 6: validate_keywords rejects more than 100 keywords
+/// Test: validate_keywords rejects more than 100 keywords
+/// Precondition: System has KeywordsParam::Batch with 101 keywords
+/// Action: Call validate_keywords with Batch containing 101 keywords
+/// Result: Function returns error about exceeding limit of 100
 /// Covers Requirement: G.TOOLREQLIXS.5
 #[test]
 fn test_validate_keywords_exceeds_limit() {
@@ -113,7 +111,10 @@ fn test_validate_keywords_exceeds_limit() {
         .contains("Keywords count exceeds maximum limit of 100"));
 }
 
-/// Test 7: validate_keywords accepts exactly 100 keywords
+/// Test: validate_keywords accepts exactly 100 keywords
+/// Precondition: System has KeywordsParam::Batch with exactly 100 keywords
+/// Action: Call validate_keywords with Batch containing 100 keywords
+/// Result: Function returns Ok with vector containing all 100 keywords
 /// Covers Requirement: G.TOOLREQLIXS.5
 #[test]
 fn test_validate_keywords_at_limit() {
@@ -123,7 +124,10 @@ fn test_validate_keywords_at_limit() {
     assert_eq!(result.unwrap().len(), 100);
 }
 
-/// Test 8: validate_keywords rejects keyword exceeding 200 characters
+/// Test: validate_keywords rejects keyword exceeding 200 characters
+/// Precondition: System has KeywordsParam::Single with keyword longer than 200 characters
+/// Action: Call validate_keywords with Single containing 201-character keyword
+/// Result: Function returns error about exceeding maximum length of 200 characters
 /// Covers Requirement: G.TOOLREQLIXS.5, G.P.1
 #[test]
 fn test_validate_keywords_exceeds_length() {
@@ -136,7 +140,10 @@ fn test_validate_keywords_exceeds_length() {
         .contains("Keyword exceeds maximum length of 200 characters"));
 }
 
-/// Test 9: validate_keywords accepts keyword of exactly 200 characters
+/// Test: validate_keywords accepts keyword of exactly 200 characters
+/// Precondition: System has KeywordsParam::Single with keyword exactly 200 characters
+/// Action: Call validate_keywords with Single containing 200-character keyword
+/// Result: Function returns Ok with vector containing the keyword
 /// Covers Requirement: G.TOOLREQLIXS.5, G.P.1
 #[test]
 fn test_validate_keywords_at_length_limit() {
@@ -151,14 +158,17 @@ fn test_validate_keywords_at_length_limit() {
 // Tests for handle_search_requirements (G.TOOLREQLIXS.3, G.TOOLREQLIXS.4)
 // =============================================================================
 
-/// Test 10: search finds requirement by title keyword
+/// Test: search finds requirement by title keyword
+/// Precondition: System has requirements directory with category file containing requirement with keyword in title
+/// Action: Call handle_search_requirements with keyword matching requirement title
+/// Result: Function returns success with one result matching the requirement
 /// Covers Requirement: G.TOOLREQLIXS.3, G.TOOLREQLIXS.4
 #[test]
 fn test_search_finds_by_title() {
     let temp_dir = TempDir::new().unwrap();
     let req_dir = create_requirements_dir(&temp_dir);
-    create_agents_file(&req_dir, "# Instructions\n");
-    create_category_file(
+    create_agents_file_in_req_dir(&req_dir, "# Instructions\n");
+    create_category_file_in_req_dir(
         &req_dir,
         "general",
         "# Security\n\n## G.S.1: User authentication\n\nUsers must authenticate.\n",
@@ -178,14 +188,17 @@ fn test_search_finds_by_title() {
     assert_eq!(json["data"]["results"][0]["index"], "G.S.1");
 }
 
-/// Test 11: search finds requirement by text keyword
+/// Test: search finds requirement by text keyword
+/// Precondition: System has requirements directory with category file containing requirement with keyword in text
+/// Action: Call handle_search_requirements with keyword matching requirement text
+/// Result: Function returns success with one result matching the requirement
 /// Covers Requirement: G.TOOLREQLIXS.3, G.TOOLREQLIXS.4
 #[test]
 fn test_search_finds_by_text() {
     let temp_dir = TempDir::new().unwrap();
     let req_dir = create_requirements_dir(&temp_dir);
-    create_agents_file(&req_dir, "# Instructions\n");
-    create_category_file(
+    create_agents_file_in_req_dir(&req_dir, "# Instructions\n");
+    create_category_file_in_req_dir(
         &req_dir,
         "general",
         "# Security\n\n## G.S.1: Login\n\nUsers must provide valid credentials.\n",
@@ -205,14 +218,17 @@ fn test_search_finds_by_text() {
     assert_eq!(json["data"]["results"][0]["index"], "G.S.1");
 }
 
-/// Test 12: search is case-insensitive
+/// Test: search is case-insensitive
+/// Precondition: System has requirements directory with category file containing requirement
+/// Action: Call handle_search_requirements with keyword in different case than requirement text/title
+/// Result: Function returns success with matching result (case-insensitive match)
 /// Covers Requirement: G.TOOLREQLIXS.3 step 5
 #[test]
 fn test_search_case_insensitive() {
     let temp_dir = TempDir::new().unwrap();
     let req_dir = create_requirements_dir(&temp_dir);
-    create_agents_file(&req_dir, "# Instructions\n");
-    create_category_file(
+    create_agents_file_in_req_dir(&req_dir, "# Instructions\n");
+    create_category_file_in_req_dir(
         &req_dir,
         "general",
         "# Security\n\n## G.S.1: Authentication\n\nMust use HTTPS protocol.\n",
@@ -244,14 +260,17 @@ fn test_search_case_insensitive() {
     assert_eq!(json2["data"]["results"].as_array().unwrap().len(), 1);
 }
 
-/// Test 13: search with multiple keywords finds requirements matching any
+/// Test: search with multiple keywords finds requirements matching any
+/// Precondition: System has requirements directory with multiple requirements
+/// Action: Call handle_search_requirements with Batch containing multiple keywords
+/// Result: Function returns success with results matching any of the keywords (OR logic)
 /// Covers Requirement: G.TOOLREQLIXS.3 step 6
 #[test]
 fn test_search_multiple_keywords_or() {
     let temp_dir = TempDir::new().unwrap();
     let req_dir = create_requirements_dir(&temp_dir);
-    create_agents_file(&req_dir, "# Instructions\n");
-    create_category_file(
+    create_agents_file_in_req_dir(&req_dir, "# Instructions\n");
+    create_category_file_in_req_dir(
         &req_dir,
         "general",
         "# Features\n\n## G.F.1: Login feature\n\nUser login.\n\n## G.F.2: Dashboard\n\nMain dashboard view.\n\n## G.F.3: Settings\n\nUser settings page.\n",
@@ -270,14 +289,17 @@ fn test_search_multiple_keywords_or() {
     assert_eq!(json["data"]["results"].as_array().unwrap().len(), 2);
 }
 
-/// Test 14: search returns empty results when no matches
+/// Test: search returns empty results when no matches
+/// Precondition: System has requirements directory with requirements that don't match keyword
+/// Action: Call handle_search_requirements with keyword that doesn't match any requirement
+/// Result: Function returns success with empty results array
 /// Covers Requirement: G.TOOLREQLIXS.4
 #[test]
 fn test_search_no_matches() {
     let temp_dir = TempDir::new().unwrap();
     let req_dir = create_requirements_dir(&temp_dir);
-    create_agents_file(&req_dir, "# Instructions\n");
-    create_category_file(
+    create_agents_file_in_req_dir(&req_dir, "# Instructions\n");
+    create_category_file_in_req_dir(
         &req_dir,
         "general",
         "# Features\n\n## G.F.1: Login\n\nUser login feature.\n",
@@ -297,14 +319,17 @@ fn test_search_no_matches() {
     assert_eq!(json["data"]["keywords"].as_array().unwrap().len(), 1);
 }
 
-/// Test 15: search with empty keywords returns empty results (G.P.4)
+/// Test: search with empty keywords returns empty results (G.P.4)
+/// Precondition: System has requirements directory with requirements
+/// Action: Call handle_search_requirements with Batch([])
+/// Result: Function returns success with empty results array
 /// Covers Requirement: G.TOOLREQLIXS.5, G.P.4
 #[test]
 fn test_search_empty_keywords() {
     let temp_dir = TempDir::new().unwrap();
     let req_dir = create_requirements_dir(&temp_dir);
-    create_agents_file(&req_dir, "# Instructions\n");
-    create_category_file(
+    create_agents_file_in_req_dir(&req_dir, "# Instructions\n");
+    create_category_file_in_req_dir(
         &req_dir,
         "general",
         "# Features\n\n## G.F.1: Login\n\nUser login feature.\n",
@@ -324,19 +349,22 @@ fn test_search_empty_keywords() {
     assert!(json["data"]["keywords"].as_array().unwrap().is_empty());
 }
 
-/// Test 16: search across multiple categories
+/// Test: search across multiple categories
+/// Precondition: System has requirements directory with multiple category files
+/// Action: Call handle_search_requirements with keyword matching requirements in different categories
+/// Result: Function returns success with results from all matching categories
 /// Covers Requirement: G.TOOLREQLIXS.3 step 1
 #[test]
 fn test_search_across_categories() {
     let temp_dir = TempDir::new().unwrap();
     let req_dir = create_requirements_dir(&temp_dir);
-    create_agents_file(&req_dir, "# Instructions\n");
-    create_category_file(
+    create_agents_file_in_req_dir(&req_dir, "# Instructions\n");
+    create_category_file_in_req_dir(
         &req_dir,
         "general",
         "# Features\n\n## G.F.1: Security login\n\nUser login with security.\n",
     );
-    create_category_file(
+    create_category_file_in_req_dir(
         &req_dir,
         "testing",
         "# Tests\n\n## T.T.1: Security test\n\nTest security features.\n",
@@ -355,14 +383,17 @@ fn test_search_across_categories() {
     assert_eq!(json["data"]["results"].as_array().unwrap().len(), 2);
 }
 
-/// Test 17: search returns correct response structure
+/// Test: search returns correct response structure
+/// Precondition: System has requirements directory with matching requirement
+/// Action: Call handle_search_requirements with matching keyword
+/// Result: Function returns success with correct JSON structure (success, data.keywords, data.results with index, title, text, category, chapter)
 /// Covers Requirement: G.TOOLREQLIXS.4
 #[test]
 fn test_search_response_structure() {
     let temp_dir = TempDir::new().unwrap();
     let req_dir = create_requirements_dir(&temp_dir);
-    create_agents_file(&req_dir, "# Instructions\n");
-    create_category_file(
+    create_agents_file_in_req_dir(&req_dir, "# Instructions\n");
+    create_category_file_in_req_dir(
         &req_dir,
         "general",
         "# Chapter\n\n## G.C.1: Test requirement\n\nRequirement body text.\n",
@@ -389,7 +420,10 @@ fn test_search_response_structure() {
     assert!(req["chapter"].is_string());
 }
 
-/// Test 18: search validates project_root parameter
+/// Test: search validates project_root parameter
+/// Precondition: System has invalid project_root (empty string)
+/// Action: Call handle_search_requirements with empty project_root
+/// Result: Function returns error about invalid project_root
 /// Covers Requirement: G.TOOLREQLIXS.6
 #[test]
 fn test_search_validates_project_root() {
@@ -406,7 +440,10 @@ fn test_search_validates_project_root() {
     assert!(json["error"].as_str().unwrap().contains("project_root"));
 }
 
-/// Test 19: search validates operation_description parameter
+/// Test: search validates operation_description parameter
+/// Precondition: System has invalid operation_description (empty string)
+/// Action: Call handle_search_requirements with empty operation_description
+/// Result: Function returns error about invalid operation_description
 /// Covers Requirement: G.TOOLREQLIXS.6
 #[test]
 fn test_search_validates_operation_description() {
@@ -428,14 +465,17 @@ fn test_search_validates_operation_description() {
         .contains("operation_description"));
 }
 
-/// Test 20: search with all empty strings in array returns empty results
+/// Test: search with all empty strings in array returns empty results
+/// Precondition: System has requirements directory with requirements
+/// Action: Call handle_search_requirements with Batch containing only empty strings
+/// Result: Function returns success with empty results (empty strings filtered out, leaving no keywords)
 /// Covers Requirement: G.TOOLREQLIXS.5
 #[test]
 fn test_search_all_empty_strings_filtered() {
     let temp_dir = TempDir::new().unwrap();
     let req_dir = create_requirements_dir(&temp_dir);
-    create_agents_file(&req_dir, "# Instructions\n");
-    create_category_file(
+    create_agents_file_in_req_dir(&req_dir, "# Instructions\n");
+    create_category_file_in_req_dir(
         &req_dir,
         "general",
         "# Features\n\n## G.F.1: Login\n\nUser login feature.\n",

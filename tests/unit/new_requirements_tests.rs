@@ -1,7 +1,6 @@
 // Tests for new requirements: G.P.3, G.R.8, G.R.9, G.R.10
 
 use reqlix::RequirementsServer;
-use std::fs;
 use tempfile::TempDir;
 
 // =============================================================================
@@ -173,7 +172,7 @@ fn test_validate_chapter_trailing_whitespace() {
 fn test_read_file_utf8_valid() {
     let temp_dir = TempDir::new().unwrap();
     let file_path = temp_dir.path().join("test.md");
-    fs::write(&file_path, "Test content").unwrap();
+    std::fs::write(&file_path, "Test content").unwrap();
     
     let result = RequirementsServer::read_file_utf8(&file_path);
     assert!(result.is_ok());
@@ -244,7 +243,7 @@ fn test_write_file_utf8_valid() {
     let result = RequirementsServer::write_file_utf8(&file_path, "Test content");
     assert!(result.is_ok());
     
-    let content = fs::read_to_string(&file_path).unwrap();
+    let content = std::fs::read_to_string(&file_path).unwrap();
     assert_eq!(content, "Test content");
 }
 

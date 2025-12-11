@@ -1,32 +1,44 @@
-#[path = "unit/validation_tests.rs"]
-mod validation_tests;
+// Common helper functions
+#[path = "unit/common/mod.rs"]
+mod common;
 
-#[path = "unit/name_and_file_validation_tests.rs"]
-mod name_and_file_validation_tests;
+// Tests grouped by requirement chapters
+#[path = "unit/parameter_constraints_tests.rs"]
+mod parameter_constraints_tests;
 
-#[path = "unit/markdown_parsing_tests.rs"]
-mod markdown_parsing_tests;
+#[path = "unit/requirements_storage_format_tests.rs"]
+mod requirements_storage_format_tests;
 
-#[path = "unit/index_parsing_tests.rs"]
-mod index_parsing_tests;
+#[path = "unit/configuration_tests.rs"]
+mod configuration_tests;
 
-#[path = "unit/prefix_calculation_tests.rs"]
-mod prefix_calculation_tests;
+// Tool-specific tests
+#[path = "unit/tool_get_instructions_tests.rs"]
+mod tool_get_instructions_tests;
 
-#[path = "unit/file_system_tests.rs"]
-mod file_system_tests;
+#[path = "unit/tool_get_categories_tests.rs"]
+mod tool_get_categories_tests;
 
-#[path = "unit/chapter_parsing_tests.rs"]
-mod chapter_parsing_tests;
+#[path = "unit/tool_get_chapters_tests.rs"]
+mod tool_get_chapters_tests;
 
-#[path = "unit/requirement_parsing_tests.rs"]
-mod requirement_parsing_tests;
+#[path = "unit/tool_get_requirements_tests.rs"]
+mod tool_get_requirements_tests;
 
-#[path = "unit/category_helpers_tests.rs"]
-mod category_helpers_tests;
+#[path = "unit/tool_get_requirement_tests.rs"]
+mod tool_get_requirement_tests;
 
-#[path = "unit/integration_tests.rs"]
-mod integration_tests;
+#[path = "unit/tool_insert_requirement_tests.rs"]
+mod tool_insert_requirement_tests;
 
-#[path = "unit/search_requirements_tests.rs"]
-mod search_requirements_tests;
+#[path = "unit/tool_update_requirement_tests.rs"]
+mod tool_update_requirement_tests;
+
+#[path = "unit/tool_delete_requirement_tests.rs"]
+mod tool_delete_requirement_tests;
+
+#[path = "unit/tool_search_requirements_tests.rs"]
+mod tool_search_requirements_tests;
+
+#[path = "unit/tool_get_version_tests.rs"]
+mod tool_get_version_tests;
