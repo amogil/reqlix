@@ -195,14 +195,13 @@ See the [full changelog](https://github.com/${{ github.repository }}/compare/HEA
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Update and publish GitHub Release
+      - name: Update draft GitHub Release with artifacts
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ github.ref_name }}
           files: artifacts/**/*
-          draft: false
+          draft: true
           prerelease: false
-          make_latest: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
