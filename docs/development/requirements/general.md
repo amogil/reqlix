@@ -25,6 +25,9 @@ All tool parameters must satisfy the following constraints:
 - `text` - required, max 10000 characters
 - `title` - required for `reqlix_insert_requirement`, optional for `reqlix_update_requirement`, max 100 characters
 - `items` - array of update objects for batch `reqlix_update_requirement` (max 100 elements). Each object must satisfy constraints for `index`, `text`, and `title`.
+- `keywords` - required for `reqlix_search_requirements`, max 200 characters per keyword. Can be:
+  - Single string (e.g., "auth")
+  - Array of strings (max 100 elements)
 
 ## G.P.2: Constraint violation error
 
@@ -916,3 +919,119 @@ To find a category file by prefix:
 3. Calculate what prefix this category would have using the algorithm in [G.R.4](#gr4-index-format)
 4. Return the category whose calculated prefix matches the search prefix
 5. If no category matches the prefix, return an error "Category not found"
+
+# Tool: reqlix_search_requirements
+
+## G.TOOLREQLIXS.1: Description
+
+Description (shown to LLM in tool list):
+
+```
+Searches for requirements by keywords across all categories.
+Accepts from 0 to 100 keywords. Each keyword max 200 characters.
+Returns all requirements where the title or text contains at least one of the specified keywords.
+Search is case-insensitive.
+
+Returns JSON with "success": true and "data": {"keywords": [...], "results": [...]}.
+If keywords array is empty, returns success with empty results array.
+On error, returns JSON with "success": false and "error": "error message".
+```
+
+## G.TOOLREQLIXS.2: Parameters
+
+Parameters:
+
+- `project_root` (string, required) - Path to the project root directory.
+- `operation_description` (string, required) - Brief description of the operation that LLM intends to perform.
+- `keywords` (string | string[], required) - Single keyword (max 200 characters) or array of keywords (0 to 100 elements, each max 200 characters). Example: "auth" or ["auth", "user", "login"].
+
+## G.TOOLREQLIXS.3: Search logic
+
+Search algorithm:
+
+1. Iterate over all categories in the requirements directory.
+2. For each category, iterate over all chapters.
+3. For each chapter, iterate over all requirements.
+4. For each requirement, check if the title or text contains at least one of the keywords.
+5. Search is case-insensitive (convert both keyword and content to lowercase before comparison).
+6. A requirement matches if any keyword is found as a substring in the title OR text.
+7. Collect all matching requirements and return them in the results array.
+
+**Note:** The order of results is undefined and may change between calls. Do not rely on any specific ordering.
+
+## G.TOOLREQLIXS.4: Response format
+
+**Success response:**
+
+```json
+{
+  "success": true,
+  "data": {
+    "keywords": ["auth", "user"],
+    "results": [
+      {
+        "index": "G.G.1",
+        "title": "User authentication",
+        "text": "All users must authenticate before accessing the system.",
+        "category": "general",
+        "chapter": "Security"
+      },
+      {
+        "index": "G.G.2",
+        "title": "Auth token format",
+        "text": "Authentication tokens must be JWT format.",
+        "category": "general",
+        "chapter": "Security"
+      }
+    ]
+  }
+}
+```
+
+**No matches found (still success, empty results):**
+
+```json
+{
+  "success": true,
+  "data": {
+    "keywords": ["nonexistent"],
+    "results": []
+  }
+}
+```
+
+**Empty keywords (returns success with empty results per G.P.4):**
+
+```json
+{
+  "success": true,
+  "data": {
+    "keywords": [],
+    "results": []
+  }
+}
+```
+
+**Error response** (validation error, file system error): Use error format from G.C.6.
+
+## G.TOOLREQLIXS.5: Keywords limit
+
+The tool accepts from 0 to 100 keywords, each max 200 characters:
+
+- If keywords is an empty array `[]`, return success with empty results (per G.P.4)
+- If keywords is an empty string `""`, treat as empty array and return success with empty results
+- Maximum: 100 keywords (exceeding returns error: "Keywords count exceeds maximum limit of 100")
+- Maximum keyword length: 200 characters (exceeding returns error)
+
+Empty strings within the keywords array are filtered out before search. If after filtering all keywords are empty, treat as empty array.
+
+## G.TOOLREQLIXS.6: Parameter validation
+
+Before executing the search algorithm, the tool must validate all input parameters according to the constraints defined in G.P.1 and G.TOOLREQLIXS.5. If any parameter violates these constraints, the tool must return an error as specified in G.P.2.
+
+Validation order:
+1. Validate `project_root` (required, max 1000 characters)
+2. Validate `operation_description` (required, max 10000 characters)
+3. Validate `keywords` (max 100 elements, each max 200 characters)
+
+This validation must occur before any file system operations or requirement processing.
