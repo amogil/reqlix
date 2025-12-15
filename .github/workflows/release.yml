@@ -187,10 +187,10 @@ jobs:
           else
             RELEASE_DRAFT=$(gh release view "$TAG_NAME" --json isDraft -q .isDraft)
             if [ "$RELEASE_DRAFT" != "true" ]; then
-              echo "Release $TAG_NAME is published, deleting to recreate as draft..."
-              gh release delete "$TAG_NAME" --yes || true
-              echo "Creating new draft release..."
+              echo "Release $TAG_NAME is published, saving description and deleting to recreate as draft..."
               RELEASE_NOTES=$(gh release view "$TAG_NAME" --json body -q .body 2>/dev/null || echo "Release v${VERSION}. See the full changelog: https://github.com/${{ github.repository }}/compare/HEAD...${TAG_NAME}")
+              gh release delete "$TAG_NAME" --yes || true
+              echo "Creating new draft release with saved description..."
               gh release create "$TAG_NAME" \
                 --title "Release $TAG_NAME" \
                 --notes "$RELEASE_NOTES" \
