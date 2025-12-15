@@ -185,8 +185,13 @@ jobs:
               --draft
             echo "Draft release created"
           else
-            RELEASE_DRAFT=$(gh release view "$TAG_NAME" --json isDraft -q .isDraft)
-            if [ "$RELEASE_DRAFT" != "true" ]; then
+            echo "Release $TAG_NAME exists, checking status..."
+            RELEASE_DRAFT=$(gh release view "$TAG_NAME" --json isDraft -q .isDraft 2>/dev/null || echo "false")
+            echo "Release draft status: $RELEASE_DRAFT"
+            
+            if [ "$RELEASE_DRAFT" = "true" ]; then
+              echo "Draft release found, will be updated with artifacts"
+            else
               echo "Release $TAG_NAME is published, saving description and deleting to recreate as draft..."
               RELEASE_NOTES=$(gh release view "$TAG_NAME" --json body -q .body 2>/dev/null || echo "Release v${VERSION}. See the full changelog: https://github.com/${{ github.repository }}/compare/HEAD...${TAG_NAME}")
               gh release delete "$TAG_NAME" --yes || true
@@ -196,8 +201,6 @@ jobs:
                 --notes "$RELEASE_NOTES" \
                 --draft
               echo "Draft release recreated"
-            else
-              echo "Draft release found, will be updated with artifacts"
             fi
           fi
         env:
