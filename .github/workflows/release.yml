@@ -186,16 +186,17 @@ jobs:
             echo "Draft release created"
           else
             echo "Release $TAG_NAME exists, checking status..."
-            RELEASE_INFO=$(gh release view "$TAG_NAME" --json isDraft,body,title 2>/dev/null || echo '{"isDraft":false}')
-            RELEASE_DRAFT=$(echo "$RELEASE_INFO" | grep -o '"isDraft":[^,}]*' | cut -d':' -f2 | tr -d ' ')
-            echo "Release draft status (raw): $RELEASE_DRAFT"
+            # Get draft status - gh CLI returns boolean true/false (without quotes in JSON)
+            RELEASE_DRAFT=$(gh release view "$TAG_NAME" --json isDraft -q .isDraft 2>/dev/null || echo "false")
+            echo "Release draft status: '$RELEASE_DRAFT'"
             
-            # Check if it's a draft (can be "true" or true without quotes)
-            if [ "$RELEASE_DRAFT" = "true" ] || [ "$RELEASE_DRAFT" = "True" ]; then
+            # Check if it's a draft - handle both string and boolean values
+            # gh CLI returns boolean true/false, but we compare as strings
+            if [ "$RELEASE_DRAFT" = "true" ]; then
               echo "Draft release found, will be updated with artifacts"
             else
-              echo "Release $TAG_NAME is published, saving description and deleting to recreate as draft..."
-              RELEASE_NOTES=$(echo "$RELEASE_INFO" | grep -o '"body":"[^"]*"' | cut -d'"' -f4 || echo "Release v${VERSION}. See the full changelog: https://github.com/${{ github.repository }}/compare/HEAD...${TAG_NAME}")
+              echo "Release $TAG_NAME is not a draft (status: '$RELEASE_DRAFT'), saving description and recreating as draft..."
+              RELEASE_NOTES=$(gh release view "$TAG_NAME" --json body -q .body 2>/dev/null || echo "")
               if [ -z "$RELEASE_NOTES" ] || [ "$RELEASE_NOTES" = "null" ]; then
                 RELEASE_NOTES="Release v${VERSION}. See the full changelog: https://github.com/${{ github.repository }}/compare/HEAD...${TAG_NAME}"
               fi
