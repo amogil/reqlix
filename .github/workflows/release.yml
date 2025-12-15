@@ -187,8 +187,15 @@ jobs:
           else
             RELEASE_DRAFT=$(gh release view "$TAG_NAME" --json isDraft -q .isDraft)
             if [ "$RELEASE_DRAFT" != "true" ]; then
-              echo "Error: Release $TAG_NAME is already published. Please create a new draft release or use a different tag."
-              exit 1
+              echo "Release $TAG_NAME is published, deleting to recreate as draft..."
+              gh release delete "$TAG_NAME" --yes || true
+              echo "Creating new draft release..."
+              RELEASE_NOTES=$(gh release view "$TAG_NAME" --json body -q .body 2>/dev/null || echo "Release v${VERSION}. See the full changelog: https://github.com/${{ github.repository }}/compare/HEAD...${TAG_NAME}")
+              gh release create "$TAG_NAME" \
+                --title "Release $TAG_NAME" \
+                --notes "$RELEASE_NOTES" \
+                --draft
+              echo "Draft release recreated"
             else
               echo "Draft release found, will be updated with artifacts"
             fi
