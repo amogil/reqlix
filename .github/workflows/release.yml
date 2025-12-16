@@ -169,7 +169,7 @@ jobs:
         with:
           path: artifacts
 
-      - name: Check and create draft release if needed
+      - name: Create draft release if needed
         shell: bash
         run: |
           TAG_NAME="${{ github.ref_name }}"
@@ -185,29 +185,7 @@ jobs:
               --draft
             echo "Draft release created"
           else
-            echo "Release $TAG_NAME exists, checking status..."
-            # Get draft status - gh CLI returns boolean true/false (without quotes in JSON)
-            RELEASE_DRAFT=$(gh release view "$TAG_NAME" --json isDraft -q .isDraft 2>/dev/null || echo "false")
-            echo "Release draft status: '$RELEASE_DRAFT'"
-            
-            # Check if it's a draft - handle both string and boolean values
-            # gh CLI returns boolean true/false, but we compare as strings
-            if [ "$RELEASE_DRAFT" = "true" ]; then
-              echo "Draft release found, will be updated with artifacts"
-            else
-              echo "Release $TAG_NAME is not a draft (status: '$RELEASE_DRAFT'), saving description and recreating as draft..."
-              RELEASE_NOTES=$(gh release view "$TAG_NAME" --json body -q .body 2>/dev/null || echo "")
-              if [ -z "$RELEASE_NOTES" ] || [ "$RELEASE_NOTES" = "null" ]; then
-                RELEASE_NOTES="Release v${VERSION}. See the full changelog: https://github.com/${{ github.repository }}/compare/HEAD...${TAG_NAME}"
-              fi
-              gh release delete "$TAG_NAME" --yes || true
-              echo "Creating new draft release with saved description..."
-              gh release create "$TAG_NAME" \
-                --title "Release $TAG_NAME" \
-                --notes "$RELEASE_NOTES" \
-                --draft
-              echo "Draft release recreated"
-            fi
+            echo "Release $TAG_NAME already exists, will be updated with artifacts"
           fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
