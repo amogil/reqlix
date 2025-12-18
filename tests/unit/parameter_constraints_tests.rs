@@ -283,13 +283,13 @@ fn test_validate_index_max_length() {
 }
 
 /// Test: validate_index with realistic long index format
-/// Precondition: System has an index value with realistic format like "G.REQLIX_U.3"
+/// Precondition: System has an index value with realistic format like "T.REQLIXU.3"
 /// Action: Call validate_index with realistic long index (13 characters)
 /// Result: Function returns Ok(()) since it's within 100 character limit
 /// Covers Requirement: G.P.1, G.P.2
 #[test]
 fn test_validate_index_realistic_long_format() {
-    let realistic_index = "G.REQLIX_U.3";
+    let realistic_index = "T.REQLIXU.3";
     let result = RequirementsServer::validate_index(realistic_index);
     assert!(result.is_ok());
 }
@@ -936,7 +936,7 @@ fn test_validate_category_all_invalid_chars() {
     // =============================================================================
 
     // =============================================================================
-    // Tests for parameter validation in tools (G.REQLIX_I.6, G.REQLIX_U.6)
+    // Tests for parameter validation in tools (T.REQLIXI.6, T.REQLIXU.6)
     // =============================================================================
 
     /// Test: reqlix_insert_requirement validates all parameters
@@ -958,7 +958,7 @@ fn test_validate_category_all_invalid_chars() {
     /// Precondition: System has invalid parameters
     /// Action: Call reqlix_update_requirement with invalid parameters
     /// Result: Function returns validation error before processing
-    /// Covers Requirement: G.REQLIX_U.6, G.P.1, G.P.2
+    /// Covers Requirement: T.REQLIXU.6, G.P.1, G.P.2
     #[test]
     fn test_update_requirement_validation() {
         // Test that validation functions work correctly
@@ -970,18 +970,18 @@ fn test_validate_category_all_invalid_chars() {
     }
 
     // =============================================================================
-    // Error response format tests (G.C.6)
+    // Error response format tests (C.C.6)
     // =============================================================================
 
     // =============================================================================
-    // Tests for error response format (G.C.6)
+    // Tests for error response format (C.C.6)
     // =============================================================================
 
     /// Test: Error response format validation
     /// Precondition: System encounters an error condition
     /// Action: Verify error JSON structure
     /// Result: Error JSON has "success": false and "error" field
-    /// Covers Requirement: G.C.6
+    /// Covers Requirement: C.C.6
     #[test]
     fn test_error_response_format() {
         // Verify error format structure by checking validation errors return proper format
@@ -1231,7 +1231,7 @@ Content.
     /// Precondition: System has a requirement index with multi-character parts
     /// Action: Call parse_index with "GET.GET_C.123"
     /// Result: Function returns Ok(("GET", "GET_C", "123"))
-    /// Covers Requirement: G.REQLIX_GET_REQUIREMENT.3
+    /// Covers Requirement: T.REQLIXGETREQUIREMENT.3
     #[test]
     fn test_parse_index_multi_char() {
         let result = RequirementsServer::parse_index("GET.GET_C.123");
@@ -1245,7 +1245,7 @@ Content.
     /// Precondition: System has an index with only 2 parts instead of 3
     /// Action: Call parse_index with "G.G"
     /// Result: Function returns error indicating invalid format
-    /// Covers Requirement: G.REQLIX_GET_REQUIREMENT.3
+    /// Covers Requirement: T.REQLIXGETREQUIREMENT.3
     #[test]
     fn test_parse_index_too_few_parts() {
         let result = RequirementsServer::parse_index("G.G");
@@ -1257,7 +1257,7 @@ Content.
     /// Precondition: System has an index with 4 parts instead of 3
     /// Action: Call parse_index with "G.G.1.2"
     /// Result: Function returns error indicating invalid format
-    /// Covers Requirement: G.REQLIX_GET_REQUIREMENT.3
+    /// Covers Requirement: T.REQLIXGETREQUIREMENT.3
     #[test]
     fn test_parse_index_too_many_parts() {
         let result = RequirementsServer::parse_index("G.G.1.2");
@@ -1269,7 +1269,7 @@ Content.
     /// Precondition: System has an empty index string
     /// Action: Call parse_index with ""
     /// Result: Function returns error indicating invalid format
-    /// Covers Requirement: G.REQLIX_GET_REQUIREMENT.3
+    /// Covers Requirement: T.REQLIXGETREQUIREMENT.3
     #[test]
     fn test_parse_index_empty() {
         let result = RequirementsServer::parse_index("");
@@ -1281,7 +1281,7 @@ Content.
     /// Precondition: System has an index string with only dots
     /// Action: Call parse_index with "..."
     /// Result: Function returns error indicating invalid format
-    /// Covers Requirement: G.REQLIX_GET_REQUIREMENT.3
+    /// Covers Requirement: T.REQLIXGETREQUIREMENT.3
     #[test]
     fn test_parse_index_only_dots() {
         let result = RequirementsServer::parse_index("...");
@@ -1293,7 +1293,7 @@ Content.
     /// Precondition: System has an index string with leading dot
     /// Action: Call parse_index with ".G.1"
     /// Result: Function returns Ok with empty first part (parsing succeeds, validation should catch this)
-    /// Covers Requirement: G.REQLIX_GET_REQUIREMENT.3
+    /// Covers Requirement: T.REQLIXGETREQUIREMENT.3
     #[test]
     fn test_parse_index_leading_dot() {
         let result = RequirementsServer::parse_index(".G.1");
@@ -1309,7 +1309,7 @@ Content.
     /// Precondition: System has an index string with trailing dot
     /// Action: Call parse_index with "G.G."
     /// Result: Function returns Ok with empty third part (parsing succeeds, validation should catch this)
-    /// Covers Requirement: G.REQLIX_GET_REQUIREMENT.3
+    /// Covers Requirement: T.REQLIXGETREQUIREMENT.3
     #[test]
     fn test_parse_index_trailing_dot() {
         let result = RequirementsServer::parse_index("G.G.");
@@ -1325,7 +1325,7 @@ Content.
     /// Precondition: System has an index string with consecutive dots
     /// Action: Call parse_index with "G..1"
     /// Result: Function returns Ok with empty second part (parsing succeeds, validation should catch this)
-    /// Covers Requirement: G.REQLIX_GET_REQUIREMENT.3
+    /// Covers Requirement: T.REQLIXGETREQUIREMENT.3
     #[test]
     fn test_parse_index_consecutive_dots() {
         let result = RequirementsServer::parse_index("G..1");
@@ -1341,7 +1341,7 @@ Content.
     /// Precondition: System has an index with single character parts
     /// Action: Call parse_index with "A.B.1"
     /// Result: Function returns Ok(("A", "B", "1"))
-    /// Covers Requirement: G.REQLIX_GET_REQUIREMENT.3
+    /// Covers Requirement: T.REQLIXGETREQUIREMENT.3
     #[test]
     fn test_parse_index_single_chars() {
         let result = RequirementsServer::parse_index("A.B.1");
@@ -1355,7 +1355,7 @@ Content.
     /// Precondition: System has an index with large number part
     /// Action: Call parse_index with "G.G.999999"
     /// Result: Function returns Ok(("G", "G", "999999"))
-    /// Covers Requirement: G.REQLIX_GET_REQUIREMENT.3
+    /// Covers Requirement: T.REQLIXGETREQUIREMENT.3
     #[test]
     fn test_parse_index_large_number() {
         let result = RequirementsServer::parse_index("G.G.999999");
@@ -1369,7 +1369,7 @@ Content.
     /// Precondition: System has an index with zero as number part
     /// Action: Call parse_index with "G.G.0"
     /// Result: Function returns Ok(("G", "G", "0"))
-    /// Covers Requirement: G.REQLIX_GET_REQUIREMENT.3
+    /// Covers Requirement: T.REQLIXGETREQUIREMENT.3
     #[test]
     fn test_parse_index_zero_number() {
         let result = RequirementsServer::parse_index("G.G.0");
@@ -1383,7 +1383,7 @@ Content.
     /// Precondition: System has an index with underscores in parts
     /// Action: Call parse_index with "GET.GET_C.1"
     /// Result: Function returns Ok(("GET", "GET_C", "1"))
-    /// Covers Requirement: G.REQLIX_GET_REQUIREMENT.3
+    /// Covers Requirement: T.REQLIXGETREQUIREMENT.3
     #[test]
     fn test_parse_index_underscores() {
         let result = RequirementsServer::parse_index("GET.GET_C.1");
@@ -1397,7 +1397,7 @@ Content.
     /// Precondition: System has an index with whitespace
     /// Action: Call parse_index with "G .G.1"
     /// Result: Function may return error or parse with whitespace (implementation dependent)
-    /// Covers Requirement: G.REQLIX_GET_REQUIREMENT.3
+    /// Covers Requirement: T.REQLIXGETREQUIREMENT.3
     #[test]
     fn test_parse_index_with_whitespace() {
         let result = RequirementsServer::parse_index("G .G.1");
@@ -1459,7 +1459,7 @@ fn test_read_file_utf8_not_found() {
 /// Precondition: System has path with non-existent parent directories
 /// Action: Call write_file_utf8 with nested path
 /// Result: Function creates directories and writes file
-/// Covers Requirement: G.R.9, G.C.2
+/// Covers Requirement: G.R.9, C.C.2
 #[test]
 fn test_write_file_utf8_creates_dirs() {
     let temp_dir = TempDir::new().unwrap();

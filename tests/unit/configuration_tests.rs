@@ -1,33 +1,33 @@
-// Tests for Configuration (G.C.*)
-// Covers Requirements: G.C.1, G.C.2, G.C.7
+// Tests for Configuration (C.C.*)
+// Covers Requirements: C.C.1, C.C.2, C.C.7
 
 use reqlix::RequirementsServer;
 use std::path::PathBuf;
 use tempfile::TempDir;
 
 // =============================================================================
-// Tests for G.C.1: Requirements directory location
+// Tests for C.C.1: Requirements directory location
 // =============================================================================
 
-// Note: G.C.1 tests are covered in file_system_tests.rs (get_search_paths, get_create_path)
+// Note: C.C.1 tests are covered in file_system_tests.rs (get_search_paths, get_create_path)
 // These tests verify that requirements directory is correctly located
 
 // =============================================================================
-// Tests for G.C.2: Directory creation
+// Tests for C.C.2: Directory creation
 // =============================================================================
 
-// Note: G.C.2 tests are covered in requirements_storage_format_tests.rs (write_file_utf8_creates_dirs)
+// Note: C.C.2 tests are covered in requirements_storage_format_tests.rs (write_file_utf8_creates_dirs)
 // and name_and_file_validation_tests.rs
 
 // =============================================================================
-// Tests for G.C.7: Category management
+// Tests for C.C.7: Category management
 // =============================================================================
 
 /// Test: list_categories with single category
 /// Precondition: System has directory with single category file
 /// Action: Call list_categories with directory path
 /// Result: Function returns Ok with vector containing one category name
-/// Covers Requirement: G.C.7
+/// Covers Requirement: C.C.7
 #[test]
 fn test_list_categories_single() {
     let temp_dir = TempDir::new().unwrap();
@@ -45,7 +45,7 @@ fn test_list_categories_single() {
 /// Precondition: System has directory with AGENTS.md and category file
 /// Action: Call list_categories with directory path
 /// Result: Function returns Ok with vector excluding AGENTS (only category files included)
-/// Covers Requirement: G.C.7
+/// Covers Requirement: C.C.7
 #[test]
 fn test_list_categories_exclude_agents() {
     let temp_dir = TempDir::new().unwrap();
@@ -64,7 +64,7 @@ fn test_list_categories_exclude_agents() {
 /// Precondition: System has directory with multiple category files
 /// Action: Call list_categories with directory path
 /// Result: Function returns Ok with sorted vector containing all category names
-/// Covers Requirement: G.C.7
+/// Covers Requirement: C.C.7
 #[test]
 fn test_list_categories_multiple() {
     let temp_dir = TempDir::new().unwrap();
@@ -86,7 +86,7 @@ fn test_list_categories_multiple() {
 /// Precondition: System has empty directory
 /// Action: Call list_categories with empty directory path
 /// Result: Function returns Ok with empty vector
-/// Covers Requirement: G.C.7
+/// Covers Requirement: C.C.7
 #[test]
 fn test_list_categories_empty() {
     let temp_dir = TempDir::new().unwrap();
@@ -100,7 +100,7 @@ fn test_list_categories_empty() {
 /// Precondition: System has directory with .md and non-.md files
 /// Action: Call list_categories with directory path
 /// Result: Function returns Ok with vector containing only .md files (non-.md files ignored)
-/// Covers Requirement: G.C.7
+/// Covers Requirement: C.C.7
 #[test]
 fn test_list_categories_ignore_non_md() {
     let temp_dir = TempDir::new().unwrap();
@@ -118,7 +118,7 @@ fn test_list_categories_ignore_non_md() {
 /// Precondition: System has directory with single category file
 /// Action: Call find_category_by_prefix with directory path and prefix
 /// Result: Function returns Ok with matching category name
-/// Covers Requirement: G.C.7
+/// Covers Requirement: C.C.7
 #[test]
 fn test_find_category_by_prefix_single() {
     let temp_dir = TempDir::new().unwrap();
@@ -133,7 +133,7 @@ fn test_find_category_by_prefix_single() {
 /// Precondition: System has directory with multiple category files
 /// Action: Call find_category_by_prefix with directory path and prefix matching one category
 /// Result: Function returns Ok with matching category name
-/// Covers Requirement: G.C.7
+/// Covers Requirement: C.C.7
 #[test]
 fn test_find_category_by_prefix_multiple() {
     let temp_dir = TempDir::new().unwrap();
@@ -149,7 +149,7 @@ fn test_find_category_by_prefix_multiple() {
 /// Precondition: System has directory with category files but no matching prefix
 /// Action: Call find_category_by_prefix with directory path and non-matching prefix
 /// Result: Function returns error about category not found
-/// Covers Requirement: G.C.7
+/// Covers Requirement: C.C.7
 #[test]
 fn test_find_category_by_prefix_not_found() {
     let temp_dir = TempDir::new().unwrap();
@@ -164,7 +164,7 @@ fn test_find_category_by_prefix_not_found() {
 /// Precondition: System has directory with multiple categories starting with same letter
 /// Action: Call find_category_by_prefix with longer prefixes to disambiguate
 /// Result: Function returns Ok for at least one matching prefix (longer prefix resolves conflict)
-/// Covers Requirement: G.C.7
+/// Covers Requirement: C.C.7
 #[test]
 fn test_find_category_by_prefix_conflicting() {
     let temp_dir = TempDir::new().unwrap();
@@ -185,7 +185,7 @@ fn test_find_category_by_prefix_conflicting() {
 /// Precondition: System has empty directory
 /// Action: Call find_category_by_prefix with empty directory path and prefix
 /// Result: Function returns error about category not found
-/// Covers Requirement: G.C.7
+/// Covers Requirement: C.C.7
 #[test]
 fn test_find_category_by_prefix_empty_dir() {
     let temp_dir = TempDir::new().unwrap();
@@ -660,7 +660,7 @@ fn test_calculate_unique_prefix_same_letters_different_non_letters() {
 /// Precondition: System has no REQLIX_REQ_REL_PATH environment variable set
 /// Action: Call get_search_paths with project_root "/test/project"
 /// Result: Function returns paths including default "docs/development/requirements/AGENTS.md"
-/// Covers Requirement: G.REQLIX_GET_INST.3
+/// Covers Requirement: T.R.3
 #[test]
 fn test_get_search_paths_default() {
     // Clear environment variable if set
@@ -678,7 +678,7 @@ fn test_get_search_paths_default() {
 /// Precondition: System has REQLIX_REQ_REL_PATH environment variable set
 /// Action: Call get_search_paths with project_root "/test/project" and REQLIX_REQ_REL_PATH="custom/path"
 /// Result: Function returns paths including custom path first
-/// Covers Requirement: G.REQLIX_GET_INST.3
+/// Covers Requirement: T.R.3
 #[test]
 fn test_get_search_paths_custom_env() {
     // Save original value if exists
@@ -722,7 +722,7 @@ fn test_get_search_paths_custom_env() {
 /// Precondition: System has empty project_root
 /// Action: Call get_search_paths with ""
 /// Result: Function returns paths with empty root
-/// Covers Requirement: G.REQLIX_GET_INST.3
+/// Covers Requirement: T.R.3
 #[test]
 fn test_get_search_paths_empty_root() {
     std::env::remove_var("REQLIX_REQ_REL_PATH");
@@ -736,7 +736,7 @@ fn test_get_search_paths_empty_root() {
 /// Precondition: System has relative project_root
 /// Action: Call get_search_paths with "project"
 /// Result: Function returns paths with relative root
-/// Covers Requirement: G.REQLIX_GET_INST.3
+/// Covers Requirement: T.R.3
 #[test]
 fn test_get_search_paths_relative_root() {
     std::env::remove_var("REQLIX_REQ_REL_PATH");
@@ -752,7 +752,7 @@ fn test_get_search_paths_relative_root() {
 /// Precondition: System has REQLIX_REQ_REL_PATH set
 /// Action: Call get_search_paths and check order
 /// Result: Custom path comes first, then defaults
-/// Covers Requirement: G.REQLIX_GET_INST.3
+/// Covers Requirement: T.R.3
 #[test]
 fn test_get_search_paths_order() {
     // Save original value if exists
@@ -796,7 +796,7 @@ fn test_get_search_paths_order() {
 /// Precondition: System has no REQLIX_REQ_REL_PATH environment variable set
 /// Action: Call get_create_path with project_root "/test/project"
 /// Result: Function returns default path "docs/development/requirements/AGENTS.md"
-/// Covers Requirement: G.REQLIX_GET_INST.4
+/// Covers Requirement: T.R.4
 #[test]
 fn test_get_create_path_default() {
     std::env::remove_var("REQLIX_REQ_REL_PATH");
@@ -812,7 +812,7 @@ fn test_get_create_path_default() {
 /// Precondition: System has REQLIX_REQ_REL_PATH environment variable set
 /// Action: Call get_create_path with project_root "/test/project" and REQLIX_REQ_REL_PATH="custom/path"
 /// Result: Function returns custom path
-/// Covers Requirement: G.REQLIX_GET_INST.4
+/// Covers Requirement: T.R.4
 #[test]
 fn test_get_create_path_custom_env() {
     // Save original value if exists
@@ -854,7 +854,7 @@ fn test_get_create_path_custom_env() {
 /// Precondition: System has empty project_root
 /// Action: Call get_create_path with ""
 /// Result: Function returns path with empty root
-/// Covers Requirement: G.REQLIX_GET_INST.4
+/// Covers Requirement: T.R.4
 #[test]
 fn test_get_create_path_empty_root() {
     std::env::remove_var("REQLIX_REQ_REL_PATH");
@@ -870,7 +870,7 @@ fn test_get_create_path_empty_root() {
 /// Precondition: System has relative project_root
 /// Action: Call get_create_path with "project"
 /// Result: Function returns path with relative root
-/// Covers Requirement: G.REQLIX_GET_INST.4
+/// Covers Requirement: T.R.4
 #[test]
 fn test_get_create_path_relative_root() {
     // Save original value if exists
@@ -914,7 +914,7 @@ fn test_get_create_path_relative_root() {
 /// Precondition: System has nested REQLIX_REQ_REL_PATH
 /// Action: Call get_create_path with nested custom path
 /// Result: Function returns correct nested path
-/// Covers Requirement: G.REQLIX_GET_INST.4
+/// Covers Requirement: T.R.4
 #[test]
 fn test_get_create_path_nested_custom() {
     // Save original value if exists

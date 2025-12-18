@@ -1,4 +1,4 @@
-// File system helpers (G.REQLIX_GET_I.3, G.REQLIX_GET_I.4, G.C.1, G.C.2, G.R.8, G.R.9, G.R.10)
+// File system helpers (T.R.3, T.R.4, C.C.1, C.C.2, G.R.8, G.R.9, G.R.10)
 
 use crate::constants::PLACEHOLDER_CONTENT;
 use std::env;
@@ -84,7 +84,7 @@ pub fn is_file_empty_or_whitespace(content: &str) -> bool {
     content.trim().is_empty()
 }
 
-/// Get search paths for AGENTS.md (G.REQLIX_GET_I.3)
+/// Get search paths for AGENTS.md (T.R.3)
 #[cfg_attr(test, allow(dead_code))]
 pub fn get_search_paths(project_root: &str) -> Vec<PathBuf> {
     let root = PathBuf::from(project_root);
@@ -100,7 +100,7 @@ pub fn get_search_paths(project_root: &str) -> Vec<PathBuf> {
     paths
 }
 
-/// Get path for creating AGENTS.md (G.REQLIX_GET_I.4)
+/// Get path for creating AGENTS.md (T.R.4)
 #[cfg_attr(test, allow(dead_code))]
 pub fn get_create_path(project_root: &str) -> PathBuf {
     let root = PathBuf::from(project_root);
@@ -112,7 +112,7 @@ pub fn get_create_path(project_root: &str) -> PathBuf {
     }
 }
 
-/// Find or create requirements file (G.REQLIX_GET_I.3, G.REQLIX_GET_I.4, G.REQLIX_GET_I.5)
+/// Find or create requirements file (T.R.3, T.R.4, T.R.5)
 pub fn find_or_create_requirements_file(project_root: &str) -> Result<PathBuf, String> {
     // Search for existing file
     for path in get_search_paths(project_root) {
@@ -124,12 +124,12 @@ pub fn find_or_create_requirements_file(project_root: &str) -> Result<PathBuf, S
     // Create new file with placeholder content
     let create_path = get_create_path(project_root);
 
-    // Create parent directories (G.C.2)
+    // Create parent directories (C.C.2)
     if let Some(parent) = create_path.parent() {
         fs::create_dir_all(parent).map_err(|e| format!("Failed to create directories: {}", e))?;
     }
 
-    // Replace {requirements_directory} placeholder (G.REQLIX_GET_I.6)
+    // Replace {requirements_directory} placeholder (T.R.6)
     let requirements_dir = create_path
         .parent()
         .and_then(|p| {
@@ -146,7 +146,7 @@ pub fn find_or_create_requirements_file(project_root: &str) -> Result<PathBuf, S
     Ok(create_path)
 }
 
-/// Get requirements directory (G.C.1)
+/// Get requirements directory (C.C.1)
 pub fn get_requirements_dir(project_root: &str) -> Result<PathBuf, String> {
     let agents_path = find_or_create_requirements_file(project_root)?;
     agents_path

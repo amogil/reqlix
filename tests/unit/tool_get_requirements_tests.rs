@@ -1,5 +1,5 @@
-// Tests for Tool: reqlix_get_requirements (G.REQLIX_GET_REQUIREMENTS.*)
-// Covers Requirements: G.REQLIX_GET_REQUIREMENTS.1, G.REQLIX_GET_REQUIREMENTS.3, G.REQLIX_GET_REQUIREMENTS.4
+// Tests for Tool: reqlix_get_requirements (T.REQLIXGETR.*)
+// Covers Requirements: T.REQLIXGETR.1, T.REQLIXGETR.3, T.REQLIXGETR.4
 
 use reqlix::RequirementsServer;
 use tempfile::TempDir;
@@ -7,14 +7,14 @@ use tempfile::TempDir;
 use super::common::create_category_file;
 
 // =============================================================================
-// Tests for reqlix_get_requirements (G.REQLIX_GET_REQUIREMENTS.*)
+// Tests for reqlix_get_requirements (T.REQLIXGETR.*)
 // =============================================================================
 
 /// Test: reqlix_get_requirements returns all requirements in chapter
 /// Precondition: System has category file with chapter containing requirements
 /// Action: Call reqlix_get_requirements
 /// Result: Function returns list of requirements with indices and titles
-/// Covers Requirement: G.REQLIX_GET_REQUIREMENTS.1, G.REQLIX_GET_REQUIREMENTS.3, G.REQLIX_GET_REQUIREMENTS.4
+/// Covers Requirement: T.REQLIXGETR.1, T.REQLIXGETR.3, T.REQLIXGETR.4
 #[test]
 fn test_get_requirements_multiple() {
     let temp_dir = TempDir::new().unwrap();
@@ -46,7 +46,7 @@ Content of second requirement.
 /// Precondition: System has chapter with no requirements
 /// Action: Call reqlix_get_requirements
 /// Result: Function returns empty array
-/// Covers Requirement: G.REQLIX_GET_REQUIREMENTS.1, G.REQLIX_GET_REQUIREMENTS.4
+/// Covers Requirement: T.REQLIXGETR.1, T.REQLIXGETR.4
 #[test]
 fn test_get_requirements_empty() {
     let temp_dir = TempDir::new().unwrap();

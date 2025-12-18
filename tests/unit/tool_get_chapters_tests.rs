@@ -1,5 +1,5 @@
-// Tests for Tool: reqlix_get_chapters (G.REQLIX_GET_CH.*)
-// Covers Requirements: G.REQLIX_GET_CH.1, G.REQLIX_GET_CH.3, G.REQLIX_GET_CH.4
+// Tests for Tool: reqlix_get_chapters (T.REQLIXGETCH.*)
+// Covers Requirements: T.REQLIXGETCH.1, T.REQLIXGETCH.3, T.REQLIXGETCH.4
 
 use reqlix::RequirementsServer;
 use tempfile::TempDir;
@@ -7,14 +7,14 @@ use tempfile::TempDir;
 use super::common::create_category_file;
 
 // =============================================================================
-// Tests for reqlix_get_chapters (G.REQLIX_GET_CH.*)
+// Tests for reqlix_get_chapters (T.REQLIXGETCH.*)
 // =============================================================================
 
 /// Test: reqlix_get_chapters returns all chapters in category
 /// Precondition: System has category file with multiple chapters
 /// Action: Call reqlix_get_chapters
 /// Result: Function returns list of chapter names
-/// Covers Requirement: G.REQLIX_GET_CH.1, G.REQLIX_GET_CH.3, G.REQLIX_GET_CH.4
+/// Covers Requirement: T.REQLIXGETCH.1, T.REQLIXGETCH.3, T.REQLIXGETCH.4
 #[test]
 fn test_get_chapters_multiple() {
     let temp_dir = TempDir::new().unwrap();
@@ -39,7 +39,7 @@ Content of chapter two.
 /// Precondition: System has category file with no chapters
 /// Action: Call reqlix_get_chapters
 /// Result: Function returns empty array
-/// Covers Requirement: G.REQLIX_GET_CH.1, G.REQLIX_GET_CH.4
+/// Covers Requirement: T.REQLIXGETCH.1, T.REQLIXGETCH.4
 #[test]
 fn test_get_chapters_empty() {
     let temp_dir = TempDir::new().unwrap();

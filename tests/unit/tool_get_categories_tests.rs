@@ -1,5 +1,5 @@
-// Tests for Tool: reqlix_get_categories (G.REQLIX_GET_CA.*)
-// Covers Requirements: G.REQLIX_GET_CA.1, G.REQLIX_GET_CA.3
+// Tests for Tool: reqlix_get_categories (T.REQLIXGETC.*)
+// Covers Requirements: T.REQLIXGETC.1, T.REQLIXGETC.3
 
 use reqlix::RequirementsServer;
 use tempfile::TempDir;
@@ -7,14 +7,14 @@ use tempfile::TempDir;
 use super::common::{create_agents_file, create_category_file};
 
 // =============================================================================
-// Tests for reqlix_get_categories (G.REQLIX_GET_CA.*)
+// Tests for reqlix_get_categories (T.REQLIXGETC.*)
 // =============================================================================
 
 /// Test: reqlix_get_categories returns all categories
 /// Precondition: System has multiple category files
 /// Action: Call reqlix_get_categories
 /// Result: Function returns sorted list of categories
-/// Covers Requirement: G.REQLIX_GET_CA.1, G.REQLIX_GET_CA.3
+/// Covers Requirement: T.REQLIXGETC.1, T.REQLIXGETC.3
 #[test]
 fn test_get_categories_multiple() {
     let temp_dir = TempDir::new().unwrap();
@@ -34,7 +34,7 @@ fn test_get_categories_multiple() {
 /// Precondition: System has no category files (only AGENTS.md)
 /// Action: Call reqlix_get_categories
 /// Result: Function returns empty array
-/// Covers Requirement: G.REQLIX_GET_CA.1, G.REQLIX_GET_CA.3
+/// Covers Requirement: T.REQLIXGETC.1, T.REQLIXGETC.3
 #[test]
 fn test_get_categories_empty() {
     let temp_dir = TempDir::new().unwrap();

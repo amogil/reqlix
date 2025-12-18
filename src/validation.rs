@@ -230,7 +230,7 @@ pub fn validate_title(value: &str, required: bool) -> Result<(), String> {
     Ok(())
 }
 
-/// Validate keywords parameter (G.TOOLREQLIXS.5, G.TOOLREQLIXS.6)
+/// Validate keywords parameter (T.REQLIXS.5, T.REQLIXS.6)
 /// Returns filtered non-empty keywords or error
 #[cfg_attr(test, allow(dead_code))]
 pub fn validate_keywords(keywords: &KeywordsParam) -> Result<Vec<String>, String> {
@@ -239,12 +239,12 @@ pub fn validate_keywords(keywords: &KeywordsParam) -> Result<Vec<String>, String
         KeywordsParam::Batch(v) => v.clone(),
     };
 
-    // G.TOOLREQLIXS.5: Maximum 100 keywords
+    // T.REQLIXS.5: Maximum 100 keywords
     if keywords_vec.len() > MAX_BATCH_SIZE {
         return Err("Keywords count exceeds maximum limit of 100".to_string());
     }
 
-    // G.TOOLREQLIXS.5: Validate each keyword length and filter empty strings
+    // T.REQLIXS.5: Validate each keyword length and filter empty strings
     let mut filtered: Vec<String> = Vec::new();
     for keyword in keywords_vec {
         if keyword.len() > MAX_KEYWORD_LEN {
@@ -253,7 +253,7 @@ pub fn validate_keywords(keywords: &KeywordsParam) -> Result<Vec<String>, String
                 MAX_KEYWORD_LEN
             ));
         }
-        // Filter out empty strings (G.TOOLREQLIXS.5)
+        // Filter out empty strings (T.REQLIXS.5)
         if !keyword.is_empty() {
             filtered.push(keyword);
         }

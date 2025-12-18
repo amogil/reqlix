@@ -118,7 +118,7 @@ pub fn parse_level2_heading(line: &str) -> Option<(String, String)> {
     None
 }
 
-/// Read chapters from a category file (streaming) (G.REQLIX_GET_CH.3, G.R.2, G.R.8, G.R.9, G.R.10)
+/// Read chapters from a category file (streaming) (T.REQLIXGETCH.3, G.R.2, G.R.8, G.R.9, G.R.10)
 /// Parses markdown level-1 headings correctly, ignoring those inside code blocks
 /// Handles empty files and whitespace-only files (G.R.10)
 #[cfg_attr(test, allow(dead_code))]
@@ -168,7 +168,7 @@ pub fn read_chapters_streaming(category_path: &PathBuf) -> Result<Vec<String>, S
     Ok(chapters)
 }
 
-/// Read requirements from a chapter (streaming) (G.REQLIX_GET_REQUIREMENTS.3, G.R.3, G.R.5, G.R.8, G.R.9, G.R.10)
+/// Read requirements from a chapter (streaming) (T.REQLIXGETR.3, G.R.3, G.R.5, G.R.8, G.R.9, G.R.10)
 /// Parses markdown level-2 headings correctly, ignoring those inside code blocks
 /// Handles empty files and chapters with no requirements (G.R.10)
 #[cfg_attr(test, allow(dead_code))]
@@ -235,7 +235,7 @@ pub fn read_requirements_streaming(
     Ok(requirements)
 }
 
-/// Find requirement by index (streaming) (G.REQLIX_GET_REQUIREMENT.3, G.REQLIX_GET_REQUIREMENT.4, G.R.5)
+/// Find requirement by index (streaming) (T.REQLIXGETREQUIREMENT.3, T.REQLIXGETREQUIREMENT.4, G.R.5)
 /// Parses requirement boundaries correctly according to G.R.5:
 /// - Requirement starts with markdown level-2 heading and includes all lines until next level-2 heading or EOF
 /// - Code blocks are handled correctly (content within ``` is part of requirement)
@@ -371,7 +371,7 @@ pub fn find_requirement_streaming(
     Err("Requirement not found".to_string())
 }
 
-/// Parse index into parts (G.REQLIX_GET_REQUIREMENT.3)
+/// Parse index into parts (T.REQLIXGETREQUIREMENT.3)
 #[cfg_attr(test, allow(dead_code))]
 pub fn parse_index(index: &str) -> Result<(String, String, String), String> {
     let parts: Vec<&str> = index.split('.').collect();

@@ -7,7 +7,7 @@ These instructions are mandatory for all code operations.
 1. All requirements must be written in English.
 2. Never edit files in {requirements_directory} directly. Always use this MCP server for all
    requirements operations.
-3. Requirement index format: `{CATEGORY}.{CHAPTER}.{NUMBER}` (e.g., `G.REQLIX_GET_I.1`, `T.U.2`).
+3. Requirement index format: `{CATEGORY}.{CHAPTER}.{NUMBER}` (e.g., `T.R.1`, `T.U.2`).
    Requirements are organized hierarchically:
    **Category** groups related requirements together (e.g., general requirements, testing requirements).
    **Chapter** groups related requirements within a category (e.g., a specific tool or feature).

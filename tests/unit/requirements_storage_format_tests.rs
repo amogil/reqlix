@@ -731,7 +731,7 @@ Content three.
 /// Precondition: System has a category file with indented chapter headings
 /// Action: Call read_chapters_streaming with file containing " # Chapter" (1-3 spaces)
 /// Result: Function parses indented headings correctly
-/// Covers Requirement: G.REQLIX_GET_CH.3, G.R.2
+/// Covers Requirement: T.REQLIXGETCH.3, G.R.2
 #[test]
 fn test_read_chapters_streaming_indented() {
     let temp_dir = TempDir::new().unwrap();
@@ -748,7 +748,7 @@ fn test_read_chapters_streaming_indented() {
 /// Precondition: System has an empty category file
 /// Action: Call read_chapters_streaming with empty file
 /// Result: Function returns empty vec
-/// Covers Requirement: G.REQLIX_GET_CH.3, G.R.2
+/// Covers Requirement: T.REQLIXGETCH.3, G.R.2
 #[test]
 fn test_read_chapters_streaming_empty() {
     let temp_dir = TempDir::new().unwrap();
@@ -764,7 +764,7 @@ fn test_read_chapters_streaming_empty() {
 /// Precondition: System has a category file with level-2 headings
 /// Action: Call read_chapters_streaming with file containing "## Requirement"
 /// Result: Function ignores level-2 headings
-/// Covers Requirement: G.REQLIX_GET_CH.3, G.R.2
+/// Covers Requirement: T.REQLIXGETCH.3, G.R.2
 #[test]
 fn test_read_chapters_streaming_ignore_level2() {
     let temp_dir = TempDir::new().unwrap();
@@ -782,7 +782,7 @@ fn test_read_chapters_streaming_ignore_level2() {
 /// Precondition: System has a category file with multi-line code block
 /// Action: Call read_chapters_streaming with file containing code block spanning multiple lines
 /// Result: Function correctly tracks code block boundaries
-/// Covers Requirement: G.REQLIX_GET_CH.3, G.R.2, G.R.5
+/// Covers Requirement: T.REQLIXGETCH.3, G.R.2, G.R.5
 #[test]
 fn test_read_chapters_streaming_multiline_code_block() {
     let temp_dir = TempDir::new().unwrap();
@@ -805,7 +805,7 @@ fn test_read_chapters_streaming_multiline_code_block() {
 /// Precondition: System has a category file with code block having language identifier
 /// Action: Call read_chapters_streaming with file containing "```json" code block
 /// Result: Function correctly identifies code block boundaries
-/// Covers Requirement: G.REQLIX_GET_CH.3, G.R.2, G.R.5
+/// Covers Requirement: T.REQLIXGETCH.3, G.R.2, G.R.5
 #[test]
 fn test_read_chapters_streaming_code_block_language() {
     let temp_dir = TempDir::new().unwrap();
@@ -823,7 +823,7 @@ fn test_read_chapters_streaming_code_block_language() {
 /// Precondition: System has a category file with chapter heading having trailing spaces
 /// Action: Call read_chapters_streaming with file containing "# Chapter   "
 /// Result: Function trims trailing spaces from chapter name
-/// Covers Requirement: G.REQLIX_GET_CH.3, G.R.2
+/// Covers Requirement: T.REQLIXGETCH.3, G.R.2
 #[test]
 fn test_read_chapters_streaming_trailing_spaces() {
     let temp_dir = TempDir::new().unwrap();
@@ -841,7 +841,7 @@ fn test_read_chapters_streaming_trailing_spaces() {
 /// Precondition: System has a category file with unicode chapter names
 /// Action: Call read_chapters_streaming with file containing "# Глава"
 /// Result: Function correctly parses unicode chapter names
-/// Covers Requirement: G.REQLIX_GET_CH.3, G.R.2
+/// Covers Requirement: T.REQLIXGETCH.3, G.R.2
 #[test]
 fn test_read_chapters_streaming_unicode() {
     let temp_dir = TempDir::new().unwrap();
@@ -859,7 +859,7 @@ fn test_read_chapters_streaming_unicode() {
 /// Precondition: System has a category file with "## Categories" mentioned in code block
 /// Action: Call read_chapters_streaming with file containing "# Real Chapter\n```\n## Categories\n```"
 /// Result: Function ignores "## Categories" inside code block
-/// Covers Requirement: G.REQLIX_GET_CH.3, G.R.2, G.R.5
+/// Covers Requirement: T.REQLIXGETCH.3, G.R.2, G.R.5
 #[test]
 fn test_read_chapters_streaming_ignore_categories_in_code_block() {
     let temp_dir = TempDir::new().unwrap();
@@ -877,7 +877,7 @@ fn test_read_chapters_streaming_ignore_categories_in_code_block() {
 /// Precondition: System has a category file with "# Categories" mentioned in code block
 /// Action: Call read_chapters_streaming with file containing "# Real Chapter\n```\n# Categories\n```"
 /// Result: Function ignores "# Categories" inside code block
-/// Covers Requirement: G.REQLIX_GET_CH.3, G.R.2, G.R.5
+/// Covers Requirement: T.REQLIXGETCH.3, G.R.2, G.R.5
 #[test]
 fn test_read_chapters_streaming_ignore_categories_level1_in_code_block() {
     let temp_dir = TempDir::new().unwrap();
@@ -895,7 +895,7 @@ fn test_read_chapters_streaming_ignore_categories_level1_in_code_block() {
 /// Precondition: System has a category file with chapter mention in requirement text (not code block)
 /// Action: Call read_chapters_streaming with file containing "# Real Chapter\n## G.G.1: Title\nText with # Categories mention\n"
 /// Result: Function ignores "# Categories" mention in requirement text (not a real heading)
-/// Covers Requirement: G.REQLIX_GET_CH.3, G.R.2
+/// Covers Requirement: T.REQLIXGETCH.3, G.R.2
 #[test]
 fn test_read_chapters_streaming_ignore_chapter_mention_in_text() {
     let temp_dir = TempDir::new().unwrap();
@@ -917,7 +917,7 @@ fn test_read_chapters_streaming_ignore_chapter_mention_in_text() {
 /// Precondition: System has a category file with "## Categories" in requirement text
 /// Action: Call read_chapters_streaming with file containing "# Real Chapter\n## G.G.1: Title\nText with ## Categories\n"
 /// Result: Function ignores "## Categories" in requirement text (not a real heading)
-/// Covers Requirement: G.REQLIX_GET_CH.3, G.R.2
+/// Covers Requirement: T.REQLIXGETCH.3, G.R.2
 #[test]
 fn test_read_chapters_streaming_ignore_categories_level2_in_text() {
     let temp_dir = TempDir::new().unwrap();
@@ -939,7 +939,7 @@ fn test_read_chapters_streaming_ignore_categories_level2_in_text() {
 /// Precondition: System has a category file with chapter mention in json code block
 /// Action: Call read_chapters_streaming with file containing "# Real Chapter\n```json\n{\"heading\": \"# Categories\"}\n```"
 /// Result: Function ignores chapter mention inside json code block
-/// Covers Requirement: G.REQLIX_GET_CH.3, G.R.2, G.R.5
+/// Covers Requirement: T.REQLIXGETCH.3, G.R.2, G.R.5
 #[test]
 fn test_read_chapters_streaming_ignore_chapter_in_json_code_block() {
     let temp_dir = TempDir::new().unwrap();
@@ -961,7 +961,7 @@ fn test_read_chapters_streaming_ignore_chapter_in_json_code_block() {
 /// Precondition: System has a category file with chapter mention in markdown code block
 /// Action: Call read_chapters_streaming with file containing "# Real Chapter\n```markdown\n# Categories\n```"
 /// Result: Function ignores chapter mention inside markdown code block
-/// Covers Requirement: G.REQLIX_GET_CH.3, G.R.2, G.R.5
+/// Covers Requirement: T.REQLIXGETCH.3, G.R.2, G.R.5
 #[test]
 fn test_read_chapters_streaming_ignore_chapter_in_markdown_code_block() {
     let temp_dir = TempDir::new().unwrap();
@@ -983,7 +983,7 @@ fn test_read_chapters_streaming_ignore_chapter_in_markdown_code_block() {
 /// Precondition: System has a category file with multiple chapter mentions in code block
 /// Action: Call read_chapters_streaming with file containing "# Real Chapter\n```\n# Categories\n# Chapters\n# Chapter List\n```"
 /// Result: Function ignores all chapter mentions inside code block
-/// Covers Requirement: G.REQLIX_GET_CH.3, G.R.2, G.R.5
+/// Covers Requirement: T.REQLIXGETCH.3, G.R.2, G.R.5
 #[test]
 fn test_read_chapters_streaming_ignore_multiple_chapters_in_code_block() {
     let temp_dir = TempDir::new().unwrap();
@@ -1005,7 +1005,7 @@ fn test_read_chapters_streaming_ignore_multiple_chapters_in_code_block() {
 /// Precondition: System has a category file with chapter mention in nested code block structure
 /// Action: Call read_chapters_streaming with file containing "# Real Chapter\n```\nouter\n```\n```\n# Categories\n```"
 /// Result: Function correctly handles nested code block boundaries
-/// Covers Requirement: G.REQLIX_GET_CH.3, G.R.2, G.R.5
+/// Covers Requirement: T.REQLIXGETCH.3, G.R.2, G.R.5
 #[test]
 fn test_read_chapters_streaming_ignore_chapter_in_nested_code_blocks() {
     let temp_dir = TempDir::new().unwrap();
@@ -1027,7 +1027,7 @@ fn test_read_chapters_streaming_ignore_chapter_in_nested_code_blocks() {
 /// Precondition: System has a category file with chapter mention in requirement body
 /// Action: Call read_chapters_streaming with file containing "# Real Chapter\n## G.G.1: Title\nThis mentions # Categories in the text\n"
 /// Result: Function ignores chapter mention in requirement body text
-/// Covers Requirement: G.REQLIX_GET_CH.3, G.R.2
+/// Covers Requirement: T.REQLIXGETCH.3, G.R.2
 #[test]
 fn test_read_chapters_streaming_ignore_chapter_mention_in_requirement_body() {
     let temp_dir = TempDir::new().unwrap();
@@ -1049,7 +1049,7 @@ fn test_read_chapters_streaming_ignore_chapter_mention_in_requirement_body() {
 /// Precondition: System has a category file with "## Categories" in inline code (not fenced block)
 /// Action: Call read_chapters_streaming with file containing "# Real Chapter\nText with `## Categories` inline\n"
 /// Result: Function ignores inline code (not fenced block, so not tracked)
-/// Covers Requirement: G.REQLIX_GET_CH.3, G.R.2
+/// Covers Requirement: T.REQLIXGETCH.3, G.R.2
 #[test]
 fn test_read_chapters_streaming_ignore_chapter_in_inline_code() {
     let temp_dir = TempDir::new().unwrap();
@@ -1071,7 +1071,7 @@ fn test_read_chapters_streaming_ignore_chapter_in_inline_code() {
 /// Precondition: System has a category file with real chapter after code block containing chapter mention
 /// Action: Call read_chapters_streaming with file containing "# First\n```\n# Categories\n```\n# Second Chapter\n"
 /// Result: Function correctly identifies real chapter after code block
-/// Covers Requirement: G.REQLIX_GET_CH.3, G.R.2, G.R.5
+/// Covers Requirement: T.REQLIXGETCH.3, G.R.2, G.R.5
 #[test]
 fn test_read_chapters_streaming_real_chapter_after_code_block() {
     let temp_dir = TempDir::new().unwrap();
@@ -1094,7 +1094,7 @@ fn test_read_chapters_streaming_real_chapter_after_code_block() {
 /// Precondition: System has a category file with indented chapter mention in requirement text
 /// Action: Call read_chapters_streaming with file containing "# Real Chapter\n## G.G.1: Title\n  Text with # Categories\n"
 /// Result: Function ignores indented chapter mention in requirement text
-/// Covers Requirement: G.REQLIX_GET_CH.3, G.R.2
+/// Covers Requirement: T.REQLIXGETCH.3, G.R.2
 #[test]
 fn test_read_chapters_streaming_ignore_indented_chapter_mention() {
     let temp_dir = TempDir::new().unwrap();
@@ -1116,7 +1116,7 @@ fn test_read_chapters_streaming_ignore_indented_chapter_mention() {
 /// Precondition: System has a category file with chapter mention in multi-line code block
 /// Action: Call read_chapters_streaming with file containing "# Real Chapter\n```\nline1\n# Categories\nline2\n```"
 /// Result: Function ignores chapter mention in multi-line code block
-/// Covers Requirement: G.REQLIX_GET_CH.3, G.R.2, G.R.5
+/// Covers Requirement: T.REQLIXGETCH.3, G.R.2, G.R.5
 #[test]
 fn test_read_chapters_streaming_ignore_chapter_in_multiline_code_block() {
     let temp_dir = TempDir::new().unwrap();
@@ -1138,7 +1138,7 @@ fn test_read_chapters_streaming_ignore_chapter_in_multiline_code_block() {
 /// Precondition: System has a category file with "## Categories" in code block with language identifier
 /// Action: Call read_chapters_streaming with file containing "# Real Chapter\n```python\n## Categories\n```"
 /// Result: Function ignores chapter mention in code block with language
-/// Covers Requirement: G.REQLIX_GET_CH.3, G.R.2, G.R.5
+/// Covers Requirement: T.REQLIXGETCH.3, G.R.2, G.R.5
 #[test]
 fn test_read_chapters_streaming_ignore_categories_in_python_code_block() {
     let temp_dir = TempDir::new().unwrap();
@@ -1160,7 +1160,7 @@ fn test_read_chapters_streaming_ignore_categories_in_python_code_block() {
 /// Precondition: System has a category file with chapter mention containing special characters
 /// Action: Call read_chapters_streaming with file containing "# Real Chapter\n## G.G.1: Title\nText: # Categories (list)\n"
 /// Result: Function ignores chapter mention with special characters in requirement text
-/// Covers Requirement: G.REQLIX_GET_CH.3, G.R.2
+/// Covers Requirement: T.REQLIXGETCH.3, G.R.2
 #[test]
 fn test_read_chapters_streaming_ignore_chapter_with_special_chars() {
     let temp_dir = TempDir::new().unwrap();
@@ -1182,7 +1182,7 @@ fn test_read_chapters_streaming_ignore_chapter_with_special_chars() {
 /// Precondition: System has a category file starting with code block containing chapter mention
 /// Action: Call read_chapters_streaming with file containing "```\n# Categories\n```\n# Real Chapter\n"
 /// Result: Function ignores chapter mention in code block at start
-/// Covers Requirement: G.REQLIX_GET_CH.3, G.R.2, G.R.5
+/// Covers Requirement: T.REQLIXGETCH.3, G.R.2, G.R.5
 #[test]
 fn test_read_chapters_streaming_ignore_chapter_at_file_start_in_code() {
     let temp_dir = TempDir::new().unwrap();
@@ -1200,7 +1200,7 @@ fn test_read_chapters_streaming_ignore_chapter_at_file_start_in_code() {
 /// Precondition: System has a category file ending with code block containing chapter mention
 /// Action: Call read_chapters_streaming with file containing "# Real Chapter\n```\n# Categories\n```"
 /// Result: Function ignores chapter mention in code block at end
-/// Covers Requirement: G.REQLIX_GET_CH.3, G.R.2, G.R.5
+/// Covers Requirement: T.REQLIXGETCH.3, G.R.2, G.R.5
 #[test]
 fn test_read_chapters_streaming_ignore_chapter_at_file_end_in_code() {
     let temp_dir = TempDir::new().unwrap();
@@ -1218,7 +1218,7 @@ fn test_read_chapters_streaming_ignore_chapter_at_file_end_in_code() {
 /// Precondition: System has a category file with actual chapter named "Categories"
 /// Action: Call read_chapters_streaming with file containing "# Categories\n"
 /// Result: Function returns "Categories" as a valid chapter
-/// Covers Requirement: G.REQLIX_GET_CH.3, G.R.2
+/// Covers Requirement: T.REQLIXGETCH.3, G.R.2
 #[test]
 fn test_read_chapters_streaming_real_categories_chapter() {
     let temp_dir = TempDir::new().unwrap();
@@ -1236,7 +1236,7 @@ fn test_read_chapters_streaming_real_categories_chapter() {
 /// Precondition: System has a category file with chapter mention in code block between real chapters
 /// Action: Call read_chapters_streaming with file containing "# First\n```\n# Categories\n```\n# Second\n"
 /// Result: Function correctly identifies both real chapters, ignoring mention in code block
-/// Covers Requirement: G.REQLIX_GET_CH.3, G.R.2, G.R.5
+/// Covers Requirement: T.REQLIXGETCH.3, G.R.2, G.R.5
 #[test]
 fn test_read_chapters_streaming_ignore_chapter_between_real_chapters() {
     let temp_dir = TempDir::new().unwrap();
@@ -1259,7 +1259,7 @@ fn test_read_chapters_streaming_ignore_chapter_between_real_chapters() {
 /// Precondition: System has a category file with formatted "## Categories" mention in requirement text
 /// Action: Call read_chapters_streaming with file containing "# Real Chapter\n## G.G.1: Title\nText with **## Categories** bold\n"
 /// Result: Function ignores formatted chapter mention in requirement text
-/// Covers Requirement: G.REQLIX_GET_CH.3, G.R.2
+/// Covers Requirement: T.REQLIXGETCH.3, G.R.2
 #[test]
 fn test_read_chapters_streaming_ignore_formatted_chapter_mention() {
     let temp_dir = TempDir::new().unwrap();
@@ -1281,7 +1281,7 @@ fn test_read_chapters_streaming_ignore_formatted_chapter_mention() {
 /// Precondition: System has a category file with "# Categories" chapter heading
 /// Action: Call read_chapters_streaming with file containing "# Categories\n# Real Chapter\n"
 /// Result: Function returns both chapters including "Categories"
-/// Covers Requirement: G.REQLIX_GET_CH.3, G.R.2
+/// Covers Requirement: T.REQLIXGETCH.3, G.R.2
 #[test]
 fn test_read_chapters_streaming_categories_with_other() {
     let temp_dir = TempDir::new().unwrap();
@@ -1300,7 +1300,7 @@ fn test_read_chapters_streaming_categories_with_other() {
 /// Precondition: System has a category file with "Categories" and other chapters
 /// Action: Call read_chapters_streaming with file containing "# Chapter One\n# Categories\n# Chapter Two\n"
 /// Result: Function returns all chapters including "Categories"
-/// Covers Requirement: G.REQLIX_GET_CH.3, G.R.2
+/// Covers Requirement: T.REQLIXGETCH.3, G.R.2
 #[test]
 fn test_read_chapters_streaming_categories_with_others() {
     let temp_dir = TempDir::new().unwrap();
@@ -1320,7 +1320,7 @@ fn test_read_chapters_streaming_categories_with_others() {
 /// Precondition: System has a category file with "# Categories" in code block and real "# Categories" chapter
 /// Action: Call read_chapters_streaming with file containing "# Real Chapter\n```\n# Categories\n```\n# Categories\n# Another Chapter\n"
 /// Result: Function ignores "Categories" in code block and includes real "Categories" chapter
-/// Covers Requirement: G.REQLIX_GET_CH.3, G.R.2, G.R.5
+/// Covers Requirement: T.REQLIXGETCH.3, G.R.2, G.R.5
 #[test]
 fn test_read_chapters_streaming_categories_in_code_block_and_real() {
     let temp_dir = TempDir::new().unwrap();
@@ -1661,7 +1661,7 @@ fn test_read_requirements_streaming_ignore_level1() {
 /// Precondition: System has a category file with a requirement
 /// Action: Call find_requirement_streaming with index "G.G.1"
 /// Result: Function returns RequirementFull with correct index, title, and text
-/// Covers Requirement: G.REQLIX_GET_REQUIREMENT.3, G.REQLIX_GET_REQUIREMENT.4, G.R.5
+/// Covers Requirement: T.REQLIXGETREQUIREMENT.3, T.REQLIXGETREQUIREMENT.4, G.R.5
 #[test]
 fn test_find_requirement_streaming_simple() {
     let temp_dir = TempDir::new().unwrap();
@@ -1682,7 +1682,7 @@ fn test_find_requirement_streaming_simple() {
 /// Precondition: System has a category file with requirement at end
 /// Action: Call find_requirement_streaming for last requirement
 /// Result: Function correctly includes all text until EOF
-/// Covers Requirement: G.REQLIX_GET_REQUIREMENT.3, G.REQLIX_GET_REQUIREMENT.4, G.R.5
+/// Covers Requirement: T.REQLIXGETREQUIREMENT.3, T.REQLIXGETREQUIREMENT.4, G.R.5
 #[test]
 fn test_find_requirement_streaming_end_of_file() {
     let temp_dir = TempDir::new().unwrap();
@@ -1701,7 +1701,7 @@ fn test_find_requirement_streaming_end_of_file() {
 /// Precondition: System has a category file with requirement containing code block
 /// Action: Call find_requirement_streaming for requirement with code block
 /// Result: Function includes code block content in requirement text
-/// Covers Requirement: G.REQLIX_GET_REQUIREMENT.3, G.REQLIX_GET_REQUIREMENT.4, G.R.5
+/// Covers Requirement: T.REQLIXGETREQUIREMENT.3, T.REQLIXGETREQUIREMENT.4, G.R.5
 #[test]
 fn test_find_requirement_streaming_with_code_block() {
     let temp_dir = TempDir::new().unwrap();
@@ -1723,7 +1723,7 @@ fn test_find_requirement_streaming_with_code_block() {
 /// Precondition: System has a category file with multiple requirements
 /// Action: Call find_requirement_streaming for first requirement
 /// Result: Function stops at next requirement heading
-/// Covers Requirement: G.REQLIX_GET_REQUIREMENT.3, G.REQLIX_GET_REQUIREMENT.4, G.R.5
+/// Covers Requirement: T.REQLIXGETREQUIREMENT.3, T.REQLIXGETREQUIREMENT.4, G.R.5
 #[test]
 fn test_find_requirement_streaming_boundary_next_requirement() {
     let temp_dir = TempDir::new().unwrap();
@@ -1746,7 +1746,7 @@ fn test_find_requirement_streaming_boundary_next_requirement() {
 /// Precondition: System has a category file with level-1 heading after requirement
 /// Action: Call find_requirement_streaming for requirement before "# NextChapter"
 /// Result: Function does NOT include level-1 heading in requirement text (G.R.5: ends at same or higher level)
-/// Covers Requirement: G.REQLIX_GET_REQUIREMENT.3, G.REQLIX_GET_REQUIREMENT.4, G.R.5
+/// Covers Requirement: T.REQLIXGETREQUIREMENT.3, T.REQLIXGETREQUIREMENT.4, G.R.5
 #[test]
 fn test_find_requirement_streaming_level1_ends_requirement() {
     let temp_dir = TempDir::new().unwrap();
@@ -1776,7 +1776,7 @@ fn test_find_requirement_streaming_level1_ends_requirement() {
 /// Precondition: System has a category file without specified requirement
 /// Action: Call find_requirement_streaming with non-existent index
 /// Result: Function returns error "Requirement not found"
-/// Covers Requirement: G.REQLIX_GET_REQUIREMENT.3, G.REQLIX_GET_REQUIREMENT.4
+/// Covers Requirement: T.REQLIXGETREQUIREMENT.3, T.REQLIXGETREQUIREMENT.4
 #[test]
 fn test_find_requirement_streaming_not_found() {
     let temp_dir = TempDir::new().unwrap();
@@ -1792,7 +1792,7 @@ fn test_find_requirement_streaming_not_found() {
 /// Precondition: System has a category file with multi-line code block in requirement
 /// Action: Call find_requirement_streaming for requirement with multi-line code
 /// Result: Function correctly tracks code block boundaries and includes all content
-/// Covers Requirement: G.REQLIX_GET_REQUIREMENT.3, G.REQLIX_GET_REQUIREMENT.4, G.R.5
+/// Covers Requirement: T.REQLIXGETREQUIREMENT.3, T.REQLIXGETREQUIREMENT.4, G.R.5
 #[test]
 fn test_find_requirement_streaming_multiline_code_block() {
     let temp_dir = TempDir::new().unwrap();
@@ -1816,7 +1816,7 @@ fn test_find_requirement_streaming_multiline_code_block() {
 /// Precondition: System has a category file with code block having language identifier
 /// Action: Call find_requirement_streaming for requirement with "```json" code block
 /// Result: Function correctly identifies code block boundaries
-/// Covers Requirement: G.REQLIX_GET_REQUIREMENT.3, G.REQLIX_GET_REQUIREMENT.4, G.R.5
+/// Covers Requirement: T.REQLIXGETREQUIREMENT.3, T.REQLIXGETREQUIREMENT.4, G.R.5
 #[test]
 fn test_find_requirement_streaming_code_block_language() {
     let temp_dir = TempDir::new().unwrap();

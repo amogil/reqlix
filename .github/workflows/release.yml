@@ -1,9 +1,9 @@
 # GitHub Actions workflow for automatic binary builds on release publication
-# Implements: G.REL.1, G.REL.2-G.REL.7, G.REL.8, G.REL.9, G.REL.10, G.REL.11, G.REL.12, G.REL.13, G.REL.14, G.REL.15
+# Implements: R.R.1, R.R.2-R.R.7, R.R.8, R.R.9, R.R.10, R.R.11, R.R.12, R.R.13, R.R.14, R.R.15
 
 name: Release
 
-# G.REL.1, G.REL.15: Trigger only on tag creation (v* pattern), not on branch pushes
+# R.R.1, R.R.15: Trigger only on tag creation (v* pattern), not on branch pushes
 on:
   push:
     tags:
@@ -13,36 +13,36 @@ on:
 
 jobs:
   build:
-    # G.REL.10: Use matrix strategy for parallel builds
+    # R.R.10: Use matrix strategy for parallel builds
     strategy:
       matrix:
         include:
-          # G.REL.2, G.REL.11: Linux x64
+          # R.R.2, R.R.11: Linux x64
           - target: x86_64-unknown-linux-gnu
             platform: linux-x64
             binary_name: reqlix
             os: ubuntu-latest
-          # G.REL.3, G.REL.11: Linux ARM
+          # R.R.3, R.R.11: Linux ARM
           - target: aarch64-unknown-linux-gnu
             platform: linux-arm64
             binary_name: reqlix
             os: ubuntu-latest
-          # G.REL.4, G.REL.11: macOS Intel
+          # R.R.4, R.R.11: macOS Intel
           - target: x86_64-apple-darwin
             platform: macos-x64
             binary_name: reqlix
             os: macos-latest
-          # G.REL.5, G.REL.11: macOS Apple Silicon
+          # R.R.5, R.R.11: macOS Apple Silicon
           - target: aarch64-apple-darwin
             platform: macos-arm64
             binary_name: reqlix
             os: macos-latest
-          # G.REL.6, G.REL.11: Windows x64
+          # R.R.6, R.R.11: Windows x64
           - target: x86_64-pc-windows-msvc
             platform: windows-x64
             binary_name: reqlix.exe
             os: windows-latest
-          # G.REL.7, G.REL.11: Windows ARM
+          # R.R.7, R.R.11: Windows ARM
           - target: aarch64-pc-windows-msvc
             platform: windows-arm64
             binary_name: reqlix.exe
@@ -54,13 +54,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # G.REL.12: Step 1 - Install Rust toolchain
+      # R.R.12: Step 1 - Install Rust toolchain
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
 
-      # G.REL.11, G.REL.12: Step 2 - Add required target using rustup
+      # R.R.11, R.R.12: Step 2 - Add required target using rustup
       - name: Add Rust target
         run: rustup target add ${{ matrix.target }}
 
@@ -71,14 +71,14 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y gcc-aarch64-linux-gnu
 
-      # G.REL.12: Step 3 - Build release binary
+      # R.R.12: Step 3 - Build release binary
       - name: Build release binary
         env:
           CC_aarch64_unknown_linux_gnu: aarch64-linux-gnu-gcc
           CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
         run: cargo build --release --target ${{ matrix.target }}
 
-      # G.REL.12: Step 4 - Locate built binary and prepare directory
+      # R.R.12: Step 4 - Locate built binary and prepare directory
       - name: Prepare binary directory
         shell: bash
         run: |
@@ -90,7 +90,7 @@ jobs:
           fi
           echo "BINARY_PATH=$BINARY_PATH" >> $GITHUB_ENV
 
-      # G.REL.8, G.REL.12: Step 5 - Copy binary to dist with correct name
+      # R.R.8, R.R.12: Step 5 - Copy binary to dist with correct name
       - name: Copy binary
         shell: bash
         run: |
@@ -107,7 +107,7 @@ jobs:
         run: |
           xattr -d com.apple.quarantine "dist/${{ matrix.binary_name }}" || true
 
-      # G.REL.9, G.REL.13: Create ZIP archive
+      # R.R.9, R.R.13: Create ZIP archive
       - name: Create ZIP archive
         shell: bash
         run: |
@@ -128,7 +128,7 @@ jobs:
           fi
           cd ..
 
-      # G.REL.13: Verify ZIP contains only binary at root level
+      # R.R.13: Verify ZIP contains only binary at root level
       - name: Verify ZIP structure
         if: runner.os != 'Windows'
         shell: bash
@@ -137,7 +137,7 @@ jobs:
           ZIP_NAME="${{ env.ZIP_NAME }}"
           unzip -l "$ZIP_NAME" | grep -E "^\s+[0-9]+\s+[0-9-]+\s+[0-9:]+\s+${{ matrix.binary_name }}$" || exit 1
 
-      # G.REL.14: Upload artifact for later release attachment
+      # R.R.14: Upload artifact for later release attachment
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
@@ -145,7 +145,7 @@ jobs:
           path: ${{ env.ZIP_NAME }}
           retention-days: 1
 
-  # G.REL.14: Upload all artifacts to GitHub release
+  # R.R.14: Upload all artifacts to GitHub release
   upload-release:
     needs: build
     runs-on: ubuntu-latest

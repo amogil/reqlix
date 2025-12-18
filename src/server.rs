@@ -169,7 +169,7 @@ impl ServerHandler for crate::RequirementsServer {
                     handle_update_requirement(params)
                 }
                 "reqlix_get_version" => {
-                    // G.TOOLREQLIXGETV.3: No parameters required
+                    // T.REQLIXGETV.3: No parameters required
                     let params: GetVersionParams =
                         serde_json::from_value(request.arguments.unwrap_or_default().into())
                             .map_err(|e| {
@@ -178,7 +178,7 @@ impl ServerHandler for crate::RequirementsServer {
                     handle_get_version(params)
                 }
                 "reqlix_delete_requirement" => {
-                    // G.TOOLREQLIXD.2: Parse parameters
+                    // T.REQLIXD.2: Parse parameters
                     let params: DeleteRequirementParams =
                         serde_json::from_value(request.arguments.unwrap_or_default().into())
                             .map_err(|e| {
@@ -187,7 +187,7 @@ impl ServerHandler for crate::RequirementsServer {
                     handle_delete_requirement(params)
                 }
                 "reqlix_search_requirements" => {
-                    // G.TOOLREQLIXS.2: Parse parameters
+                    // T.REQLIXS.2: Parse parameters
                     let params: SearchRequirementsParams =
                         serde_json::from_value(request.arguments.unwrap_or_default().into())
                             .map_err(|e| {

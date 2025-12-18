@@ -1,4 +1,4 @@
-// Tool descriptions (G.REQLIX_GET_I.1, G.REQLIX_GET_CA.1, G.REQLIX_GET_CH.1, G.REQLIX_GET_REQUIREMENTS.1, G.REQLIX_GET_REQUIREMENT.1, G.REQLIX_I.1, G.REQLIX_U.1)
+// Tool descriptions (T.R.1, T.REQLIXGETC.1, T.REQLIXGETCH.1, T.REQLIXGETR.1, T.REQLIXGETREQUIREMENT.1, T.REQLIXI.1, T.REQLIXU.1)
 
 pub(crate) const GET_INSTRUCTIONS_DESC: &str =
     "CALL THIS BEFORE ANY CODE OPERATION (reading or writing). \
@@ -27,7 +27,7 @@ Returns JSON with \"success\": true and \"data\": {\"category\": \"...\", \"chap
 If chapter has no requirements, returns empty array: \"requirements\": []. \
 On error (category/chapter not found), returns JSON with \"success\": false and \"error\": \"error message\".";
 
-// G.REQLIX_GET_REQUIREMENT.1
+// T.REQLIXGETREQUIREMENT.1
 pub(crate) const GET_REQUIREMENT_DESC: &str = "Returns the full content (title and text) of one or more requirements by index. \
 Index format: {CATEGORY}.{CHAPTER}.{NUMBER} (e.g., G.G.1, T.U.2). \
 Supports batch requests with up to 100 indices. \
@@ -42,7 +42,7 @@ Chapter must contain only uppercase and lowercase English letters (A-Z, a-z), sp
 Returns JSON with \"success\": true and \"data\": {\"index\": \"...\", \"title\": \"...\", \"text\": \"...\", \"category\": \"...\", \"chapter\": \"...\"}. \
 On error (title already exists, file system error, validation error), returns JSON with \"success\": false and \"error\": \"error message\".";
 
-// G.REQLIX_U.1
+// T.REQLIXU.1
 pub(crate) const UPDATE_REQUIREMENT_DESC: &str = "Updates one or more existing requirements by index with new text and optional new title. \
 If title is provided, it must be unique within the chapter. If not provided, the existing title is kept. \
 Supports batch updates with up to 100 requirements. \
@@ -51,20 +51,20 @@ Chapter must contain only uppercase and lowercase English letters (A-Z, a-z), sp
 Single update: Returns JSON with \"success\": true and \"data\": {...}. On error, returns \"success\": false. \
 Batch update: Returns \"success\": true and \"data\": [{...}, ...]. Each element has its own \"success\" and \"data\" or \"error\" field.";
 
-// G.TOOLREQLIXGETV.1
+// T.REQLIXGETV.1
 pub(crate) const GET_VERSION_DESC: &str = "Returns the version of the reqlix MCP server. \
 Use this to check which version of the server is running. \
 This tool has no parameters. \
 Returns JSON with \"success\": true and \"data\": {\"version\": \"x.y.z\"}.";
 
-// G.TOOLREQLIXD.1
+// T.REQLIXD.1
 pub(crate) const DELETE_REQUIREMENT_DESC: &str = "Deletes one or more existing requirements by index. \
 The requirements will be permanently removed from the category file. \
 Supports batch deletions with up to 100 indices. \
 Single delete: Returns JSON with \"success\": true and \"data\": {...}. On error, returns \"success\": false. \
 Batch delete: Returns \"success\": true and \"data\": [{...}, ...]. Each element has its own \"success\" and \"data\" or \"error\" field.";
 
-// G.TOOLREQLIXS.1
+// T.REQLIXS.1
 pub(crate) const SEARCH_REQUIREMENTS_DESC: &str =
     "Searches for requirements by keywords across all categories. \
 Accepts from 0 to 100 keywords. Each keyword max 200 characters. \

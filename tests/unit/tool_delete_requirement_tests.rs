@@ -1,5 +1,5 @@
-// Tests for Tool: reqlix_delete_requirement (G.TOOLREQLIXD.*)
-// Covers Requirements: G.TOOLREQLIXD.1, G.TOOLREQLIXD.3, G.TOOLREQLIXD.4, G.TOOLREQLIXD.5
+// Tests for Tool: reqlix_delete_requirement (T.REQLIXD.*)
+// Covers Requirements: T.REQLIXD.1, T.REQLIXD.3, T.REQLIXD.4, T.REQLIXD.5
 
 use reqlix::RequirementsServer;
 use tempfile::TempDir;
@@ -9,14 +9,14 @@ use super::common::{
 };
 
 // =============================================================================
-// Tests for reqlix_delete_requirement (G.TOOLREQLIXD.*)
+// Tests for reqlix_delete_requirement (T.REQLIXD.*)
 // =============================================================================
 
 /// Test: reqlix_delete_requirement deletes existing requirement
 /// Precondition: System has category file with requirement
 /// Action: Call handle_delete_requirement with valid index
 /// Result: Requirement is deleted and metadata is returned
-/// Covers Requirement: G.TOOLREQLIXD.1, G.TOOLREQLIXD.3, G.TOOLREQLIXD.4
+/// Covers Requirement: T.REQLIXD.1, T.REQLIXD.3, T.REQLIXD.4
 #[test]
 fn test_delete_requirement_success() {
     let temp_dir = TempDir::new().unwrap();
@@ -42,7 +42,7 @@ Content of second requirement.
     let result = RequirementsServer::handle_delete_requirement(params);
     let parsed: serde_json::Value = serde_json::from_str(&result).unwrap();
 
-    // Verify success response (G.TOOLREQLIXD.4)
+    // Verify success response (T.REQLIXD.4)
     assert_eq!(parsed["success"], true);
     assert_eq!(parsed["data"]["index"], "G.T.1");
     assert_eq!(parsed["data"]["title"], "First Requirement");
@@ -62,7 +62,7 @@ Content of second requirement.
 /// Precondition: System has category file without the specified requirement
 /// Action: Call handle_delete_requirement with non-existent index
 /// Result: Function returns error "Requirement not found"
-/// Covers Requirement: G.TOOLREQLIXD.3 step 3, G.TOOLREQLIXD.4
+/// Covers Requirement: T.REQLIXD.3 step 3, T.REQLIXD.4
 #[test]
 fn test_delete_requirement_not_found() {
     let temp_dir = TempDir::new().unwrap();
@@ -92,7 +92,7 @@ Content.
 /// Precondition: System has invalid parameters
 /// Action: Call handle_delete_requirement with invalid parameters
 /// Result: Function returns validation error before processing
-/// Covers Requirement: G.TOOLREQLIXD.5, G.P.1, G.P.2
+/// Covers Requirement: T.REQLIXD.5, G.P.1, G.P.2
 #[test]
 fn test_delete_requirement_validation() {
     let params = reqlix::DeleteRequirementParams {
@@ -112,7 +112,7 @@ fn test_delete_requirement_validation() {
 /// Precondition: System has chapter with single requirement
 /// Action: Delete the only requirement in chapter
 /// Result: Chapter heading is also removed
-/// Covers Requirement: G.TOOLREQLIXD.3 step 5
+/// Covers Requirement: T.REQLIXD.3 step 5
 #[test]
 fn test_delete_requirement_removes_empty_chapter() {
     let temp_dir = TempDir::new().unwrap();
@@ -158,7 +158,7 @@ More content.
 /// Precondition: System has category file with single requirement
 /// Action: Delete the only requirement
 /// Result: File becomes empty or contains only chapter heading
-/// Covers Requirement: G.TOOLREQLIXD.3 step 4, G.TOOLREQLIXD.3 step 5
+/// Covers Requirement: T.REQLIXD.3 step 4, T.REQLIXD.3 step 5
 #[test]
 fn test_delete_requirement_last_in_file() {
     let temp_dir = TempDir::new().unwrap();
@@ -189,7 +189,7 @@ Content.
 }
 
 // =============================================================================
-// Batch operation tests (G.TOOLREQLIXD.3, G.TOOLREQLIXD.4, G.TOOLREQLIXD.6, G.P.4)
+// Batch operation tests (T.REQLIXD.3, T.REQLIXD.4, T.REQLIXD.6, G.P.4)
 // =============================================================================
 
 /// Test: batch delete_requirement with empty array returns empty result (G.P.4)
@@ -216,7 +216,7 @@ fn test_batch_delete_requirement_empty_array() {
     assert_eq!(parsed["data"], serde_json::json!([]));
 }
 
-/// Test: batch delete_requirement with single element (G.TOOLREQLIXD.3)
+/// Test: batch delete_requirement with single element (T.REQLIXD.3)
 #[test]
 fn test_batch_delete_requirement_single_element() {
     let temp_dir = TempDir::new().unwrap();
@@ -239,12 +239,12 @@ fn test_batch_delete_requirement_single_element() {
     assert_eq!(parsed["success"], true);
     assert!(parsed["data"].is_array());
     assert_eq!(parsed["data"].as_array().unwrap().len(), 1);
-    // Each element has success/data structure (G.TOOLREQLIXD.4)
+    // Each element has success/data structure (T.REQLIXD.4)
     assert_eq!(parsed["data"][0]["success"], true);
     assert_eq!(parsed["data"][0]["data"]["index"], "G.C.1");
 }
 
-/// Test: batch delete_requirement with multiple elements (G.TOOLREQLIXD.3)
+/// Test: batch delete_requirement with multiple elements (T.REQLIXD.3)
 #[test]
 fn test_batch_delete_requirement_multiple_elements() {
     let temp_dir = TempDir::new().unwrap();
@@ -277,7 +277,7 @@ Content three.
     assert_eq!(parsed["success"], true);
     let data = parsed["data"].as_array().unwrap();
     assert_eq!(data.len(), 2);
-    // Each element has success/data structure (G.TOOLREQLIXD.4)
+    // Each element has success/data structure (T.REQLIXD.4)
     assert_eq!(data[0]["success"], true);
     assert_eq!(data[1]["success"], true);
 
@@ -318,7 +318,7 @@ Content two.
     let result = RequirementsServer::handle_delete_requirement(params);
     let parsed: serde_json::Value = serde_json::from_str(&result).unwrap();
 
-    // Top-level success is true (G.TOOLREQLIXD.4)
+    // Top-level success is true (T.REQLIXD.4)
     assert_eq!(parsed["success"], true);
     let data = parsed["data"].as_array().unwrap();
     assert_eq!(data.len(), 3);

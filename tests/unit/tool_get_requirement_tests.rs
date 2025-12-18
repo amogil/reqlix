@@ -1,5 +1,5 @@
-// Tests for Tool: reqlix_get_requirement (G.REQLIX_GET_REQUIREMENT.*)
-// Covers Requirements: G.REQLIX_GET_REQUIREMENT.1, G.REQLIX_GET_REQUIREMENT.3, G.REQLIX_GET_REQUIREMENT.4, G.R.5
+// Tests for Tool: reqlix_get_requirement (T.REQLIXGETREQUIREMENT.*)
+// Covers Requirements: T.REQLIXGETREQUIREMENT.1, T.REQLIXGETREQUIREMENT.3, T.REQLIXGETREQUIREMENT.4, G.R.5
 
 use reqlix::RequirementsServer;
 use tempfile::TempDir;
@@ -10,14 +10,14 @@ use super::common::{
 };
 
 // =============================================================================
-// Tests for reqlix_get_requirement (G.REQLIX_GET_REQUIREMENT.*)
+// Tests for reqlix_get_requirement (T.REQLIXGETREQUIREMENT.*)
 // =============================================================================
 
 /// Test: reqlix_get_requirement finds requirement by index
 /// Precondition: System has category file with requirement
 /// Action: Call reqlix_get_requirement with valid index
 /// Result: Function returns requirement with title and text
-/// Covers Requirement: G.REQLIX_GET_REQUIREMENT.1, G.REQLIX_GET_REQUIREMENT.3, G.REQLIX_GET_REQUIREMENT.4
+/// Covers Requirement: T.REQLIXGETREQUIREMENT.1, T.REQLIXGETREQUIREMENT.3, T.REQLIXGETREQUIREMENT.4
 #[test]
 fn test_get_requirement_by_index() {
     let temp_dir = TempDir::new().unwrap();
@@ -45,7 +45,7 @@ It can span multiple lines.
 /// Precondition: System has category file without the specified requirement
 /// Action: Call reqlix_get_requirement with non-existent index
 /// Result: Function returns error "Requirement not found"
-/// Covers Requirement: G.REQLIX_GET_REQUIREMENT.3
+/// Covers Requirement: T.REQLIXGETREQUIREMENT.3
 #[test]
 fn test_get_requirement_not_found() {
     let temp_dir = TempDir::new().unwrap();
@@ -70,7 +70,7 @@ Content.
 /// Precondition: System has category file with requirement followed by level-1 heading (new chapter)
 /// Action: Call find_requirement_streaming for last requirement before new chapter
 /// Result: Requirement text does NOT include the next chapter heading (G.R.5: ends at same or higher level)
-/// Covers Requirement: G.R.5, G.REQLIX_GET_REQUIREMENT.3, G.REQLIX_GET_REQUIREMENT.4
+/// Covers Requirement: G.R.5, T.REQLIXGETREQUIREMENT.3, T.REQLIXGETREQUIREMENT.4
 #[test]
 fn test_requirement_boundary_before_next_chapter() {
     let temp_dir = TempDir::new().unwrap();
@@ -115,7 +115,7 @@ Content of second chapter requirement.
 }
 
 // =============================================================================
-// Batch operation tests (G.REQLIX_GET_REQUIREMENT.3, G.REQLIX_GET_REQUIREMENT.4, G.REQLIX_GET_REQUIREMENT.5, G.P.4)
+// Batch operation tests (T.REQLIXGETREQUIREMENT.3, T.REQLIXGETREQUIREMENT.4, T.REQLIXGETREQUIREMENT.5, G.P.4)
 // =============================================================================
 
 /// Test: batch get_requirement with empty array returns empty result (G.P.4)
@@ -142,7 +142,7 @@ fn test_batch_get_requirement_empty_array() {
     assert_eq!(parsed["data"], serde_json::json!([]));
 }
 
-/// Test: batch get_requirement with single element (G.REQLIX_GET_REQUIREMENT.3)
+/// Test: batch get_requirement with single element (T.REQLIXGETREQUIREMENT.3)
 #[test]
 fn test_batch_get_requirement_single_element() {
     let temp_dir = TempDir::new().unwrap();
@@ -165,12 +165,12 @@ fn test_batch_get_requirement_single_element() {
     assert_eq!(parsed["success"], true);
     assert!(parsed["data"].is_array());
     assert_eq!(parsed["data"].as_array().unwrap().len(), 1);
-    // Each element has success/data structure (G.REQLIX_GET_REQUIREMENT.4)
+    // Each element has success/data structure (T.REQLIXGETREQUIREMENT.4)
     assert_eq!(parsed["data"][0]["success"], true);
     assert_eq!(parsed["data"][0]["data"]["index"], "G.C.1");
 }
 
-/// Test: batch get_requirement with multiple elements (G.REQLIX_GET_REQUIREMENT.3)
+/// Test: batch get_requirement with multiple elements (T.REQLIXGETREQUIREMENT.3)
 #[test]
 fn test_batch_get_requirement_multiple_elements() {
     let temp_dir = TempDir::new().unwrap();
@@ -207,7 +207,7 @@ Content three.
     assert_eq!(parsed["success"], true);
     let data = parsed["data"].as_array().unwrap();
     assert_eq!(data.len(), 3);
-    // Each element has success/data structure (G.REQLIX_GET_REQUIREMENT.4)
+    // Each element has success/data structure (T.REQLIXGETREQUIREMENT.4)
     assert_eq!(data[0]["success"], true);
     assert_eq!(data[0]["data"]["index"], "G.C.1");
     assert_eq!(data[1]["success"], true);
@@ -245,7 +245,7 @@ Content two.
 
     assert_eq!(parsed["success"], true);
     let data = parsed["data"].as_array().unwrap();
-    // Each element has success/data structure (G.REQLIX_GET_REQUIREMENT.4)
+    // Each element has success/data structure (T.REQLIXGETREQUIREMENT.4)
     assert_eq!(data[0]["data"]["index"], "G.C.2");
     assert_eq!(data[1]["data"]["index"], "G.C.1");
 }
@@ -274,7 +274,7 @@ fn test_batch_get_requirement_processes_all() {
     let result = RequirementsServer::handle_get_requirement(params);
     let parsed: serde_json::Value = serde_json::from_str(&result).unwrap();
 
-    // Top-level success is true (G.REQLIX_GET_REQUIREMENT.4)
+    // Top-level success is true (T.REQLIXGETREQUIREMENT.4)
     assert_eq!(parsed["success"], true);
     let data = parsed["data"].as_array().unwrap();
     assert_eq!(data.len(), 3);
@@ -375,14 +375,14 @@ fn test_batch_get_multiple_categories() {
     assert_eq!(parsed["success"], true);
     let data = parsed["data"].as_array().unwrap();
     assert_eq!(data.len(), 2);
-    // Each element has success/data structure (G.REQLIX_GET_REQUIREMENT.4)
+    // Each element has success/data structure (T.REQLIXGETREQUIREMENT.4)
     assert_eq!(data[0]["success"], true);
     assert_eq!(data[0]["data"]["category"], "general");
     assert_eq!(data[1]["success"], true);
     assert_eq!(data[1]["data"]["category"], "testing");
 }
 
-/// Test: batch update preserves order (G.REQLIX_U.3)
+/// Test: batch update preserves order (T.REQLIXU.3)
 #[test]
 fn test_batch_update_preserves_order() {
     let temp_dir = TempDir::new().unwrap();
@@ -425,12 +425,12 @@ Old two.
 
     assert_eq!(parsed["success"], true);
     let data = parsed["data"].as_array().unwrap();
-    // Each element has success/data structure (G.REQLIX_U.4)
+    // Each element has success/data structure (T.REQLIXU.4)
     assert_eq!(data[0]["data"]["index"], "G.C.2");
     assert_eq!(data[1]["data"]["index"], "G.C.1");
 }
 
-/// Test: batch delete preserves order (G.TOOLREQLIXD.3)
+/// Test: batch delete preserves order (T.REQLIXD.3)
 #[test]
 fn test_batch_delete_preserves_order() {
     let temp_dir = TempDir::new().unwrap();
@@ -459,7 +459,7 @@ Content two.
 
     assert_eq!(parsed["success"], true);
     let data = parsed["data"].as_array().unwrap();
-    // Each element has success/data structure (G.TOOLREQLIXD.4)
+    // Each element has success/data structure (T.REQLIXD.4)
     assert_eq!(data[0]["data"]["index"], "G.C.2");
     assert_eq!(data[1]["data"]["index"], "G.C.1");
 }
@@ -534,7 +534,7 @@ fn test_batch_get_mixed_results_structure() {
     assert!(data[2]["data"].is_object());
 }
 
-/// Test: batch delete where second delete fails because first already deleted (G.TOOLREQLIXD.3)
+/// Test: batch delete where second delete fails because first already deleted (T.REQLIXD.3)
 #[test]
 fn test_batch_delete_same_index_twice() {
     let temp_dir = TempDir::new().unwrap();
@@ -563,7 +563,7 @@ fn test_batch_delete_same_index_twice() {
     assert_eq!(data[1]["success"], false);
 }
 
-/// Test: batch update with title conflict in same batch (G.REQLIX_U.3)
+/// Test: batch update with title conflict in same batch (T.REQLIXU.3)
 #[test]
 fn test_batch_update_title_conflict_in_batch() {
     let temp_dir = TempDir::new().unwrap();
@@ -610,7 +610,7 @@ fn test_batch_update_title_conflict_in_batch() {
         .contains("already exists"));
 }
 
-/// Test: batch delete leaves chapter if some requirements remain (G.TOOLREQLIXD.3)
+/// Test: batch delete leaves chapter if some requirements remain (T.REQLIXD.3)
 #[test]
 fn test_batch_delete_partial_chapter() {
     let temp_dir = TempDir::new().unwrap();
@@ -671,7 +671,7 @@ fn test_batch_get_invalid_index_format() {
     assert_eq!(data[2]["success"], true);
 }
 
-/// Test: batch update with empty text in one item (G.REQLIX_U.3)
+/// Test: batch update with empty text in one item (T.REQLIXU.3)
 #[test]
 fn test_batch_update_empty_text() {
     let temp_dir = TempDir::new().unwrap();
@@ -711,7 +711,7 @@ fn test_batch_update_empty_text() {
     assert_eq!(data[1]["success"], false);
 }
 
-/// Test: batch delete from non-existent category (G.TOOLREQLIXD.3)
+/// Test: batch delete from non-existent category (T.REQLIXD.3)
 #[test]
 fn test_batch_delete_nonexistent_category() {
     let temp_dir = TempDir::new().unwrap();
@@ -856,7 +856,7 @@ fn test_batch_get_returns_correct_chapters() {
     assert_eq!(data[1]["data"]["chapter"], "Chapter Two");
 }
 
-/// Test: batch update with too long title (G.REQLIX_U.3, G.P.1)
+/// Test: batch update with too long title (T.REQLIXU.3, G.P.1)
 #[test]
 fn test_batch_update_title_too_long() {
     let temp_dir = TempDir::new().unwrap();
@@ -897,7 +897,7 @@ fn test_batch_update_title_too_long() {
     assert_eq!(data[1]["success"], false);
 }
 
-/// Test: batch delete from multiple categories (G.TOOLREQLIXD.3)
+/// Test: batch delete from multiple categories (T.REQLIXD.3)
 #[test]
 fn test_batch_delete_multiple_categories() {
     let temp_dir = TempDir::new().unwrap();
@@ -968,7 +968,7 @@ fn test_batch_preserves_order_with_errors() {
     assert_eq!(data[4]["data"]["index"], "G.C.5");
 }
 
-/// Test: batch update verifies text actually changed in file (G.REQLIX_U.3)
+/// Test: batch update verifies text actually changed in file (T.REQLIXU.3)
 #[test]
 fn test_batch_update_changes_file_content() {
     let temp_dir = TempDir::new().unwrap();
@@ -1012,7 +1012,7 @@ fn test_batch_update_changes_file_content() {
     assert!(!file_content.contains("Old two"));
 }
 
-/// Test: batch delete removes chapter when all requirements deleted (G.TOOLREQLIXD.3)
+/// Test: batch delete removes chapter when all requirements deleted (T.REQLIXD.3)
 #[test]
 fn test_batch_delete_removes_empty_chapter() {
     let temp_dir = TempDir::new().unwrap();
@@ -1078,7 +1078,7 @@ fn test_batch_continues_after_multiple_errors() {
     assert_eq!(data[4]["data"]["index"], "G.C.5");
 }
 
-/// Test: single update response format (G.REQLIX_U.4)
+/// Test: single update response format (T.REQLIXU.4)
 #[test]
 fn test_single_update_response_format() {
     let temp_dir = TempDir::new().unwrap();
@@ -1108,7 +1108,7 @@ fn test_single_update_response_format() {
     assert_eq!(parsed["data"]["text"], "New content");
 }
 
-/// Test: single delete response format (G.TOOLREQLIXD.4)
+/// Test: single delete response format (T.REQLIXD.4)
 #[test]
 fn test_single_delete_response_format() {
     let temp_dir = TempDir::new().unwrap();
@@ -1157,7 +1157,7 @@ fn test_batch_get_readonly() {
     assert_eq!(file_content, original_content);
 }
 
-/// Test: batch update with index not found in first item (G.REQLIX_U.3)
+/// Test: batch update with index not found in first item (T.REQLIXU.3)
 #[test]
 fn test_batch_update_first_item_error() {
     let temp_dir = TempDir::new().unwrap();
@@ -1298,5 +1298,5 @@ Next content.
 }
 
 // =============================================================================
-// Additional batch operation tests (G.REQLIX_GET_REQUIREMENT.3, G.REQLIX_U.3, G.TOOLREQLIXD.3)
+// Additional batch operation tests (T.REQLIXGETREQUIREMENT.3, T.REQLIXU.3, T.REQLIXD.3)
 // =============================================================================

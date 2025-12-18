@@ -1,5 +1,5 @@
-// Tests for Tool: reqlix_update_requirement (G.REQLIX_U.*)
-// Covers Requirements: G.REQLIX_U.1, G.REQLIX_U.3, G.REQLIX_U.4
+// Tests for Tool: reqlix_update_requirement (T.REQLIXU.*)
+// Covers Requirements: T.REQLIXU.1, T.REQLIXU.3, T.REQLIXU.4
 
 use reqlix::RequirementsServer;
 use tempfile::TempDir;
@@ -10,14 +10,14 @@ use super::common::{
 };
 
 // =============================================================================
-// Tests for reqlix_update_requirement (G.REQLIX_U.*)
+// Tests for reqlix_update_requirement (T.REQLIXU.*)
 // =============================================================================
 
 /// Test: reqlix_update_requirement updates existing requirement
 /// Precondition: System has category file with requirement
 /// Action: Call reqlix_update_requirement with new text
 /// Result: Function updates requirement and returns full data
-/// Covers Requirement: G.REQLIX_U.1, G.REQLIX_U.3, G.REQLIX_U.4
+/// Covers Requirement: T.REQLIXU.1, T.REQLIXU.3, T.REQLIXU.4
 #[test]
 fn test_update_requirement_text() {
     let temp_dir = TempDir::new().unwrap();
@@ -43,7 +43,7 @@ Old content.
 /// Precondition: System has category file with multiple requirements
 /// Action: Call reqlix_update_requirement with title that conflicts
 /// Result: Function returns error "Title already exists in chapter"
-/// Covers Requirement: G.REQLIX_U.3 step 5
+/// Covers Requirement: T.REQLIXU.3 step 5
 #[test]
 fn test_update_requirement_duplicate_title() {
     let temp_dir = TempDir::new().unwrap();
@@ -71,7 +71,7 @@ Content two.
 }
 
 // =============================================================================
-// Batch operation tests (G.REQLIX_U.3, G.REQLIX_U.4, G.REQLIX_U.7, G.P.4)
+// Batch operation tests (T.REQLIXU.3, T.REQLIXU.4, T.REQLIXU.6, G.P.4)
 // =============================================================================
 
 /// Test: batch update_requirement with empty array returns empty result (G.P.4)
@@ -101,7 +101,7 @@ fn test_batch_update_requirement_empty_array() {
     assert_eq!(parsed["data"], serde_json::json!([]));
 }
 
-/// Test: batch update_requirement with single item (G.REQLIX_U.3)
+/// Test: batch update_requirement with single item (T.REQLIXU.3)
 #[test]
 fn test_batch_update_requirement_single_item() {
     let temp_dir = TempDir::new().unwrap();
@@ -131,12 +131,12 @@ fn test_batch_update_requirement_single_item() {
     assert_eq!(parsed["success"], true);
     assert!(parsed["data"].is_array());
     assert_eq!(parsed["data"].as_array().unwrap().len(), 1);
-    // Each element has success/data structure (G.REQLIX_U.4)
+    // Each element has success/data structure (T.REQLIXU.4)
     assert_eq!(parsed["data"][0]["success"], true);
     assert_eq!(parsed["data"][0]["data"]["text"], "New content");
 }
 
-/// Test: batch update_requirement with multiple items (G.REQLIX_U.3)
+/// Test: batch update_requirement with multiple items (T.REQLIXU.3)
 #[test]
 fn test_batch_update_requirement_multiple_items() {
     let temp_dir = TempDir::new().unwrap();
@@ -179,14 +179,14 @@ Old two.
     assert_eq!(parsed["success"], true);
     let data = parsed["data"].as_array().unwrap();
     assert_eq!(data.len(), 2);
-    // Each element has success/data structure (G.REQLIX_U.4)
+    // Each element has success/data structure (T.REQLIXU.4)
     assert_eq!(data[0]["success"], true);
     assert_eq!(data[0]["data"]["text"], "New one");
     assert_eq!(data[1]["success"], true);
     assert_eq!(data[1]["data"]["title"], "Updated Second");
 }
 
-/// Test: batch update_requirement processes all elements (G.REQLIX_U.3)
+/// Test: batch update_requirement processes all elements (T.REQLIXU.3)
 #[test]
 fn test_batch_update_requirement_processes_all() {
     let temp_dir = TempDir::new().unwrap();
@@ -231,7 +231,7 @@ fn test_batch_update_requirement_processes_all() {
     assert!(data[1]["error"].as_str().unwrap().contains("not found"));
 }
 
-/// Test: batch update_requirement exceeds limit (G.REQLIX_U.7)
+/// Test: batch update_requirement exceeds limit (T.REQLIXU.6)
 #[test]
 fn test_batch_update_requirement_exceeds_limit() {
     let temp_dir = TempDir::new().unwrap();

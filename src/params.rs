@@ -1,9 +1,9 @@
-// Parameter structures (G.REQLIX_GET_I.2, G.REQLIX_GET_CA.2, G.REQLIX_GET_CH.2, G.REQLIX_GET_REQUIREMENTS.2, G.REQLIX_GET_REQUIREMENT.2, G.REQLIX_I.2, G.REQLIX_U.2)
+// Parameter structures (T.R.2, T.REQLIXGETC.2, T.REQLIXGETCH.2, T.REQLIXGETR.2, T.REQLIXGETREQUIREMENT.2, T.REQLIXI.2, T.REQLIXU.2)
 
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-/// Parameters for reqlix_get_instructions (G.REQLIX_GET_I.2)
+/// Parameters for reqlix_get_instructions (T.R.2)
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct GetInstructionsParams {
     /// Path to the project root directory.
@@ -12,7 +12,7 @@ pub struct GetInstructionsParams {
     pub operation_description: String,
 }
 
-/// Parameters for reqlix_get_categories (G.REQLIX_GET_CA.2)
+/// Parameters for reqlix_get_categories (T.REQLIXGETC.2)
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct GetCategoriesParams {
     /// Path to the project root directory.
@@ -21,7 +21,7 @@ pub struct GetCategoriesParams {
     pub operation_description: String,
 }
 
-/// Parameters for reqlix_get_chapters (G.REQLIX_GET_CH.2)
+/// Parameters for reqlix_get_chapters (T.REQLIXGETCH.2)
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct GetChaptersParams {
     /// Path to the project root directory.
@@ -32,7 +32,7 @@ pub struct GetChaptersParams {
     pub category: String,
 }
 
-/// Parameters for reqlix_get_requirements (G.REQLIX_GET_REQUIREMENTS.2)
+/// Parameters for reqlix_get_requirements (T.REQLIXGETR.2)
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct GetRequirementsParams {
     /// Path to the project root directory.
@@ -45,7 +45,7 @@ pub struct GetRequirementsParams {
     pub chapter: String,
 }
 
-/// Index parameter that can be a single string or array of strings (G.REQLIX_GET_REQUIREMENT.2, G.TOOLREQLIXD.2)
+/// Index parameter that can be a single string or array of strings (T.REQLIXGETREQUIREMENT.2, T.REQLIXD.2)
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 #[serde(untagged)]
 pub enum IndexParam {
@@ -55,7 +55,7 @@ pub enum IndexParam {
     Batch(Vec<String>),
 }
 
-/// Parameters for reqlix_get_requirement (G.REQLIX_GET_REQUIREMENT.2)
+/// Parameters for reqlix_get_requirement (T.REQLIXGETREQUIREMENT.2)
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct GetRequirementParams {
     /// Path to the project root directory.
@@ -66,7 +66,7 @@ pub struct GetRequirementParams {
     pub index: IndexParam,
 }
 
-/// Parameters for reqlix_insert_requirement (G.REQLIX_I.2)
+/// Parameters for reqlix_insert_requirement (T.REQLIXI.2)
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct InsertRequirementParams {
     /// Path to the project root directory.
@@ -84,7 +84,7 @@ pub struct InsertRequirementParams {
     pub title: String,
 }
 
-/// Single update item for batch operations (G.REQLIX_U.2)
+/// Single update item for batch operations (T.REQLIXU.2)
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct UpdateItem {
     /// Requirement index (e.g., "G.G.1", "T.U.2").
@@ -95,7 +95,7 @@ pub struct UpdateItem {
     pub title: Option<String>,
 }
 
-/// Parameters for reqlix_update_requirement (G.REQLIX_U.2)
+/// Parameters for reqlix_update_requirement (T.REQLIXU.2)
 /// Supports single update (index+text+title) or batch update (items array).
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct UpdateRequirementParams {
@@ -115,11 +115,11 @@ pub struct UpdateRequirementParams {
     pub items: Option<Vec<UpdateItem>>,
 }
 
-/// Parameters for reqlix_get_version (G.TOOLREQLIXGETV.3 - no parameters)
+/// Parameters for reqlix_get_version (T.REQLIXGETV.3 - no parameters)
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct GetVersionParams {}
 
-/// Parameters for reqlix_delete_requirement (G.TOOLREQLIXD.2)
+/// Parameters for reqlix_delete_requirement (T.REQLIXD.2)
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct DeleteRequirementParams {
     /// Path to the project root directory.
@@ -130,7 +130,7 @@ pub struct DeleteRequirementParams {
     pub index: IndexParam,
 }
 
-/// Keywords parameter that can be a single string or array of strings (G.TOOLREQLIXS.2)
+/// Keywords parameter that can be a single string or array of strings (T.REQLIXS.2)
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 #[serde(untagged)]
 pub enum KeywordsParam {
@@ -140,7 +140,7 @@ pub enum KeywordsParam {
     Batch(Vec<String>),
 }
 
-/// Parameters for reqlix_search_requirements (G.TOOLREQLIXS.2)
+/// Parameters for reqlix_search_requirements (T.REQLIXS.2)
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct SearchRequirementsParams {
     /// Path to the project root directory.

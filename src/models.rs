@@ -10,7 +10,7 @@ pub struct RequirementSummary {
     pub title: String,
 }
 
-/// Deleted requirement info (for delete response) (G.TOOLREQLIXD.4)
+/// Deleted requirement info (for delete response) (T.REQLIXD.4)
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 pub struct DeletedRequirement {
     pub index: String,

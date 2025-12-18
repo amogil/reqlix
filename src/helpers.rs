@@ -125,7 +125,7 @@ pub fn calculate_chapter_prefix(name: &str, all_names: &[String]) -> String {
     }
 }
 
-/// Find category by prefix (G.C.7)
+/// Find category by prefix (C.C.7)
 #[cfg_attr(test, allow(dead_code))]
 pub fn find_category_by_prefix(
     requirements_dir: &PathBuf,

@@ -34,7 +34,7 @@ fn validate_common_params(project_root: &str, operation_description: &str) -> Op
     None
 }
 
-/// reqlix_get_instructions (G.REQLIX_GET_I)
+/// reqlix_get_instructions (T.R)
 pub fn handle_get_instructions(params: GetInstructionsParams) -> String {
     if let Some(e) = validate_common_params(&params.project_root, &params.operation_description) {
         return json_error(&e);
@@ -52,11 +52,11 @@ pub fn handle_get_instructions(params: GetInstructionsParams) -> String {
         Err(e) => return json_error(&e),
     };
 
-    // Return JSON response (G.REQLIX_GET_I.8)
+    // Return JSON response (T.R.7)
     json_success(json!({ "content": content }))
 }
 
-/// reqlix_get_categories (G.REQLIX_GET_CA)
+/// reqlix_get_categories (T.REQLIXGETC)
 pub fn handle_get_categories(params: GetCategoriesParams) -> String {
     if let Some(e) = validate_common_params(&params.project_root, &params.operation_description) {
         return json_error(&e);
@@ -68,17 +68,17 @@ pub fn handle_get_categories(params: GetCategoriesParams) -> String {
         Err(e) => return json_error(&e),
     };
 
-    // List categories (G.REQLIX_GET_CA.3)
+    // List categories (T.REQLIXGETC.3)
     let categories = match list_categories(&requirements_dir) {
         Ok(c) => c,
         Err(e) => return json_error(&e),
     };
 
-    // Return JSON response (G.REQLIX_GET_CA.3)
+    // Return JSON response (T.REQLIXGETC.3)
     json_success(json!({ "categories": categories }))
 }
 
-/// reqlix_get_chapters (G.REQLIX_GET_CH)
+/// reqlix_get_chapters (T.REQLIXGETCH)
 pub fn handle_get_chapters(params: GetChaptersParams) -> String {
     if let Some(e) = validate_common_params(&params.project_root, &params.operation_description) {
         return json_error(&e);
@@ -99,20 +99,20 @@ pub fn handle_get_chapters(params: GetChaptersParams) -> String {
         return json_error("Category not found");
     }
 
-    // Read chapters (G.REQLIX_GET_CH.3)
+    // Read chapters (T.REQLIXGETCH.3)
     let chapters = match read_chapters_streaming(&category_path) {
         Ok(c) => c,
         Err(e) => return json_error(&e),
     };
 
-    // Return JSON response (G.REQLIX_GET_CH.4)
+    // Return JSON response (T.REQLIXGETCH.4)
     json_success(json!({
         "category": params.category,
         "chapters": chapters
     }))
 }
 
-/// reqlix_get_requirements (G.REQLIX_GET_REQUIREMENTS)
+/// reqlix_get_requirements (T.REQLIXGETR)
 pub fn handle_get_requirements(params: GetRequirementsParams) -> String {
     if let Some(e) = validate_common_params(&params.project_root, &params.operation_description) {
         return json_error(&e);
@@ -145,13 +145,13 @@ pub fn handle_get_requirements(params: GetRequirementsParams) -> String {
         return json_error("Chapter not found");
     }
 
-    // Read requirements (G.REQLIX_GET_REQUIREMENTS.3)
+    // Read requirements (T.REQLIXGETR.3)
     let requirements = match read_requirements_streaming(&category_path, &params.chapter) {
         Ok(r) => r,
         Err(e) => return json_error(&e),
     };
 
-    // Return JSON response (G.REQLIX_GET_REQUIREMENTS.4)
+    // Return JSON response (T.REQLIXGETR.4)
     json_success(json!({
         "category": params.category,
         "chapter": params.chapter,
@@ -159,52 +159,52 @@ pub fn handle_get_requirements(params: GetRequirementsParams) -> String {
     }))
 }
 
-/// Helper to get a single requirement by index (G.REQLIX_GET_REQUIREMENT.3)
+/// Helper to get a single requirement by index (T.REQLIXGETREQUIREMENT.3)
 fn get_single_requirement(project_root: &str, index: &str) -> Result<RequirementFull, String> {
     // Validate index
     validate_index(index)?;
 
-    // Parse index (G.REQLIX_GET_REQUIREMENT.3)
+    // Parse index (T.REQLIXGETREQUIREMENT.3)
     let (category_prefix, _chapter_prefix, _number) = parse_index(index)?;
 
     // Get requirements directory
     let requirements_dir = get_requirements_dir(project_root)?;
 
-    // Find category by prefix (G.C.7)
+    // Find category by prefix (C.C.7)
     let category_name = find_category_by_prefix(&requirements_dir, &category_prefix)?;
 
     let category_path = requirements_dir.join(format!("{}.md", category_name));
 
-    // Find requirement (G.REQLIX_GET_REQUIREMENT.3)
+    // Find requirement (T.REQLIXGETREQUIREMENT.3)
     find_requirement_streaming(&category_path, &category_name, index)
 }
 
-/// reqlix_get_requirement (G.REQLIX_GET_REQUIREMENT)
-/// Supports single index or batch of up to 100 indices (G.REQLIX_GET_REQUIREMENT.2, G.REQLIX_GET_REQUIREMENT.5)
+/// reqlix_get_requirement (T.REQLIXGETREQUIREMENT)
+/// Supports single index or batch of up to 100 indices (T.REQLIXGETREQUIREMENT.2, T.REQLIXGETREQUIREMENT.5)
 pub fn handle_get_requirement(params: GetRequirementParams) -> String {
     if let Some(e) = validate_common_params(&params.project_root, &params.operation_description) {
         return json_error(&e);
     }
 
     match params.index {
-        // Single index (G.REQLIX_GET_REQUIREMENT.3 - single)
+        // Single index (T.REQLIXGETREQUIREMENT.3 - single)
         IndexParam::Single(index) => match get_single_requirement(&params.project_root, &index) {
             Ok(requirement) => json_success(requirement),
             Err(e) => json_error(&e),
         },
-        // Batch request (G.REQLIX_GET_REQUIREMENT.3 - batch)
+        // Batch request (T.REQLIXGETREQUIREMENT.3 - batch)
         IndexParam::Batch(indices) => {
             // G.P.4: Empty array returns empty result
             if indices.is_empty() {
                 return json_success(json!([]));
             }
 
-            // G.REQLIX_GET_REQUIREMENT.5: Validate batch size
+            // T.REQLIXGETREQUIREMENT.5: Validate batch size
             if indices.len() > MAX_BATCH_SIZE {
                 return json_error("Batch request exceeds maximum limit of 100 indices");
             }
 
-            // Process ALL indices, return success/error for each (G.REQLIX_GET_REQUIREMENT.3, G.REQLIX_GET_REQUIREMENT.4)
+            // Process ALL indices, return success/error for each (T.REQLIXGETREQUIREMENT.3, T.REQLIXGETREQUIREMENT.4)
             let mut results = Vec::with_capacity(indices.len());
             for index in &indices {
                 match get_single_requirement(&params.project_root, index) {
@@ -219,16 +219,16 @@ pub fn handle_get_requirement(params: GetRequirementParams) -> String {
                 }
             }
 
-            // Return array of results (G.REQLIX_GET_REQUIREMENT.4)
+            // Return array of results (T.REQLIXGETREQUIREMENT.4)
             json_success(results)
         }
     }
 }
 
-/// reqlix_insert_requirement (G.REQLIX_I)
-/// Title must be generated by the LLM and provided as parameter. Must be unique within chapter (G.REQLIX_I.3).
+/// reqlix_insert_requirement (T.REQLIXI)
+/// Title must be generated by the LLM and provided as parameter. Must be unique within chapter (T.REQLIXI.3).
 pub fn handle_insert_requirement(params: InsertRequirementParams) -> String {
-    // Step 0: Validate parameters (G.REQLIX_I.6, G.REQLIX_I.3 step 0)
+    // Step 0: Validate parameters (T.REQLIXI.5, T.REQLIXI.3 step 0)
     if let Some(e) = validate_common_params(&params.project_root, &params.operation_description) {
         return json_error(&e);
     }
@@ -253,7 +253,7 @@ pub fn handle_insert_requirement(params: InsertRequirementParams) -> String {
 
     let category_path = requirements_dir.join(format!("{}.md", params.category));
 
-    // Step 1: Find or create category (G.REQLIX_I.3 step 1, G.R.10)
+    // Step 1: Find or create category (T.REQLIXI.3 step 1, G.R.10)
     if !category_path.exists() {
         // Create empty file (G.R.10)
         if let Err(e) = write_file_utf8(&category_path, "") {
@@ -261,7 +261,7 @@ pub fn handle_insert_requirement(params: InsertRequirementParams) -> String {
         }
     }
 
-    // Step 2: Find or create chapter (G.REQLIX_I.3 step 2)
+    // Step 2: Find or create chapter (T.REQLIXI.3 step 2)
     let chapters = match read_chapters_streaming(&category_path) {
         Ok(c) => c,
         Err(e) => return json_error(&e),
@@ -282,7 +282,7 @@ pub fn handle_insert_requirement(params: InsertRequirementParams) -> String {
         }
     }
 
-    // Step 3: Validate title uniqueness (G.REQLIX_I.3 step 3)
+    // Step 3: Validate title uniqueness (T.REQLIXI.3 step 3)
     match title_exists_in_chapter(&category_path, &params.chapter, &params.title, None) {
         Ok(true) => {
             return json_error("Title already exists in chapter");
@@ -291,7 +291,7 @@ pub fn handle_insert_requirement(params: InsertRequirementParams) -> String {
         _ => {}
     }
 
-    // Step 4: Generate index (G.REQLIX_I.3 step 4)
+    // Step 4: Generate index (T.REQLIXI.3 step 4)
     let all_categories = match list_categories(&requirements_dir) {
         Ok(c) => c,
         Err(e) => return json_error(&e),
@@ -315,7 +315,7 @@ pub fn handle_insert_requirement(params: InsertRequirementParams) -> String {
 
     let index = format!("{}.{}.{}", category_prefix, chapter_prefix, number);
 
-    // Step 5: Insert requirement (G.REQLIX_I.3 step 5)
+    // Step 5: Insert requirement (T.REQLIXI.3 step 5)
     let mut content = match read_file_utf8(&category_path) {
         Ok(c) => c,
         Err(e) => return json_error(&e),
@@ -353,7 +353,7 @@ pub fn handle_insert_requirement(params: InsertRequirementParams) -> String {
         return json_error(&e);
     }
 
-    // Step 6: Return result (G.REQLIX_I.3 step 6, G.REQLIX_I.5)
+    // Step 6: Return result (T.REQLIXI.3 step 6, T.REQLIXI.4)
     json_success(RequirementFull {
         index,
         title: params.title,
@@ -363,21 +363,21 @@ pub fn handle_insert_requirement(params: InsertRequirementParams) -> String {
     })
 }
 
-/// Helper to update a single requirement (G.REQLIX_U.3 steps 1-7)
+/// Helper to update a single requirement (T.REQLIXU.3 steps 1-7)
 fn update_single_requirement(
     project_root: &str,
     index: &str,
     text: &str,
     title: Option<&str>,
 ) -> Result<RequirementFull, String> {
-    // Step 1: Validate parameters (G.REQLIX_U.6, G.REQLIX_U.3 step 1)
+    // Step 1: Validate parameters (T.REQLIXU.5, T.REQLIXU.3 step 1)
     validate_index(index)?;
     validate_text(text)?;
     if let Some(t) = title {
         validate_title(t, false)?;
     }
 
-    // Step 2: Parse index (G.REQLIX_U.3 step 2)
+    // Step 2: Parse index (T.REQLIXU.3 step 2)
     let (category_prefix, _chapter_prefix, _number) = parse_index(index)?;
 
     // Get requirements directory
@@ -387,23 +387,23 @@ fn update_single_requirement(
     let category_name = find_category_by_prefix(&requirements_dir, &category_prefix)?;
     let category_path = requirements_dir.join(format!("{}.md", category_name));
 
-    // Step 3: Find requirement (G.REQLIX_U.3 step 3)
+    // Step 3: Find requirement (T.REQLIXU.3 step 3)
     let existing = find_requirement_streaming(&category_path, &category_name, index)?;
 
-    // Step 4: Determine new title (G.REQLIX_U.3 step 4)
+    // Step 4: Determine new title (T.REQLIXU.3 step 4)
     let title_provided = title.is_some();
     let new_title = title
         .map(|t| t.to_string())
         .unwrap_or(existing.title.clone());
 
-    // Step 5: Validate title uniqueness (G.REQLIX_U.3 step 5)
+    // Step 5: Validate title uniqueness (T.REQLIXU.3 step 5)
     if title_provided
         && title_exists_in_chapter(&category_path, &existing.chapter, &new_title, Some(index))?
     {
         return Err("Title already exists in chapter".to_string());
     }
 
-    // Step 6: Update requirement (G.REQLIX_U.3 step 6, G.REQLIX_U.4, G.R.5)
+    // Step 6: Update requirement (T.REQLIXU.3 step 6, T.REQLIXU.4, G.R.5)
     let content = fs::read_to_string(&category_path)
         .map_err(|e| format!("Failed to read category file: {}", e))?;
 
@@ -465,7 +465,7 @@ fn update_single_requirement(
         return Err("Could not find requirement to update".to_string());
     }
 
-    // Step 7: Return result (G.REQLIX_U.3 step 7)
+    // Step 7: Return result (T.REQLIXU.3 step 7)
     Ok(RequirementFull {
         index: index.to_string(),
         title: new_title,
@@ -475,14 +475,14 @@ fn update_single_requirement(
     })
 }
 
-/// reqlix_update_requirement (G.REQLIX_U)
-/// Supports single update (index+text+title) or batch update (items array) (G.REQLIX_U.2, G.REQLIX_U.3, G.REQLIX_U.7)
+/// reqlix_update_requirement (T.REQLIXU)
+/// Supports single update (index+text+title) or batch update (items array) (T.REQLIXU.2, T.REQLIXU.3, T.REQLIXU.6)
 pub fn handle_update_requirement(params: UpdateRequirementParams) -> String {
     if let Some(e) = validate_common_params(&params.project_root, &params.operation_description) {
         return json_error(&e);
     }
 
-    // Determine mode: single or batch (G.REQLIX_U.2)
+    // Determine mode: single or batch (T.REQLIXU.2)
     match (&params.index, &params.items) {
         // Single update mode
         (Some(index), None) => {
@@ -500,19 +500,19 @@ pub fn handle_update_requirement(params: UpdateRequirementParams) -> String {
                 Err(e) => json_error(&e),
             }
         }
-        // Batch update mode (G.REQLIX_U.3 batch)
+        // Batch update mode (T.REQLIXU.3 batch)
         (None, Some(items)) => {
             // G.P.4: Empty array returns empty result
             if items.is_empty() {
                 return json_success(json!([]));
             }
 
-            // G.REQLIX_U.7: Validate batch size
+            // T.REQLIXU.6: Validate batch size
             if items.len() > MAX_BATCH_SIZE {
                 return json_error("Batch update exceeds maximum limit of 100 items");
             }
 
-            // Process ALL items, return success/error for each (G.REQLIX_U.3, G.REQLIX_U.4)
+            // Process ALL items, return success/error for each (T.REQLIXU.3, T.REQLIXU.4)
             let mut results = Vec::with_capacity(items.len());
             for item in items {
                 match update_single_requirement(
@@ -532,7 +532,7 @@ pub fn handle_update_requirement(params: UpdateRequirementParams) -> String {
                 }
             }
 
-            // Return array of results (G.REQLIX_U.4)
+            // Return array of results (T.REQLIXU.4)
             json_success(results)
         }
         // Invalid: both provided
@@ -546,42 +546,42 @@ pub fn handle_update_requirement(params: UpdateRequirementParams) -> String {
     }
 }
 
-/// reqlix_get_version (G.TOOLREQLIXGETV)
-/// Returns the version of the MCP server (G.TOOLREQLIXGETV.2, G.TOOLREQLIXGETV.3)
+/// reqlix_get_version (T.REQLIXGETV)
+/// Returns the version of the MCP server (T.REQLIXGETV.2, T.REQLIXGETV.3)
 pub fn handle_get_version(_params: GetVersionParams) -> String {
-    // G.TOOLREQLIXGETV.3: Use env!("CARGO_PKG_VERSION") macro at compile time
+    // T.REQLIXGETV.3: Use env!("CARGO_PKG_VERSION") macro at compile time
     let version = env!("CARGO_PKG_VERSION");
 
-    // G.TOOLREQLIXGETV.2: Return success response
+    // T.REQLIXGETV.2: Return success response
     json_success(json!({
         "version": version
     }))
 }
 
-/// Helper to delete a single requirement (G.TOOLREQLIXD.3 steps 1-6)
+/// Helper to delete a single requirement (T.REQLIXD.3 steps 1-6)
 fn delete_single_requirement(
     project_root: &str,
     index: &str,
 ) -> Result<DeletedRequirement, String> {
-    // Step 1: Validate index (G.TOOLREQLIXD.5)
+    // Step 1: Validate index (T.REQLIXD.5)
     validate_index(index)?;
 
-    // Step 2: Parse index (G.TOOLREQLIXD.3 step 2, G.R.4)
+    // Step 2: Parse index (T.REQLIXD.3 step 2, G.R.4)
     let (category_prefix, _chapter_prefix, _req_number) = parse_index(index)?;
 
-    // Find category by prefix (G.C.7)
+    // Find category by prefix (C.C.7)
     let req_dir = get_requirements_dir(project_root)?;
     let category = find_category_by_prefix(&req_dir, &category_prefix)?;
     let category_path = req_dir.join(format!("{}.md", category));
 
-    // Step 3: Find requirement (G.TOOLREQLIXD.3 step 3)
+    // Step 3: Find requirement (T.REQLIXD.3 step 3)
     let requirement = find_requirement_streaming(&category_path, &category, index)
         .map_err(|_| "Requirement not found".to_string())?;
 
     // Read file content for modification
     let content = read_file_utf8(&category_path)?;
 
-    // Step 4: Delete requirement (G.TOOLREQLIXD.3 step 4, G.R.5)
+    // Step 4: Delete requirement (T.REQLIXD.3 step 4, G.R.5)
     let search_heading = format!("## {}: ", index);
     let mut heading_start: Option<usize> = None;
     let mut req_end: Option<usize> = None;
@@ -629,7 +629,7 @@ fn delete_single_requirement(
     }
     new_content.push_str(remaining_trimmed);
 
-    // Step 5: Delete empty chapter (G.TOOLREQLIXD.3 step 5)
+    // Step 5: Delete empty chapter (T.REQLIXD.3 step 5)
     let chapter_heading = format!("# {}", requirement.chapter);
     let chapter_heading_newline = format!("# {}\n", requirement.chapter);
     let chapter_pos = new_content.find(&chapter_heading_newline).or_else(|| {
@@ -668,7 +668,7 @@ fn delete_single_requirement(
     fs::write(&category_path, &new_content)
         .map_err(|e| format!("Failed to write category file: {}", e))?;
 
-    // Step 6: Return result (G.TOOLREQLIXD.3 step 6)
+    // Step 6: Return result (T.REQLIXD.3 step 6)
     Ok(DeletedRequirement {
         index: index.to_string(),
         title: requirement.title,
@@ -677,34 +677,34 @@ fn delete_single_requirement(
     })
 }
 
-/// reqlix_delete_requirement (G.TOOLREQLIXD)
-/// Supports single index or batch of up to 100 indices (G.TOOLREQLIXD.2, G.TOOLREQLIXD.6)
+/// reqlix_delete_requirement (T.REQLIXD)
+/// Supports single index or batch of up to 100 indices (T.REQLIXD.2, T.REQLIXD.6)
 pub fn handle_delete_requirement(params: DeleteRequirementParams) -> String {
     if let Some(e) = validate_common_params(&params.project_root, &params.operation_description) {
         return json_error(&e);
     }
 
     match params.index {
-        // Single delete (G.TOOLREQLIXD.3 - single)
+        // Single delete (T.REQLIXD.3 - single)
         IndexParam::Single(index) => {
             match delete_single_requirement(&params.project_root, &index) {
                 Ok(result) => json_success(result),
                 Err(e) => json_error(&e),
             }
         }
-        // Batch delete (G.TOOLREQLIXD.3 - batch)
+        // Batch delete (T.REQLIXD.3 - batch)
         IndexParam::Batch(indices) => {
             // G.P.4: Empty array returns empty result
             if indices.is_empty() {
                 return json_success(json!([]));
             }
 
-            // G.TOOLREQLIXD.6: Validate batch size
+            // T.REQLIXD.6: Validate batch size
             if indices.len() > MAX_BATCH_SIZE {
                 return json_error("Batch delete exceeds maximum limit of 100 indices");
             }
 
-            // Process ALL indices, return success/error for each (G.TOOLREQLIXD.3, G.TOOLREQLIXD.4)
+            // Process ALL indices, return success/error for each (T.REQLIXD.3, T.REQLIXD.4)
             let mut results = Vec::with_capacity(indices.len());
             for index in &indices {
                 match delete_single_requirement(&params.project_root, index) {
@@ -719,16 +719,16 @@ pub fn handle_delete_requirement(params: DeleteRequirementParams) -> String {
                 }
             }
 
-            // Return array of results (G.TOOLREQLIXD.4)
+            // Return array of results (T.REQLIXD.4)
             json_success(results)
         }
     }
 }
 
-/// reqlix_search_requirements (G.TOOLREQLIXS)
-/// Searches for requirements by keywords across all categories (G.TOOLREQLIXS.3)
+/// reqlix_search_requirements (T.REQLIXS)
+/// Searches for requirements by keywords across all categories (T.REQLIXS.3)
 pub fn handle_search_requirements(params: SearchRequirementsParams) -> String {
-    // G.TOOLREQLIXS.6: Validate parameters in order
+    // T.REQLIXS.6: Validate parameters in order
     if let Some(e) = validate_common_params(&params.project_root, &params.operation_description) {
         return json_error(&e);
     }
@@ -738,7 +738,7 @@ pub fn handle_search_requirements(params: SearchRequirementsParams) -> String {
         Err(e) => return json_error(&e),
     };
 
-    // G.TOOLREQLIXS.5, G.P.4: Empty keywords returns success with empty results
+    // T.REQLIXS.5, G.P.4: Empty keywords returns success with empty results
     if keywords.is_empty() {
         let empty_results: Vec<RequirementFull> = Vec::new();
         return json_success(json!({
@@ -753,7 +753,7 @@ pub fn handle_search_requirements(params: SearchRequirementsParams) -> String {
         Err(e) => return json_error(&e),
     };
 
-    // List all categories (G.TOOLREQLIXS.3 step 1)
+    // List all categories (T.REQLIXS.3 step 1)
     let categories = match list_categories(&requirements_dir) {
         Ok(c) => c,
         Err(e) => return json_error(&e),
@@ -761,20 +761,20 @@ pub fn handle_search_requirements(params: SearchRequirementsParams) -> String {
 
     let mut results: Vec<RequirementFull> = Vec::new();
 
-    // Convert keywords to lowercase for case-insensitive search (G.TOOLREQLIXS.3 step 5)
+    // Convert keywords to lowercase for case-insensitive search (T.REQLIXS.3 step 5)
     let keywords_lower: Vec<String> = keywords.iter().map(|k| k.to_lowercase()).collect();
 
-    // G.TOOLREQLIXS.3 steps 1-7: Iterate over all categories, chapters, requirements
+    // T.REQLIXS.3 steps 1-7: Iterate over all categories, chapters, requirements
     for category in &categories {
         let category_path = requirements_dir.join(format!("{}.md", category));
 
-        // Read chapters (G.TOOLREQLIXS.3 step 2)
+        // Read chapters (T.REQLIXS.3 step 2)
         let chapters = match read_chapters_streaming(&category_path) {
             Ok(c) => c,
             Err(_) => continue, // Skip categories with read errors
         };
 
-        // For each chapter (G.TOOLREQLIXS.3 step 3)
+        // For each chapter (T.REQLIXS.3 step 3)
         for chapter in &chapters {
             // Read requirements in chapter
             let requirements = match read_requirements_streaming(&category_path, chapter) {
@@ -782,7 +782,7 @@ pub fn handle_search_requirements(params: SearchRequirementsParams) -> String {
                 Err(_) => continue, // Skip chapters with read errors
             };
 
-            // For each requirement (G.TOOLREQLIXS.3 step 4)
+            // For each requirement (T.REQLIXS.3 step 4)
             for req_summary in &requirements {
                 // Get full requirement
                 let requirement = match find_requirement_streaming(
@@ -794,7 +794,7 @@ pub fn handle_search_requirements(params: SearchRequirementsParams) -> String {
                     Err(_) => continue, // Skip requirements with read errors
                 };
 
-                // G.TOOLREQLIXS.3 step 5-6: Case-insensitive substring search in title OR text
+                // T.REQLIXS.3 step 5-6: Case-insensitive substring search in title OR text
                 let title_lower = requirement.title.to_lowercase();
                 let text_lower = requirement.text.to_lowercase();
 
@@ -809,8 +809,8 @@ pub fn handle_search_requirements(params: SearchRequirementsParams) -> String {
         }
     }
 
-    // G.TOOLREQLIXS.3 step 7, G.TOOLREQLIXS.4: Return results
-    // Note: Order is undefined (G.TOOLREQLIXS.3)
+    // T.REQLIXS.3 step 7, T.REQLIXS.4: Return results
+    // Note: Order is undefined (T.REQLIXS.3)
     json_success(json!({
         "keywords": keywords,
         "results": results
