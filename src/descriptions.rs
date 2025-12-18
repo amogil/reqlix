@@ -1,9 +1,10 @@
 // Tool descriptions (G.REQLIX_GET_I.1, G.REQLIX_GET_CA.1, G.REQLIX_GET_CH.1, G.REQLIX_GET_REQUIREMENTS.1, G.REQLIX_GET_REQUIREMENT.1, G.REQLIX_I.1, G.REQLIX_U.1)
 
-pub(crate) const GET_INSTRUCTIONS_DESC: &str = "CALL THIS BEFORE ANY CODE OPERATION (reading or writing). \
+pub(crate) const GET_INSTRUCTIONS_DESC: &str =
+    "CALL THIS BEFORE ANY CODE OPERATION (reading or writing). \
 Returns instructions on how to work with requirements. \
 This MCP server is the single source of truth for everything related to requirements. \
-Returns JSON with \"success\": true and \"data\": {\"content\": \"...\"} containing instructions and categories list. \
+Returns JSON with \"success\": true and \"data\": {\"content\": \"...\"} containing instructions. \
 On error, returns JSON with \"success\": false and \"error\": \"error message\".";
 
 pub(crate) const GET_CATEGORIES_DESC: &str =

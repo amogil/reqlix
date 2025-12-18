@@ -25,7 +25,7 @@ use std::path::PathBuf;
 const GET_INSTRUCTIONS_DESC: &str = "CALL THIS BEFORE ANY CODE OPERATION (reading or writing). \
 Returns instructions on how to work with requirements. \
 This MCP server is the single source of truth for everything related to requirements. \
-Returns JSON with \"success\": true and \"data\": {\"content\": \"...\"} containing instructions and categories list. \
+Returns JSON with \"success\": true and \"data\": {\"content\": \"...\"} containing instructions. \
 On error, returns JSON with \"success\": false and \"error\": \"error message\".";
 
 const GET_CATEGORIES_DESC: &str = "Returns a list of all available requirement categories. \
@@ -1154,35 +1154,10 @@ impl RequirementsServer {
         };
 
         // Read AGENTS.md content
-        let mut content = match fs::read_to_string(&agents_path) {
+        let content = match fs::read_to_string(&agents_path) {
             Ok(c) => c,
             Err(e) => return Self::json_error(&format!("Failed to read requirements file: {}", e)),
         };
-
-        // Get requirements directory
-        let requirements_dir = match agents_path.parent() {
-            Some(p) => p.to_path_buf(),
-            None => return Self::json_error("Could not determine requirements directory"),
-        };
-
-        // Generate Categories chapter (G.REQLIX_GET_I.7)
-        let categories = match Self::list_categories(&requirements_dir) {
-            Ok(c) => c,
-            Err(e) => return Self::json_error(&e),
-        };
-
-        let categories_chapter = if categories.is_empty() {
-            "\n# Categories\n\nNo categories defined yet.\n".to_string()
-        } else {
-            let list = categories
-                .iter()
-                .map(|c| format!("- {}", c))
-                .collect::<Vec<_>>()
-                .join("\n");
-            format!("\n# Categories\n\n{}\n", list)
-        };
-
-        content.push_str(&categories_chapter);
 
         // Return JSON response (G.REQLIX_GET_I.8)
         Self::json_success(json!({ "content": content }))

@@ -47,35 +47,10 @@ pub fn handle_get_instructions(params: GetInstructionsParams) -> String {
     };
 
     // Read AGENTS.md content
-    let mut content = match read_file_utf8(&agents_path) {
+    let content = match read_file_utf8(&agents_path) {
         Ok(c) => c,
         Err(e) => return json_error(&e),
     };
-
-    // Get requirements directory
-    let requirements_dir = match agents_path.parent() {
-        Some(p) => p.to_path_buf(),
-        None => return json_error("Could not determine requirements directory"),
-    };
-
-    // Generate Categories chapter (G.REQLIX_GET_I.7)
-    let categories = match list_categories(&requirements_dir) {
-        Ok(c) => c,
-        Err(e) => return json_error(&e),
-    };
-
-    let categories_chapter = if categories.is_empty() {
-        "\n# Categories\n\nNo categories defined yet.\n".to_string()
-    } else {
-        let list = categories
-            .iter()
-            .map(|c| format!("- {}", c))
-            .collect::<Vec<_>>()
-            .join("\n");
-        format!("\n# Categories\n\n{}\n", list)
-    };
-
-    content.push_str(&categories_chapter);
 
     // Return JSON response (G.REQLIX_GET_I.8)
     json_success(json!({ "content": content }))
