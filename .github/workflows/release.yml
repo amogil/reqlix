@@ -64,6 +64,11 @@ jobs:
       - name: Add Rust target
         run: rustup target add ${{ matrix.target }}
 
+      # Run tests before building binaries - fail if tests don't pass
+      # Run tests on native platform (not cross-compiled target) to ensure code quality
+      - name: Run tests
+        run: cargo test --all-features
+
       # Install cross-compilation tools for Linux ARM
       - name: Install cross-compilation tools
         if: matrix.target == 'aarch64-unknown-linux-gnu' && runner.os == 'Linux'
