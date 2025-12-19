@@ -541,12 +541,8 @@ fn test_fuzzy_search_operation_description_validation() {
 
 #[test]
 fn test_fuzzy_search_project_root_validation() {
-    let temp_dir = TempDir::new().unwrap();
-    let req_dir = create_requirements_dir(&temp_dir);
-    create_agents_file_in_req_dir(&req_dir, "# Instructions\n");
-
     let params = reqlix::FuzzySearchRequirementsParams {
-        project_root: "/nonexistent/path".to_string(),
+        project_root: "".to_string(), // Empty path should fail validation
         operation_description: "Test".to_string(),
         query: "test".to_string(),
         limit: None,
@@ -554,6 +550,7 @@ fn test_fuzzy_search_project_root_validation() {
     let result = RequirementsServer::handle_fuzzy_search_requirements(params);
     let parsed: serde_json::Value = serde_json::from_str(&result).unwrap();
     assert_eq!(parsed["success"], false);
+    assert!(parsed["error"].as_str().unwrap().contains("project_root"));
 }
 
 #[test]
