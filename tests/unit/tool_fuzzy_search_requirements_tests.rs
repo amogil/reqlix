@@ -12,11 +12,11 @@ use super::common::{
 // Tests for reqlix_fuzzy_search_requirements (T.REQLIXF.*)
 // =============================================================================
 
-/// Test: fuzzy_search_requirements returns empty results when no embeddings exist
+/// Test: fuzzy_search_requirements returns empty results when no embeddings exist (T.REQLIXF.1, T.REQLIXF.3)
 /// Precondition: System has requirements without embedding comments
 /// Action: Call reqlix_fuzzy_search_requirements
-/// Result: Function returns empty results array (T.REQLIXF.3 step 2 Note)
-/// Covers Requirement: T.REQLIXF.3
+/// Result: Function returns empty results array in correct format (T.REQLIXF.3 step 2 Note)
+/// Covers Requirement: T.REQLIXF.1, T.REQLIXF.3
 #[test]
 fn test_fuzzy_search_no_embeddings() {
     let temp_dir = TempDir::new().unwrap();
@@ -42,7 +42,7 @@ fn test_fuzzy_search_no_embeddings() {
     assert_eq!(parsed["data"]["results"], serde_json::json!([]));
 }
 
-/// Test: fuzzy_search_requirements validates query parameter (T.REQLIXF.5)
+/// Test: fuzzy_search_requirements validates query parameter (T.REQLIXF.2, T.REQLIXF.5)
 #[test]
 fn test_fuzzy_search_query_validation() {
     let temp_dir = TempDir::new().unwrap();
@@ -75,7 +75,7 @@ fn test_fuzzy_search_query_validation() {
     assert!(parsed["error"].as_str().unwrap().contains("10000"));
 }
 
-/// Test: fuzzy_search_requirements validates limit parameter (T.REQLIXF.5)
+/// Test: fuzzy_search_requirements validates limit parameter (T.REQLIXF.2, T.REQLIXF.5)
 #[test]
 fn test_fuzzy_search_limit_validation() {
     let temp_dir = TempDir::new().unwrap();
@@ -208,7 +208,7 @@ Content two.
     assert_eq!(results[0]["index"], "G.C.1");
 }
 
-/// Test: fuzzy_search_requirements returns results with similarity scores (T.REQLIXF.4)
+/// Test: fuzzy_search_requirements returns results with similarity scores (T.REQLIXF.1, T.REQLIXF.4)
 #[test]
 fn test_fuzzy_search_returns_similarity_scores() {
     let temp_dir = TempDir::new().unwrap();

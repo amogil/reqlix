@@ -1,5 +1,5 @@
 // Tests for Tool: reqlix_get_requirement (T.REQLIXGETREQUIREMENT.*)
-// Covers Requirements: T.REQLIXGETREQUIREMENT.1, T.REQLIXGETREQUIREMENT.3, T.REQLIXGETREQUIREMENT.4, G.R.5
+// Covers Requirements: T.REQLIXGETREQUIREMENT.1, T.REQLIXGETREQUIREMENT.2, T.REQLIXGETREQUIREMENT.3, T.REQLIXGETREQUIREMENT.4, T.REQLIXGETREQUIREMENT.5, G.R.5
 
 use reqlix::RequirementsServer;
 use tempfile::TempDir;
@@ -13,14 +13,16 @@ use super::common::{
 // Tests for reqlix_get_requirement (T.REQLIXGETREQUIREMENT.*)
 // =============================================================================
 
-/// Test: reqlix_get_requirement finds requirement by index
+/// Test: reqlix_get_requirement finds requirement by index through handler
 /// Precondition: System has category file with requirement
-/// Action: Call reqlix_get_requirement with valid index
-/// Result: Function returns requirement with title and text
+/// Action: Call handle_get_requirement with valid index
+/// Result: Function returns requirement with title and text in JSON format
 /// Covers Requirement: T.REQLIXGETREQUIREMENT.1, T.REQLIXGETREQUIREMENT.3, T.REQLIXGETREQUIREMENT.4
 #[test]
 fn test_get_requirement_by_index() {
     let temp_dir = TempDir::new().unwrap();
+    let req_dir = create_requirements_dir(&temp_dir);
+    create_agents_file_in_req_dir(&req_dir, "# Instructions\n");
     let content = r#"# Test Chapter
 
 ## G.T.1: Test Requirement
@@ -28,42 +30,124 @@ fn test_get_requirement_by_index() {
 This is the requirement text.
 It can span multiple lines.
 "#;
-    create_category_file(&temp_dir, "general", content);
+    create_category_file_in_req_dir(&req_dir, "general", content);
 
-    let requirement = RequirementsServer::find_requirement_streaming(
-        &temp_dir.path().join("general.md"),
-        "general",
-        "G.T.1",
-    )
-    .unwrap();
-    assert_eq!(requirement.index, "G.T.1");
-    assert_eq!(requirement.title, "Test Requirement");
-    assert!(requirement.text.contains("This is the requirement text"));
+    let params = reqlix::GetRequirementParams {
+        project_root: temp_dir.path().to_string_lossy().to_string(),
+        operation_description: "Test get requirement".to_string(),
+        index: reqlix::IndexParam::Single("G.T.1".to_string()),
+    };
+
+    let result = RequirementsServer::handle_get_requirement(params);
+    let parsed: serde_json::Value = serde_json::from_str(&result).unwrap();
+
+    assert_eq!(parsed["success"], true, "Get requirement should succeed: {}", result);
+    assert_eq!(parsed["data"]["index"], "G.T.1");
+    assert_eq!(parsed["data"]["title"], "Test Requirement");
+    assert!(parsed["data"]["text"]
+        .as_str()
+        .unwrap()
+        .contains("This is the requirement text"));
 }
 
-/// Test: reqlix_get_requirement returns error for non-existent requirement
+/// Test: reqlix_get_requirement returns error for non-existent requirement through handler
 /// Precondition: System has category file without the specified requirement
-/// Action: Call reqlix_get_requirement with non-existent index
-/// Result: Function returns error "Requirement not found"
+/// Action: Call handle_get_requirement with non-existent index
+/// Result: Function returns error "Requirement not found" in JSON format
 /// Covers Requirement: T.REQLIXGETREQUIREMENT.3
 #[test]
 fn test_get_requirement_not_found() {
     let temp_dir = TempDir::new().unwrap();
+    let req_dir = create_requirements_dir(&temp_dir);
+    create_agents_file_in_req_dir(&req_dir, "# Instructions\n");
     let content = r#"# Test Chapter
 
 ## G.T.1: Test Requirement
 
 Content.
 "#;
-    create_category_file(&temp_dir, "general", content);
+    create_category_file_in_req_dir(&req_dir, "general", content);
 
-    let result = RequirementsServer::find_requirement_streaming(
-        &temp_dir.path().join("general.md"),
-        "general",
-        "G.T.999",
-    );
-    assert!(result.is_err());
-    assert!(result.unwrap_err().contains("not found"));
+    let params = reqlix::GetRequirementParams {
+        project_root: temp_dir.path().to_string_lossy().to_string(),
+        operation_description: "Test get requirement".to_string(),
+        index: reqlix::IndexParam::Single("G.T.999".to_string()),
+    };
+
+    let result = RequirementsServer::handle_get_requirement(params);
+    let parsed: serde_json::Value = serde_json::from_str(&result).unwrap();
+
+    assert_eq!(parsed["success"], false, "Get requirement should fail for non-existent index");
+    assert!(parsed["error"]
+        .as_str()
+        .unwrap()
+        .contains("not found"));
+}
+
+// =============================================================================
+// Tests for T.REQLIXGETREQUIREMENT.2: Parameters
+// =============================================================================
+
+/// Test: reqlix_get_requirement validates project_root parameter (T.REQLIXGETREQUIREMENT.2)
+/// Precondition: System has empty project_root
+/// Action: Call handle_get_requirement with empty project_root
+/// Result: Function returns validation error
+/// Covers Requirement: T.REQLIXGETREQUIREMENT.2, G.P.1, G.P.2
+#[test]
+fn test_get_requirement_validates_project_root() {
+    let params = reqlix::GetRequirementParams {
+        project_root: "".to_string(),
+        operation_description: "Test".to_string(),
+        index: reqlix::IndexParam::Single("G.C.1".to_string()),
+    };
+
+    let result = RequirementsServer::handle_get_requirement(params);
+    let parsed: serde_json::Value = serde_json::from_str(&result).unwrap();
+
+    assert_eq!(parsed["success"], false);
+    assert!(parsed["error"].as_str().unwrap().contains("project_root"));
+}
+
+/// Test: reqlix_get_requirement validates operation_description parameter (T.REQLIXGETREQUIREMENT.2)
+/// Precondition: System has empty operation_description
+/// Action: Call handle_get_requirement with empty operation_description
+/// Result: Function returns validation error
+/// Covers Requirement: T.REQLIXGETREQUIREMENT.2, G.P.1, G.P.2
+#[test]
+fn test_get_requirement_validates_operation_description() {
+    let temp_dir = TempDir::new().unwrap();
+    let params = reqlix::GetRequirementParams {
+        project_root: temp_dir.path().to_string_lossy().to_string(),
+        operation_description: "".to_string(),
+        index: reqlix::IndexParam::Single("G.C.1".to_string()),
+    };
+
+    let result = RequirementsServer::handle_get_requirement(params);
+    let parsed: serde_json::Value = serde_json::from_str(&result).unwrap();
+
+    assert_eq!(parsed["success"], false);
+    assert!(parsed["error"].as_str().unwrap().contains("operation_description"));
+}
+
+/// Test: reqlix_get_requirement validates index parameter (T.REQLIXGETREQUIREMENT.2)
+/// Precondition: System has empty index
+/// Action: Call handle_get_requirement with empty index
+/// Result: Function returns validation error
+/// Covers Requirement: T.REQLIXGETREQUIREMENT.2, G.P.1, G.P.2
+#[test]
+fn test_get_requirement_validates_index() {
+    let temp_dir = TempDir::new().unwrap();
+    let params = reqlix::GetRequirementParams {
+        project_root: temp_dir.path().to_string_lossy().to_string(),
+        operation_description: "Test".to_string(),
+        index: reqlix::IndexParam::Single("".to_string()),
+    };
+
+    let result = RequirementsServer::handle_get_requirement(params);
+    let parsed: serde_json::Value = serde_json::from_str(&result).unwrap();
+
+    assert_eq!(parsed["success"], false);
+    assert!(parsed["error"].as_str().unwrap().contains("index"));
 }
 
 /// Test: find_requirement_streaming correctly identifies boundaries before next chapter

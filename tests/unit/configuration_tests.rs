@@ -1,5 +1,5 @@
 // Tests for Configuration (C.C.*)
-// Covers Requirements: C.C.1, C.C.2, C.C.7
+// Covers Requirements: C.C.1, C.C.2, C.C.3, C.C.4, C.C.5, C.C.6, C.C.7
 
 use reqlix::RequirementsServer;
 use std::path::PathBuf;

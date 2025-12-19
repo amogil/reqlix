@@ -1,5 +1,5 @@
 // Tests for Tool: reqlix_delete_requirement (T.REQLIXD.*)
-// Covers Requirements: T.REQLIXD.1, T.REQLIXD.3, T.REQLIXD.4, T.REQLIXD.5
+// Covers Requirements: T.REQLIXD.1, T.REQLIXD.2, T.REQLIXD.3, T.REQLIXD.4, T.REQLIXD.5, T.REQLIXD.6
 
 use reqlix::RequirementsServer;
 use tempfile::TempDir;
@@ -88,11 +88,11 @@ Content.
     assert!(parsed["error"].as_str().unwrap().contains("not found"));
 }
 
-/// Test: reqlix_delete_requirement validates parameters
+/// Test: reqlix_delete_requirement validates parameters (T.REQLIXD.2, T.REQLIXD.5)
 /// Precondition: System has invalid parameters
 /// Action: Call handle_delete_requirement with invalid parameters
 /// Result: Function returns validation error before processing
-/// Covers Requirement: T.REQLIXD.5, G.P.1, G.P.2
+/// Covers Requirement: T.REQLIXD.2, T.REQLIXD.5, G.P.1, G.P.2
 #[test]
 fn test_delete_requirement_validation() {
     let params = reqlix::DeleteRequirementParams {
@@ -106,6 +106,52 @@ fn test_delete_requirement_validation() {
     assert_eq!(parsed["success"], false);
     // Should fail on project_root validation
     assert!(parsed["error"].as_str().unwrap().contains("project_root"));
+}
+
+// =============================================================================
+// Tests for T.REQLIXD.2: Parameters
+// =============================================================================
+
+/// Test: reqlix_delete_requirement validates operation_description parameter (T.REQLIXD.2)
+/// Precondition: System has empty operation_description
+/// Action: Call handle_delete_requirement with empty operation_description
+/// Result: Function returns validation error
+/// Covers Requirement: T.REQLIXD.2, G.P.1, G.P.2
+#[test]
+fn test_delete_requirement_validates_operation_description() {
+    let temp_dir = TempDir::new().unwrap();
+    let params = reqlix::DeleteRequirementParams {
+        project_root: temp_dir.path().to_string_lossy().to_string(),
+        operation_description: "".to_string(),
+        index: reqlix::IndexParam::Single("G.C.1".to_string()),
+    };
+
+    let result = RequirementsServer::handle_delete_requirement(params);
+    let parsed: serde_json::Value = serde_json::from_str(&result).unwrap();
+
+    assert_eq!(parsed["success"], false);
+    assert!(parsed["error"].as_str().unwrap().contains("operation_description"));
+}
+
+/// Test: reqlix_delete_requirement validates index parameter (T.REQLIXD.2)
+/// Precondition: System has empty index
+/// Action: Call handle_delete_requirement with empty index
+/// Result: Function returns validation error
+/// Covers Requirement: T.REQLIXD.2, G.P.1, G.P.2
+#[test]
+fn test_delete_requirement_validates_index() {
+    let temp_dir = TempDir::new().unwrap();
+    let params = reqlix::DeleteRequirementParams {
+        project_root: temp_dir.path().to_string_lossy().to_string(),
+        operation_description: "Test".to_string(),
+        index: reqlix::IndexParam::Single("".to_string()),
+    };
+
+    let result = RequirementsServer::handle_delete_requirement(params);
+    let parsed: serde_json::Value = serde_json::from_str(&result).unwrap();
+
+    assert_eq!(parsed["success"], false);
+    assert!(parsed["error"].as_str().unwrap().contains("index"));
 }
 
 /// Test: reqlix_delete_requirement removes empty chapter

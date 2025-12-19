@@ -1,5 +1,5 @@
-// Tests for Tool: reqlix_search_requirements (G.TOOLREQLIXS.*)
-// Covers Requirements: G.TOOLREQLIXS.1, G.TOOLREQLIXS.2, G.TOOLREQLIXS.3, G.TOOLREQLIXS.4, G.TOOLREQLIXS.5, G.TOOLREQLIXS.6
+// Tests for Tool: reqlix_search_requirements (T.REQLIXS.*)
+// Covers Requirements: T.REQLIXS.1, T.REQLIXS.2, T.REQLIXS.3, T.REQLIXS.4, T.REQLIXS.5, T.REQLIXS.6, T.REQLIXS.7
 
 use reqlix::{KeywordsParam, RequirementsServer, SearchRequirementsParams};
 use serde_json::Value;
@@ -218,11 +218,11 @@ fn test_search_finds_by_text() {
     assert_eq!(json["data"]["results"][0]["index"], "G.S.1");
 }
 
-/// Test: search is case-insensitive
+/// Test: search is case-insensitive (T.REQLIXS.3)
 /// Precondition: System has requirements directory with category file containing requirement
 /// Action: Call handle_search_requirements with keyword in different case than requirement text/title
 /// Result: Function returns success with matching result (case-insensitive match)
-/// Covers Requirement: G.TOOLREQLIXS.3 step 5
+/// Covers Requirement: T.REQLIXS.3 step 5
 #[test]
 fn test_search_case_insensitive() {
     let temp_dir = TempDir::new().unwrap();
@@ -383,11 +383,11 @@ fn test_search_across_categories() {
     assert_eq!(json["data"]["results"].as_array().unwrap().len(), 2);
 }
 
-/// Test: search returns correct response structure
+/// Test: search returns correct response structure (T.REQLIXS.1, T.REQLIXS.4)
 /// Precondition: System has requirements directory with matching requirement
 /// Action: Call handle_search_requirements with matching keyword
 /// Result: Function returns success with correct JSON structure (success, data.keywords, data.results with index, title, text, category, chapter)
-/// Covers Requirement: G.TOOLREQLIXS.4
+/// Covers Requirement: T.REQLIXS.1, T.REQLIXS.4
 #[test]
 fn test_search_response_structure() {
     let temp_dir = TempDir::new().unwrap();
@@ -420,11 +420,11 @@ fn test_search_response_structure() {
     assert!(req["chapter"].is_string());
 }
 
-/// Test: search validates project_root parameter
+/// Test: search validates project_root parameter (T.REQLIXS.2, T.REQLIXS.6)
 /// Precondition: System has invalid project_root (empty string)
 /// Action: Call handle_search_requirements with empty project_root
 /// Result: Function returns error about invalid project_root
-/// Covers Requirement: G.TOOLREQLIXS.6
+/// Covers Requirement: T.REQLIXS.2, T.REQLIXS.6
 #[test]
 fn test_search_validates_project_root() {
     let params = SearchRequirementsParams {
@@ -440,11 +440,11 @@ fn test_search_validates_project_root() {
     assert!(json["error"].as_str().unwrap().contains("project_root"));
 }
 
-/// Test: search validates operation_description parameter
+/// Test: search validates operation_description parameter (T.REQLIXS.2, T.REQLIXS.6)
 /// Precondition: System has invalid operation_description (empty string)
 /// Action: Call handle_search_requirements with empty operation_description
 /// Result: Function returns error about invalid operation_description
-/// Covers Requirement: G.TOOLREQLIXS.6
+/// Covers Requirement: T.REQLIXS.2, T.REQLIXS.6
 #[test]
 fn test_search_validates_operation_description() {
     let temp_dir = TempDir::new().unwrap();

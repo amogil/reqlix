@@ -1,5 +1,5 @@
-// Tests for Tool: reqlix_get_version (G.TOOLREQLIXGETV.*)
-// Covers Requirements: G.TOOLREQLIXGETV.2, G.TOOLREQLIXGETV.3
+// Tests for Tool: reqlix_get_version (T.REQLIXGETV.*)
+// Covers Requirements: T.REQLIXGETV.1, T.REQLIXGETV.2, T.REQLIXGETV.3
 
 use reqlix::RequirementsServer;
 
@@ -7,11 +7,11 @@ use reqlix::RequirementsServer;
 // Tests for reqlix_get_version (G.TOOLREQLIXGETV.*)
 // =============================================================================
 
-/// Test: reqlix_get_version returns version string
+/// Test: reqlix_get_version returns version string (T.REQLIXGETV.1, T.REQLIXGETV.2, T.REQLIXGETV.3)
 /// Precondition: Server is running
 /// Action: Call handle_get_version
-/// Result: Function returns JSON with version from Cargo.toml
-/// Covers Requirement: G.TOOLREQLIXGETV.2, G.TOOLREQLIXGETV.3
+/// Result: Function returns JSON with version from Cargo.toml in correct format
+/// Covers Requirement: T.REQLIXGETV.1, T.REQLIXGETV.2, T.REQLIXGETV.3
 #[test]
 fn test_get_version_returns_version() {
     let params = reqlix::GetVersionParams {};

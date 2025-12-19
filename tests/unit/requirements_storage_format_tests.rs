@@ -1,5 +1,5 @@
 // Tests for Requirements Storage Format (G.R.*)
-// Covers Requirements: G.R.1, G.R.2, G.R.3, G.R.4, G.R.5, G.R.8, G.R.9, G.R.10, G.R.11, G.R.12
+// Covers Requirements: G.R.1, G.R.2, G.R.3, G.R.4, G.R.5, G.R.6, G.R.7, G.R.8, G.R.9, G.R.10, G.R.11, G.R.12
 
 use super::common::{
     create_agents_file_in_req_dir, create_category_file_in_req_dir, create_requirements_dir,
@@ -287,17 +287,7 @@ fn test_parse_index_too_few_parts() {
     assert!(result.unwrap_err().contains("Invalid index format"));
 }
 
-/// Test: parse_index with invalid format (too many parts)
-/// Precondition: System has index string with too many parts
-/// Action: Call parse_index with "G.G.1.2"
-/// Result: Function returns error about invalid index format
-/// Covers Requirement: G.R.4
-#[test]
-fn test_parse_index_too_many_parts() {
-    let result = RequirementsServer::parse_index("G.G.1.2");
-    assert!(result.is_err());
-    assert!(result.unwrap_err().contains("Invalid index format"));
-}
+// Note: test_parse_index_too_many_parts is covered in parameter_constraints_tests.rs
 
 // Tests for calculate_unique_prefix (G.R.4)
 
@@ -427,7 +417,92 @@ fn test_read_file_utf8_not_found() {
 }
 
 // =============================================================================
-// Tests for G.R.9: File system error handling
+// Tests for G.R.6: File encoding
+// =============================================================================
+
+/// Test: read_file_utf8 returns error for invalid UTF-8 encoding (G.R.6)
+/// Precondition: System has file with invalid UTF-8 bytes
+/// Action: Call read_file_utf8 with file containing invalid UTF-8
+/// Result: Function returns error indicating encoding issues
+/// Covers Requirement: G.R.6
+#[test]
+fn test_read_file_utf8_invalid_encoding() {
+    let temp_dir = TempDir::new().unwrap();
+    let file_path = temp_dir.path().join("test.md");
+    // Write invalid UTF-8 bytes (0xFF is invalid in UTF-8)
+    std::fs::write(&file_path, [0xFF, 0xFE, 0xFD]).unwrap();
+
+    let result = RequirementsServer::read_file_utf8(&file_path);
+    assert!(result.is_err());
+    let error = result.unwrap_err();
+    assert!(error.contains("UTF-8") || error.contains("encoding"));
+}
+
+// =============================================================================
+// Tests for G.R.7: File system error handling
+// =============================================================================
+
+/// Test: write_file_utf8 handles permission denied error (G.R.7)
+/// Precondition: System has read-only directory
+/// Action: Call write_file_utf8 with file in read-only directory
+/// Result: Function returns error "Permission denied: {path}"
+/// Covers Requirement: G.R.7
+#[test]
+#[cfg(unix)]
+fn test_write_file_utf8_permission_denied() {
+    use std::fs;
+    use std::os::unix::fs::PermissionsExt;
+    
+    let temp_dir = TempDir::new().unwrap();
+    let read_only_dir = temp_dir.path().join("readonly");
+    fs::create_dir(&read_only_dir).unwrap();
+    
+    // Make directory read-only
+    let mut perms = fs::metadata(&read_only_dir).unwrap().permissions();
+    perms.set_mode(0o444); // Read-only
+    fs::set_permissions(&read_only_dir, perms).unwrap();
+    
+    let file_path = read_only_dir.join("test.md");
+    let result = RequirementsServer::write_file_utf8(&file_path, "Content");
+    
+    // Restore permissions for cleanup
+    let mut perms = fs::metadata(&read_only_dir).unwrap().permissions();
+    perms.set_mode(0o755);
+    fs::set_permissions(&read_only_dir, perms).ok();
+    
+    assert!(result.is_err());
+    let error = result.unwrap_err();
+    assert!(error.contains("Permission") || error.contains("denied"));
+}
+
+/// Test: write_file_utf8 handles invalid path error (G.R.7)
+/// Precondition: System has invalid path (e.g., path with null bytes)
+/// Action: Call write_file_utf8 with invalid path
+/// Result: Function returns error "Invalid path: {path}"
+/// Covers Requirement: G.R.7
+#[test]
+fn test_write_file_utf8_invalid_path() {
+    // On Unix, null bytes in path cause issues
+    #[cfg(unix)]
+    {
+        let temp_dir = TempDir::new().unwrap();
+        let invalid_path = temp_dir.path().join("test\0invalid.md");
+        let result = RequirementsServer::write_file_utf8(&invalid_path, "Content");
+        assert!(result.is_err());
+    }
+    
+    // On Windows, certain characters are invalid
+    #[cfg(windows)]
+    {
+        let temp_dir = TempDir::new().unwrap();
+        let invalid_path = temp_dir.path().join("test<invalid>.md");
+        let result = RequirementsServer::write_file_utf8(&invalid_path, "Content");
+        assert!(result.is_err());
+    }
+}
+
+// =============================================================================
+// Tests for G.R.9: Blank line before headings
 // =============================================================================
 
 /// Test: write_file_utf8 creates parent directories

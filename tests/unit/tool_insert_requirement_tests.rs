@@ -1,65 +1,231 @@
-// Tests for Tool: reqlix_insert_requirement (G.REQLIX_I.*)
-// Covers Requirements: G.REQLIX_I.1, G.REQLIX_I.3, G.REQLIX_I.5
+// Tests for Tool: reqlix_insert_requirement (T.REQLIXI.*)
+// Covers Requirements: T.REQLIXI.1, T.REQLIXI.2, T.REQLIXI.3, T.REQLIXI.4, T.REQLIXI.5, T.REQLIXI.6
 
 use reqlix::RequirementsServer;
 use tempfile::TempDir;
 
 use super::common::{
-    create_agents_file_in_req_dir, create_category_file, create_category_file_in_req_dir,
-    create_requirements_dir,
+    create_agents_file_in_req_dir, create_category_file_in_req_dir, create_requirements_dir,
 };
 
 // =============================================================================
 // Tests for reqlix_insert_requirement (G.REQLIX_I.*)
 // =============================================================================
 
-/// Test: reqlix_insert_requirement creates new requirement
+/// Test: reqlix_insert_requirement creates new requirement (T.REQLIXI.1, T.REQLIXI.4)
 /// Precondition: System has category file with chapter
 /// Action: Call reqlix_insert_requirement with valid parameters
-/// Result: Function creates requirement and returns full data
-/// Covers Requirement: G.REQLIX_I.1, G.REQLIX_I.3, G.REQLIX_I.5
+/// Result: Function creates requirement and returns full data in correct format
+/// Covers Requirement: T.REQLIXI.1, T.REQLIXI.3, T.REQLIXI.4, T.REQLIXI.5
 #[test]
 fn test_insert_requirement_new() {
     let temp_dir = TempDir::new().unwrap();
+    let req_dir = create_requirements_dir(&temp_dir);
+    create_agents_file_in_req_dir(&req_dir, "# Instructions\n");
     let content = r#"# Test Chapter
 
 ## G.T.1: Existing Requirement
 
 Existing content.
 "#;
-    create_category_file(&temp_dir, "general", content);
+    create_category_file_in_req_dir(&req_dir, "general", content);
 
-    // This would test the full insert flow, but requires access to private methods
-    // For now, we verify the file structure is correct
-    let file_content = std::fs::read_to_string(temp_dir.path().join("general.md")).unwrap();
-    assert!(file_content.contains("Test Chapter"));
-    assert!(file_content.contains("Existing Requirement"));
+    let params = reqlix::InsertRequirementParams {
+        project_root: temp_dir.path().to_string_lossy().to_string(),
+        operation_description: "Test insert".to_string(),
+        category: "general".to_string(),
+        chapter: "Test Chapter".to_string(),
+        title: "New Requirement".to_string(),
+        text: "New content".to_string(),
+    };
+
+    let result = RequirementsServer::handle_insert_requirement(params);
+    let parsed: serde_json::Value = serde_json::from_str(&result).unwrap();
+
+    assert_eq!(parsed["success"], true, "Insert should succeed: {}", result);
+    
+    // Verify response format (T.REQLIXI.4)
+    assert!(parsed["data"].is_object());
+    assert!(parsed["data"]["index"].is_string());
+    assert_eq!(parsed["data"]["title"], "New Requirement");
+    assert_eq!(parsed["data"]["text"], "New content");
+    assert_eq!(parsed["data"]["category"], "general");
+    assert_eq!(parsed["data"]["chapter"], "Test Chapter");
+
+    // Verify requirement was added to file
+    let file_content = std::fs::read_to_string(req_dir.join("general.md")).unwrap();
+    assert!(file_content.contains("## G.T.2: New Requirement"));
+    assert!(file_content.contains("New content"));
 }
 
-/// Test: reqlix_insert_requirement validates title uniqueness
+/// Test: reqlix_insert_requirement validates title uniqueness (T.REQLIXI.3)
 /// Precondition: System has category file with requirement having same title
 /// Action: Call reqlix_insert_requirement with duplicate title
 /// Result: Function returns error "Title already exists in chapter"
-/// Covers Requirement: G.REQLIX_I.3 step 3
+/// Covers Requirement: T.REQLIXI.3 step 3
 #[test]
 fn test_insert_requirement_duplicate_title() {
     let temp_dir = TempDir::new().unwrap();
+    let req_dir = create_requirements_dir(&temp_dir);
+    create_agents_file_in_req_dir(&req_dir, "# Instructions\n");
     let content = r#"# Test Chapter
 
 ## G.T.1: Duplicate Title
 
 Content.
 "#;
-    create_category_file(&temp_dir, "general", content);
+    create_category_file_in_req_dir(&req_dir, "general", content);
 
-    // Verify that reading requirements finds the existing one
-    let requirements = RequirementsServer::read_requirements_streaming(
-        &temp_dir.path().join("general.md"),
-        "Test Chapter",
-    )
-    .unwrap();
-    assert_eq!(requirements.len(), 1);
-    assert_eq!(requirements[0].title, "Duplicate Title");
+    let params = reqlix::InsertRequirementParams {
+        project_root: temp_dir.path().to_string_lossy().to_string(),
+        operation_description: "Test insert".to_string(),
+        category: "general".to_string(),
+        chapter: "Test Chapter".to_string(),
+        title: "Duplicate Title".to_string(), // Same as existing
+        text: "New content".to_string(),
+    };
+
+    let result = RequirementsServer::handle_insert_requirement(params);
+    let parsed: serde_json::Value = serde_json::from_str(&result).unwrap();
+
+    assert_eq!(parsed["success"], false, "Insert should fail with duplicate title");
+    assert!(parsed["error"]
+        .as_str()
+        .unwrap()
+        .contains("already exists"));
+}
+
+/// Test: reqlix_insert_requirement validates parameters through handler (T.REQLIXI.2, T.REQLIXI.5)
+/// Precondition: System has invalid parameters
+/// Action: Call handle_insert_requirement with invalid parameters
+/// Result: Function returns validation error before processing
+/// Covers Requirement: T.REQLIXI.2, T.REQLIXI.5, G.P.1, G.P.2
+#[test]
+fn test_insert_requirement_validation() {
+    let temp_dir = TempDir::new().unwrap();
+    let req_dir = create_requirements_dir(&temp_dir);
+    create_agents_file_in_req_dir(&req_dir, "# Instructions\n");
+    create_category_file_in_req_dir(&req_dir, "general", "# Chapter\n\n");
+
+    // Test empty project_root
+    let params = reqlix::InsertRequirementParams {
+        project_root: "".to_string(),
+        operation_description: "Test".to_string(),
+        category: "general".to_string(),
+        chapter: "Chapter".to_string(),
+        title: "Test".to_string(),
+        text: "Content".to_string(),
+    };
+    let result = RequirementsServer::handle_insert_requirement(params);
+    let parsed: serde_json::Value = serde_json::from_str(&result).unwrap();
+    assert_eq!(parsed["success"], false);
+    assert!(parsed["error"].as_str().unwrap().contains("project_root"));
+
+    // Test empty category
+    let params = reqlix::InsertRequirementParams {
+        project_root: temp_dir.path().to_string_lossy().to_string(),
+        operation_description: "Test".to_string(),
+        category: "".to_string(),
+        chapter: "Chapter".to_string(),
+        title: "Test".to_string(),
+        text: "Content".to_string(),
+    };
+    let result = RequirementsServer::handle_insert_requirement(params);
+    let parsed: serde_json::Value = serde_json::from_str(&result).unwrap();
+    assert_eq!(parsed["success"], false);
+    assert!(parsed["error"].as_str().unwrap().contains("category"));
+
+    // Test empty text
+    let params = reqlix::InsertRequirementParams {
+        project_root: temp_dir.path().to_string_lossy().to_string(),
+        operation_description: "Test".to_string(),
+        category: "general".to_string(),
+        chapter: "Chapter".to_string(),
+        title: "Test".to_string(),
+        text: "".to_string(),
+    };
+    let result = RequirementsServer::handle_insert_requirement(params);
+    let parsed: serde_json::Value = serde_json::from_str(&result).unwrap();
+    assert_eq!(parsed["success"], false);
+    assert!(parsed["error"].as_str().unwrap().contains("text"));
+}
+
+// =============================================================================
+// Tests for T.REQLIXI.3: Algorithm (category and chapter creation)
+// =============================================================================
+
+/// Test: reqlix_insert_requirement creates category file if not found (T.REQLIXI.3 step 1)
+/// Precondition: System has no category file
+/// Action: Call handle_insert_requirement with new category
+/// Result: Function creates category file and inserts requirement
+/// Covers Requirement: T.REQLIXI.3 step 1
+#[test]
+fn test_insert_requirement_creates_category() {
+    let temp_dir = TempDir::new().unwrap();
+    let req_dir = create_requirements_dir(&temp_dir);
+    create_agents_file_in_req_dir(&req_dir, "# Instructions\n");
+
+    let params = reqlix::InsertRequirementParams {
+        project_root: temp_dir.path().to_string_lossy().to_string(),
+        operation_description: "Test insert".to_string(),
+        category: "newcategory".to_string(),
+        chapter: "New Chapter".to_string(),
+        title: "New Requirement".to_string(),
+        text: "New content".to_string(),
+    };
+
+    let result = RequirementsServer::handle_insert_requirement(params);
+    let parsed: serde_json::Value = serde_json::from_str(&result).unwrap();
+
+    assert_eq!(parsed["success"], true, "Insert should succeed: {}", result);
+    
+    // Verify category file was created
+    assert!(req_dir.join("newcategory.md").exists(), "Category file should be created");
+    
+    // Verify requirement was inserted
+    let file_content = std::fs::read_to_string(req_dir.join("newcategory.md")).unwrap();
+    assert!(file_content.contains("# New Chapter"));
+    assert!(file_content.contains("## N.N.1: New Requirement"));
+    assert!(file_content.contains("New content"));
+}
+
+/// Test: reqlix_insert_requirement creates chapter if not found (T.REQLIXI.3 step 2)
+/// Precondition: System has category file without the specified chapter
+/// Action: Call handle_insert_requirement with new chapter name
+/// Result: Function creates chapter heading and inserts requirement
+/// Covers Requirement: T.REQLIXI.3 step 2
+#[test]
+fn test_insert_requirement_creates_chapter() {
+    let temp_dir = TempDir::new().unwrap();
+    let req_dir = create_requirements_dir(&temp_dir);
+    create_agents_file_in_req_dir(&req_dir, "# Instructions\n");
+    create_category_file_in_req_dir(&req_dir, "general", "# Existing Chapter\n\n## G.E.1: Existing\n\nContent.\n");
+
+    let params = reqlix::InsertRequirementParams {
+        project_root: temp_dir.path().to_string_lossy().to_string(),
+        operation_description: "Test insert".to_string(),
+        category: "general".to_string(),
+        chapter: "New Chapter".to_string(),
+        title: "New Requirement".to_string(),
+        text: "New content".to_string(),
+    };
+
+    let result = RequirementsServer::handle_insert_requirement(params);
+    let parsed: serde_json::Value = serde_json::from_str(&result).unwrap();
+
+    assert_eq!(parsed["success"], true, "Insert should succeed: {}", result);
+    
+    // Verify chapter was created
+    let file_content = std::fs::read_to_string(req_dir.join("general.md")).unwrap();
+    assert!(file_content.contains("# New Chapter"), "New chapter should be created");
+    // Verify requirement was inserted in new chapter (index format depends on prefix calculation)
+    assert!(file_content.contains("New Requirement"), "Requirement should be in new chapter");
+    assert!(file_content.contains("New content"));
+    
+    // Verify the new chapter appears after existing chapter
+    let existing_pos = file_content.find("# Existing Chapter").unwrap();
+    let new_chapter_pos = file_content.find("# New Chapter").unwrap();
+    assert!(new_chapter_pos > existing_pos, "New chapter should be after existing chapter");
 }
 
 // =============================================================================
@@ -198,47 +364,5 @@ More content.
     );
 }
 
-/// Test: insert_requirement creates embedding comment (T.REQLIXI.6)
-/// Precondition: System has category file with chapter
-/// Action: Call reqlix_insert_requirement
-/// Result: Requirement includes embedding comment after heading
-/// Covers Requirement: T.REQLIXI.6, G.R.11
-#[test]
-fn test_insert_requirement_creates_embedding() {
-    let temp_dir = TempDir::new().unwrap();
-    let req_dir = create_requirements_dir(&temp_dir);
-    create_agents_file_in_req_dir(&req_dir, "# Instructions\n");
-    create_category_file_in_req_dir(&req_dir, "general", "# Chapter\n\n");
-
-    let params = reqlix::InsertRequirementParams {
-        project_root: temp_dir.path().to_string_lossy().to_string(),
-        operation_description: "Test insert".to_string(),
-        category: "general".to_string(),
-        chapter: "Chapter".to_string(),
-        title: "Test Requirement".to_string(),
-        text: "Test content".to_string(),
-    };
-    let result = RequirementsServer::handle_insert_requirement(params);
-    let parsed: serde_json::Value = serde_json::from_str(&result).unwrap();
-
-    assert_eq!(parsed["success"], true, "Insert should succeed: {}", result);
-
-    // Verify embedding comment exists in file
-    let file_content = std::fs::read_to_string(req_dir.join("general.md")).unwrap();
-    assert!(
-        file_content.contains("<!--embedding:"),
-        "Embedding comment should be present. Content:\n{}",
-        file_content
-    );
-    assert!(
-        file_content.contains("paraphrase-MiniLM-L3-v2"),
-        "Model name should be in embedding comment"
-    );
-    // Verify embedding comment is after heading and before text
-    let heading_pos = file_content.find("## G.C.1: Test Requirement");
-    let embedding_pos = file_content.find("<!--embedding:");
-    let text_pos = file_content.find("Test content");
-    assert!(heading_pos.is_some() && embedding_pos.is_some() && text_pos.is_some());
-    assert!(embedding_pos.unwrap() > heading_pos.unwrap());
-    assert!(text_pos.unwrap() > embedding_pos.unwrap());
-}
+// Note: Embedding creation tests are covered in embedding_integration_tests.rs
+// (test_insert_creates_embedding_after_heading, test_insert_embedding_before_text, etc.)

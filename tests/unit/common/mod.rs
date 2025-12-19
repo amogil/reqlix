@@ -18,6 +18,7 @@ pub fn create_category_file(temp_dir: &TempDir, category: &str, content: &str) {
 }
 
 /// Create AGENTS.md file in temp directory
+#[allow(dead_code)] // May be used in future tests
 pub fn create_agents_file(temp_dir: &TempDir, content: &str) {
     let file_path = temp_dir.path().join("AGENTS.md");
     fs::write(&file_path, content).unwrap();
