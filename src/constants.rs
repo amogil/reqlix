@@ -15,7 +15,7 @@ pub(crate) const MAX_KEYWORD_LEN: usize = 200;
 // T.R.6
 pub(crate) const PLACEHOLDER_CONTENT: &str = r#"# Instructions
 
-These instructions are mandatory for all code operations:
+These instructions are MANDATORY for all code operations. You MUST follow them strictly.
 
 # General
 
@@ -33,9 +33,11 @@ These instructions are mandatory for all code operations:
 1. Use tools to find requirements by index, category, chapter, or keywords.
 2. Make maximum effort to find all relevant requirements before making any code changes.
 
-# Making Code Changes
+# MANDATORY WORKFLOW FOR CODE CHANGES
 
-Follow this mandatory step-by-step checklist for all code modifications. Inform the user about each step and its results:
+**⚠️ CRITICAL: You MUST follow this 11-step workflow for ALL code modifications. Skipping steps is NOT allowed.**
+
+Before making any code changes, you MUST complete this entire workflow. Inform the user about each step and its results:
 
 1. **Find relevant requirements** - Use search tools to identify all requirements related to the code being modified.
 
@@ -58,5 +60,7 @@ Follow this mandatory step-by-step checklist for all code modifications. Inform 
 10. **Update tests** - If the project has tests, analyze them and fix or add tests that cover the modified requirements and code.
 
 11. **Confirm changes** - Obtain user confirmation that all changes are correct.
+
+**Remember: This workflow is MANDATORY. Do not skip any steps.**
 
 "#;

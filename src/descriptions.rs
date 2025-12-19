@@ -2,9 +2,9 @@
 
 pub(crate) const GET_INSTRUCTIONS_DESC: &str =
     "CALL THIS BEFORE ANY CODE OPERATION (reading or writing). \
-Returns instructions on how to work with requirements. \
+Returns instructions on how to work with requirements, including a MANDATORY workflow that MUST be followed for all code modifications. \
 This MCP server is the single source of truth for everything related to requirements. \
-Returns JSON with \"success\": true and \"data\": {\"content\": \"...\"} containing instructions. \
+Returns JSON with \"success\": true and \"data\": {\"content\": \"...\"} containing instructions with a mandatory workflow. \
 On error, returns JSON with \"success\": false and \"error\": \"error message\".";
 
 pub(crate) const GET_CATEGORIES_DESC: &str =
