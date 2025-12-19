@@ -495,3 +495,51 @@ fn test_search_all_empty_strings_filtered() {
     assert!(json["data"]["results"].as_array().unwrap().is_empty());
     assert!(json["data"]["keywords"].as_array().unwrap().is_empty());
 }
+
+/// Test: search_requirements ignores embedding comments (T.REQLIXS.7, G.R.14)
+/// Precondition: System has requirement with embedding comment
+/// Action: Search for keyword that appears in embedding comment
+/// Result: Requirement is NOT found (embedding comments are ignored)
+/// Covers Requirement: T.REQLIXS.7, G.R.14
+#[test]
+fn test_search_requirements_ignores_embedding_comments() {
+    let temp_dir = TempDir::new().unwrap();
+    let req_dir = create_requirements_dir(&temp_dir);
+    create_agents_file_in_req_dir(&req_dir, "# Instructions\n");
+    // Create requirement with embedding comment containing "paraphrase-MiniLM-L3-v2"
+    let content = r#"# Chapter
+
+## G.C.1: Test Requirement
+<!--embedding:paraphrase-MiniLM-L3-v2:dGVzdA==-->
+
+Actual content here.
+"#;
+    create_category_file_in_req_dir(&req_dir, "general", content);
+
+    // Search for "paraphrase-MiniLM-L3-v2" which appears in embedding comment
+    let params = SearchRequirementsParams {
+        project_root: temp_dir.path().to_string_lossy().to_string(),
+        operation_description: "Test search".to_string(),
+        keywords: KeywordsParam::Single("paraphrase-MiniLM-L3-v2".to_string()),
+    };
+    let result = RequirementsServer::handle_search_requirements(params);
+    let json: Value = parse_response(&result);
+
+    assert!(json["success"].as_bool().unwrap());
+    let results = json["data"]["results"].as_array().unwrap();
+    // Should NOT find requirement because embedding comment is ignored
+    assert_eq!(results.len(), 0, "Embedding comments should not be searched");
+
+    // But should find if searching for actual content
+    let params = SearchRequirementsParams {
+        project_root: temp_dir.path().to_string_lossy().to_string(),
+        operation_description: "Test search".to_string(),
+        keywords: KeywordsParam::Single("Actual content".to_string()),
+    };
+    let result = RequirementsServer::handle_search_requirements(params);
+    let json: Value = parse_response(&result);
+
+    assert!(json["success"].as_bool().unwrap());
+    let results = json["data"]["results"].as_array().unwrap();
+    assert_eq!(results.len(), 1, "Should find requirement by actual content");
+}

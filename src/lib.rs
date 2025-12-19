@@ -2,6 +2,7 @@
 
 mod constants;
 mod descriptions;
+pub mod embeddings;
 mod filesystem;
 mod handlers;
 mod helpers;
@@ -27,6 +28,7 @@ pub use helpers::*;
 pub use parsing::*;
 #[cfg(test)]
 pub use validation::*;
+pub use embeddings::*;
 
 // =============================================================================
 // Main server struct
@@ -183,6 +185,10 @@ impl RequirementsServer {
 
     pub fn handle_search_requirements(params: params::SearchRequirementsParams) -> String {
         handlers::handle_search_requirements(params)
+    }
+
+    pub fn handle_fuzzy_search_requirements(params: params::FuzzySearchRequirementsParams) -> String {
+        handlers::handle_fuzzy_search_requirements(params)
     }
 }
 

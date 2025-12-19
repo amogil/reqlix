@@ -354,8 +354,19 @@ pub fn find_requirement_streaming(
                 }
             }
 
-            // Extract text (skip the heading line)
-            let text_lines: Vec<&str> = lines[start_idx + 1..requirement_end_idx].to_vec();
+            // Extract text (skip the heading line and any embedding comments) (G.R.14)
+            let mut text_lines: Vec<&str> = Vec::new();
+            let mut skip_embedding_comments = true;
+            for line in &lines[start_idx + 1..requirement_end_idx] {
+                // Skip embedding comments immediately after heading (G.R.14)
+                if skip_embedding_comments {
+                    if crate::embeddings::is_embedding_comment(line) {
+                        continue; // Skip this embedding comment line
+                    }
+                    skip_embedding_comments = false; // Stop skipping after first non-embedding line
+                }
+                text_lines.push(line);
+            }
             let text = text_lines.join("\n").trim().to_string();
 
             return Ok(RequirementFull {

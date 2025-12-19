@@ -151,3 +151,22 @@ pub struct SearchRequirementsParams {
     /// Example: "auth" or ["auth", "user", "login"].
     pub keywords: KeywordsParam,
 }
+
+/// Parameters for reqlix_fuzzy_search_requirements (T.REQLIXF.2)
+#[derive(Debug, Serialize, Deserialize, JsonSchema)]
+#[derive(Clone)]
+pub struct FuzzySearchRequirementsParams {
+    /// Path to the project root directory.
+    pub project_root: String,
+    /// Brief description of the operation that LLM intends to perform.
+    pub operation_description: String,
+    /// Search query text (max 10000 characters). The tool will find requirements semantically similar to this query.
+    pub query: String,
+    /// Maximum number of results to return. Default: 10. Must be between 1 and 1000.
+    #[serde(default = "default_limit")]
+    pub limit: Option<u32>,
+}
+
+fn default_limit() -> Option<u32> {
+    Some(10)
+}

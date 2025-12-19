@@ -1,6 +1,7 @@
 // Tool handlers
 
 use crate::constants::MAX_BATCH_SIZE;
+use crate::embeddings::MODEL_NAME;
 use crate::filesystem::{
     find_or_create_requirements_file, get_requirements_dir, read_file_utf8, write_file_utf8,
 };
@@ -343,7 +344,15 @@ pub fn handle_insert_requirement(params: InsertRequirementParams) -> String {
             .map(|p| after_chapter + p)
             .unwrap_or(content.len());
 
-        let requirement_text = format!("\n## {}: {}\n\n{}\n", index, params.title, params.text);
+        // Calculate embedding (T.REQLIXI.6)
+        let embedding_text = format!("{}: {}", params.title, params.text);
+        let embedding = match crate::embeddings::calculate_embedding(&embedding_text) {
+            Ok(emb) => emb,
+            Err(e) => return json_error(&format!("Failed to calculate embedding: {}", e)),
+        };
+        let embedding_comment = format!("\n{}\n", crate::embeddings::format_embedding_comment(MODEL_NAME, &embedding));
+        
+        let requirement_text = format!("\n## {}: {}{}\n\n{}\n", index, params.title, embedding_comment, params.text);
         content.insert_str(insert_pos, &requirement_text);
     } else {
         return json_error("Chapter not found after creation");
@@ -444,11 +453,20 @@ fn update_single_requirement(
 
     if let Some(start) = heading_start {
         let end = req_end.unwrap_or(content.len());
+        
+        // Calculate new embedding (T.REQLIXU.7)
+        let embedding_text = format!("{}: {}", new_title, text);
+        let embedding = match crate::embeddings::calculate_embedding(&embedding_text) {
+            Ok(emb) => emb,
+            Err(e) => return Err(format!("Failed to calculate embedding: {}", e)),
+        };
+        let embedding_comment = format!("\n{}\n", crate::embeddings::format_embedding_comment(MODEL_NAME, &embedding));
 
         let mut new_content = String::new();
         new_content.push_str(&content[..start]);
         new_content.push_str(&new_heading);
-        new_content.push_str("\n\n");
+        new_content.push_str(&embedding_comment);
+        new_content.push('\n');
         new_content.push_str(text);
         // G.R.11: Ensure blank line before next heading
         let remaining = &content[end..];
@@ -813,6 +831,98 @@ pub fn handle_search_requirements(params: SearchRequirementsParams) -> String {
     // Note: Order is undefined (T.REQLIXS.3)
     json_success(json!({
         "keywords": keywords,
+        "results": results
+    }))
+}
+
+/// reqlix_fuzzy_search_requirements (T.REQLIXF)
+/// Searches for requirements using semantic similarity (fuzzy search) across all categories (T.REQLIXF.1, T.REQLIXF.3)
+pub fn handle_fuzzy_search_requirements(params: FuzzySearchRequirementsParams) -> String {
+    // T.REQLIXF.5: Validate parameters in order
+    if let Some(e) = validate_common_params(&params.project_root, &params.operation_description) {
+        return json_error(&e);
+    }
+    
+    // Validate query parameter (G.P.1, T.REQLIXF.5)
+    if params.query.len() > 10000 {
+        return json_error("query exceeds maximum limit of 10000 characters");
+    }
+    // Check if query is empty or only whitespace
+    if params.query.trim().is_empty() {
+        return json_error("query is required");
+    }
+    
+    // Validate limit parameter (G.P.1, T.REQLIXF.2)
+    let limit = params.limit.unwrap_or(10);
+    if !(1..=1000).contains(&limit) {
+        return json_error("limit must be between 1 and 1000");
+    }
+
+    // Get requirements directory
+    let requirements_dir = match get_requirements_dir(&params.project_root) {
+        Ok(d) => d,
+        Err(e) => return json_error(&e),
+    };
+
+    // T.REQLIXF.3 step 1: Collect all embeddings from requirement files
+    let embeddings_map = match crate::embeddings::collect_embeddings(&requirements_dir) {
+        Ok(map) => map,
+        Err(e) => return json_error(&format!("Failed to collect embeddings: {}", e)),
+    };
+
+    if embeddings_map.is_empty() {
+        return json_success(json!({
+            "query": params.query,
+            "results": []
+        }));
+    }
+
+    // T.REQLIXF.3 step 3: Calculate embedding for query
+    // Always use paraphrase-MiniLM-L3-v2, ignoring model names from embedding comments
+    let query_embedding = match crate::embeddings::calculate_embedding(&params.query) {
+        Ok(emb) => emb,
+        Err(e) => return json_error(&format!("Failed to calculate query embedding: {}", e)),
+    };
+
+    // T.REQLIXF.3 step 4: Calculate cosine similarity and collect results
+    let mut results_with_similarity: Vec<(RequirementFull, f32)> = Vec::new();
+
+    for (index, req_embedding) in &embeddings_map {
+        let similarity = crate::embeddings::cosine_similarity(&query_embedding, req_embedding);
+        
+        // Get full requirement
+        match get_single_requirement(&params.project_root, index) {
+            Ok(requirement) => {
+                results_with_similarity.push((requirement, similarity));
+            }
+            Err(_) => {
+                // Skip requirements that can't be found
+                continue;
+            }
+        }
+    }
+
+    // T.REQLIXF.3 step 5: Sort by similarity (highest first)
+    results_with_similarity.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+
+    // T.REQLIXF.3 step 6, T.REQLIXF.4: Format results with similarity scores and apply limit
+    let results: Vec<serde_json::Value> = results_with_similarity
+        .into_iter()
+        .take(limit as usize)
+        .map(|(req, similarity)| {
+            json!({
+                "index": req.index,
+                "title": req.title,
+                "text": req.text,
+                "category": req.category,
+                "chapter": req.chapter,
+                "similarity": similarity
+            })
+        })
+        .collect();
+
+    json_success(json!({
+        "query": params.query,
         "results": results
     }))
 }

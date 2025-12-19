@@ -197,3 +197,48 @@ More content.
         file_content
     );
 }
+
+/// Test: insert_requirement creates embedding comment (T.REQLIXI.6)
+/// Precondition: System has category file with chapter
+/// Action: Call reqlix_insert_requirement
+/// Result: Requirement includes embedding comment after heading
+/// Covers Requirement: T.REQLIXI.6, G.R.13
+#[test]
+fn test_insert_requirement_creates_embedding() {
+    let temp_dir = TempDir::new().unwrap();
+    let req_dir = create_requirements_dir(&temp_dir);
+    create_agents_file_in_req_dir(&req_dir, "# Instructions\n");
+    create_category_file_in_req_dir(&req_dir, "general", "# Chapter\n\n");
+
+    let params = reqlix::InsertRequirementParams {
+        project_root: temp_dir.path().to_string_lossy().to_string(),
+        operation_description: "Test insert".to_string(),
+        category: "general".to_string(),
+        chapter: "Chapter".to_string(),
+        title: "Test Requirement".to_string(),
+        text: "Test content".to_string(),
+    };
+    let result = RequirementsServer::handle_insert_requirement(params);
+    let parsed: serde_json::Value = serde_json::from_str(&result).unwrap();
+
+    assert_eq!(parsed["success"], true, "Insert should succeed: {}", result);
+
+    // Verify embedding comment exists in file
+    let file_content = std::fs::read_to_string(req_dir.join("general.md")).unwrap();
+    assert!(
+        file_content.contains("<!--embedding:"),
+        "Embedding comment should be present. Content:\n{}",
+        file_content
+    );
+    assert!(
+        file_content.contains("paraphrase-MiniLM-L3-v2"),
+        "Model name should be in embedding comment"
+    );
+    // Verify embedding comment is after heading and before text
+    let heading_pos = file_content.find("## G.C.1: Test Requirement");
+    let embedding_pos = file_content.find("<!--embedding:");
+    let text_pos = file_content.find("Test content");
+    assert!(heading_pos.is_some() && embedding_pos.is_some() && text_pos.is_some());
+    assert!(embedding_pos.unwrap() > heading_pos.unwrap());
+    assert!(text_pos.unwrap() > embedding_pos.unwrap());
+}

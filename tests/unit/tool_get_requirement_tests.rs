@@ -114,6 +114,44 @@ Content of second chapter requirement.
     );
 }
 
+/// Test: get_requirement ignores embedding comments in requirement text (G.R.14)
+/// Precondition: System has requirement with embedding comment
+/// Action: Call get_requirement
+/// Result: Requirement text does NOT include embedding comment
+/// Covers Requirement: G.R.14, T.REQLIXGETREQUIREMENT.4
+#[test]
+fn test_get_requirement_ignores_embedding_comment() {
+    let temp_dir = TempDir::new().unwrap();
+    let content = r#"# Test Chapter
+
+## G.T.1: Test Requirement
+<!--embedding:paraphrase-MiniLM-L3-v2:dGVzdA==-->
+
+This is the requirement text.
+"#;
+    create_category_file(&temp_dir, "general", content);
+
+    let requirement = RequirementsServer::find_requirement_streaming(
+        &temp_dir.path().join("general.md"),
+        "general",
+        "G.T.1",
+    )
+    .unwrap();
+
+    assert_eq!(requirement.index, "G.T.1");
+    assert_eq!(requirement.title, "Test Requirement");
+    assert!(requirement.text.contains("This is the requirement text"));
+    // Embedding comment should NOT be in text (G.R.14)
+    assert!(
+        !requirement.text.contains("<!--embedding:"),
+        "Embedding comment should not be included in requirement text"
+    );
+    assert!(
+        !requirement.text.contains("paraphrase-MiniLM-L3-v2"),
+        "Model name from embedding comment should not be in text"
+    );
+}
+
 // =============================================================================
 // Batch operation tests (T.REQLIXGETREQUIREMENT.3, T.REQLIXGETREQUIREMENT.4, T.REQLIXGETREQUIREMENT.5, G.P.4)
 // =============================================================================

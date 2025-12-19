@@ -93,6 +93,10 @@ impl ServerHandler for crate::RequirementsServer {
                     "reqlix_search_requirements",
                     SEARCH_REQUIREMENTS_DESC,
                 ),
+                build_tool_schema::<FuzzySearchRequirementsParams>(
+                    "reqlix_fuzzy_search_requirements",
+                    FUZZY_SEARCH_REQUIREMENTS_DESC,
+                ),
             ];
 
             Ok(ListToolsResult {
@@ -194,6 +198,15 @@ impl ServerHandler for crate::RequirementsServer {
                                 rmcp::model::ErrorData::invalid_params(e.to_string(), None)
                             })?;
                     handle_search_requirements(params)
+                }
+                "reqlix_fuzzy_search_requirements" => {
+                    // T.REQLIXF.2: Parse parameters
+                    let params: FuzzySearchRequirementsParams =
+                        serde_json::from_value(request.arguments.unwrap_or_default().into())
+                            .map_err(|e| {
+                                rmcp::model::ErrorData::invalid_params(e.to_string(), None)
+                            })?;
+                    handle_fuzzy_search_requirements(params)
                 }
                 _ => {
                     return Err(rmcp::model::ErrorData::invalid_params(

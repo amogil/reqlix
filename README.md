@@ -61,7 +61,7 @@ The server provides a set of tools for:
 - **Creating**: Adding new requirements with automatic index generation
 - **Updating**: Modifying existing requirements (batch updates supported)
 - **Deleting**: Removing requirements with automatic cleanup of empty chapters
-- **Searching**: Finding requirements by keywords
+- **Searching**: Finding requirements by keywords or semantic similarity (fuzzy search)
 
 ### ⚙️ Automation and Validation
 
@@ -330,6 +330,17 @@ You are granted the right to use, modify, and run this Software for any purpose,
 Until the Change Date, any use of the Software outside the Additional Use Grant requires a separate commercial license from the Licensor. After the Change Date, the Software will be made available under the Change License.
 
 For full license terms, see the [LICENSE](LICENSE) file.
+
+### Third-Party Licenses
+
+This product includes the **paraphrase-MiniLM-L3-v2** embedding model from sentence-transformers, which is licensed under the **Apache License 2.0**.
+
+- **Model**: sentence-transformers/paraphrase-MiniLM-L3-v2
+- **Source**: https://huggingface.co/sentence-transformers/paraphrase-MiniLM-L3-v2
+- **License**: Apache License 2.0
+- **Copyright**: Copyright (c) 2022 sentence-transformers
+
+The model files are embedded in the binary executable and loaded lazily on first use. The model is loaded once per application run and reused for all subsequent embedding calculations. For the full Apache License 2.0 text and attribution notices, see [models/LICENSE](models/LICENSE) and [models/NOTICE](models/NOTICE).
 
 ## 🤝 Contributing
 

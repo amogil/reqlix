@@ -799,13 +799,39 @@ fn test_get_search_paths_order() {
 /// Covers Requirement: T.R.4
 #[test]
 fn test_get_create_path_default() {
+    // Save original value if exists
+    let original = std::env::var("REQLIX_REQ_REL_PATH").ok();
+
+    // Remove variable immediately before use to minimize race window with parallel tests
     std::env::remove_var("REQLIX_REQ_REL_PATH");
 
     let result = RequirementsServer::get_create_path("/test/project");
-    assert_eq!(
-        result,
-        PathBuf::from("/test/project/docs/development/requirements/AGENTS.md")
-    );
+
+    // Verify result matches expected default path
+    // If result doesn't match, it means another test set the env var between remove and call
+    let expected_path = PathBuf::from("/test/project/docs/development/requirements/AGENTS.md");
+    if result != expected_path {
+        // Retry: remove again and call function
+        std::env::remove_var("REQLIX_REQ_REL_PATH");
+        let retry_result = RequirementsServer::get_create_path("/test/project");
+        assert_eq!(
+            retry_result, expected_path,
+            "Expected default path, got: {:?} (retry: {:?})",
+            result, retry_result
+        );
+    } else {
+        assert_eq!(
+            result, expected_path,
+            "Expected default path, got: {:?}",
+            result
+        );
+    }
+
+    // Restore original value
+    match original {
+        Some(val) => std::env::set_var("REQLIX_REQ_REL_PATH", val),
+        None => std::env::remove_var("REQLIX_REQ_REL_PATH"),
+    }
 }
 
 /// Test: get_create_path with custom environment variable
@@ -857,13 +883,39 @@ fn test_get_create_path_custom_env() {
 /// Covers Requirement: T.R.4
 #[test]
 fn test_get_create_path_empty_root() {
+    // Save original value if exists
+    let original = std::env::var("REQLIX_REQ_REL_PATH").ok();
+
+    // Remove variable immediately before use to minimize race window with parallel tests
     std::env::remove_var("REQLIX_REQ_REL_PATH");
 
     let result = RequirementsServer::get_create_path("");
-    assert_eq!(
-        result,
-        PathBuf::from("docs/development/requirements/AGENTS.md")
-    );
+
+    // Verify result matches expected default path
+    // If result doesn't match, it means another test set the env var between remove and call
+    let expected_path = PathBuf::from("docs/development/requirements/AGENTS.md");
+    if result != expected_path {
+        // Retry: remove again and call function
+        std::env::remove_var("REQLIX_REQ_REL_PATH");
+        let retry_result = RequirementsServer::get_create_path("");
+        assert_eq!(
+            retry_result, expected_path,
+            "Expected default path with empty root, got: {:?} (retry: {:?})",
+            result, retry_result
+        );
+    } else {
+        assert_eq!(
+            result, expected_path,
+            "Expected default path with empty root, got: {:?}",
+            result
+        );
+    }
+
+    // Restore original value
+    match original {
+        Some(val) => std::env::set_var("REQLIX_REQ_REL_PATH", val),
+        None => std::env::remove_var("REQLIX_REQ_REL_PATH"),
+    }
 }
 
 /// Test: get_create_path with relative project root
@@ -883,13 +935,14 @@ fn test_get_create_path_relative_root() {
 
     // Verify result matches expected default path (without custom env var)
     // If result doesn't match, it means another test set the env var between removal and call
-    if result != PathBuf::from("project/docs/development/requirements/AGENTS.md") {
+    let expected = PathBuf::from("project/docs/development/requirements/AGENTS.md");
+    if result != expected {
         // Retry: remove again and call function
         std::env::remove_var("REQLIX_REQ_REL_PATH");
         let retry_result = RequirementsServer::get_create_path("project");
         assert_eq!(
             retry_result,
-            PathBuf::from("project/docs/development/requirements/AGENTS.md"),
+            expected,
             "Expected default path without REQLIX_REQ_REL_PATH, got: {:?} (retry: {:?})",
             result,
             retry_result
@@ -920,10 +973,30 @@ fn test_get_create_path_nested_custom() {
     // Save original value if exists
     let original = std::env::var("REQLIX_REQ_REL_PATH").ok();
 
+    // Set variable immediately before use to minimize race window with parallel tests
     std::env::set_var("REQLIX_REQ_REL_PATH", "a/b/c");
 
     let result = RequirementsServer::get_create_path("/root");
-    assert_eq!(result, PathBuf::from("/root/a/b/c/AGENTS.md"));
+
+    // Verify result matches expected nested path
+    // If result doesn't match, it means another test removed the env var between set and call
+    let expected_path = PathBuf::from("/root/a/b/c/AGENTS.md");
+    if result != expected_path {
+        // Retry: set again and call function
+        std::env::set_var("REQLIX_REQ_REL_PATH", "a/b/c");
+        let retry_result = RequirementsServer::get_create_path("/root");
+        assert_eq!(
+            retry_result, expected_path,
+            "Expected nested path with REQLIX_REQ_REL_PATH='a/b/c', got: {:?} (retry: {:?})",
+            result, retry_result
+        );
+    } else {
+        assert_eq!(
+            result, expected_path,
+            "Expected nested path with REQLIX_REQ_REL_PATH='a/b/c', got: {:?}",
+            result
+        );
+    }
 
     // Restore original value
     match original {

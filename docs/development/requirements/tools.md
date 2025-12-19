@@ -1,7 +1,3 @@
-
-
-
-
 # reqlix_get_instructions
 
 ## T.R.1: Description
@@ -445,6 +441,16 @@ error as specified in [G.P.2](#gp2-constraint-violation-error).
 
 This validation must occur before any file system operations or requirement processing.
 
+## T.REQLIXI.6: Embedding calculation and storage
+
+When inserting a new requirement, the tool must calculate an embedding vector from the requirement text (title + text combined) using the paraphrase-MiniLM-L3-v2 model and store it as an embedding comment immediately after the requirement heading according to G.R.13.
+
+The embedding must be calculated from the combined text: "{title}: {text}" (title, colon, space, then text).
+
+The embedding comment must be inserted on a separate line right after the requirement heading line, before the requirement text.
+
+If embedding calculation fails, the tool must return an error and abort the insertion operation.
+
 # reqlix_update_requirement
 
 ## T.REQLIXU.1: Description
@@ -585,6 +591,18 @@ This validation must occur before any file system operations or requirement proc
 When `items` parameter is provided, the maximum number of items allowed is **100**.
 
 If more than 100 items are provided, return error: "Batch update exceeds maximum limit of 100 items".
+
+## T.REQLIXU.7: Embedding recalculation and update
+
+When updating a requirement, the tool must recalculate the embedding vector from the updated requirement text (new title + new text combined) using the paraphrase-MiniLM-L3-v2 model and update the embedding comment according to G.R.13.
+
+The embedding must be recalculated whenever the requirement is updated, even if only the title changes and the text remains unchanged.
+
+If an embedding comment already exists, it must be replaced with the new embedding. If no embedding comment exists, one must be added.
+
+The embedding must be calculated from the combined text: "{title}: {text}" (title, colon, space, then text).
+
+If embedding calculation fails, the tool must return an error and abort the update operation.
 
 # reqlix_delete_requirement
 
@@ -831,6 +849,15 @@ Validation order:
 
 This validation must occur before any file system operations or requirement processing.
 
+## T.REQLIXS.7: Ignoring embedding comments in keyword search
+
+The keyword search tool must ignore embedding comments when searching for keywords in requirement content. Embedding comments (format defined in G.R.13) must not be included in the searchable text.
+
+When checking if a requirement matches keywords:
+- Extract requirement text according to G.R.14 (which excludes embedding comments)
+- Search only in the title and text fields, excluding any embedding comments
+- Embedding comments must not be matched by keyword search
+
 # reqlix_get_version
 
 ## T.REQLIXGETV.1: Description
@@ -865,3 +892,115 @@ This tool always succeeds and does not return errors.
 The tool must return the version string from `Cargo.toml` using the `env!("CARGO_PKG_VERSION")` macro at compile time.
 
 This tool has no parameters and does not require validation.
+
+# reqlix_fuzzy_search_requirements
+
+## T.REQLIXF.1: Description
+
+Description (shown to LLM in tool list):
+
+```
+Searches for requirements using semantic similarity (fuzzy search) across all categories.
+Uses embedding vectors to find requirements semantically similar to the query text.
+Returns requirements ordered by similarity score (most similar first).
+Accepts a query string (max 10000 characters) and optional limit parameter (default: 10, max: 1000).
+
+Returns JSON with "success": true and "data": {"query": "...", "results": [...]}.
+Each result includes a similarity score (0.0 to 1.0, higher is more similar).
+On error, returns JSON with "success": false and "error": "error message".
+```
+
+## T.REQLIXF.2: Parameters
+
+Parameters:
+
+- `project_root` (string, required) - Path to the project root directory.
+- `operation_description` (string, required) - Brief description of the operation that LLM intends to perform.
+- `query` (string, required) - Search query text (max 10000 characters). The tool will find requirements semantically similar to this query.
+- `limit` (integer, optional) - Maximum number of results to return. Default: 10. Must be between 1 and 1000.
+
+## T.REQLIXF.3: Search algorithm
+
+Search algorithm:
+
+1. Collect all embedding comments from all requirement files efficiently without parsing markdown structure. Use regex or string matching to find lines matching the pattern `<!--embedding:<model_name>:<base64_vector>-->`.
+
+2. For each embedding comment found:
+   - Extract the base64-encoded vector (ignore the model name from the comment, as per G.R.13)
+   - Decode the vector
+   - If decoding fails (invalid base64, wrong length, etc.), silently ignore the error and treat the requirement as if it has no embedding (skip it, do not include in search results)
+   - If decoding succeeds, store mapping: vector -> requirement index (extracted from the requirement heading immediately preceding the embedding comment)
+   
+   **Note:** Requirements without embedding comments are excluded from search results. Requirements with invalid or unparseable embedding vectors are also excluded (parsing errors are silently ignored).
+
+3. Calculate embedding vector for the query text using the paraphrase-MiniLM-L3-v2 model. The model name stored in embedding comments is ignored - always use paraphrase-MiniLM-L3-v2 for query embedding calculation (see G.R.13).
+
+4. Calculate cosine similarity between query embedding and each requirement embedding.
+
+5. Sort requirements by similarity score (highest first).
+
+6. Apply limit parameter (default: 10, max: 1000) to restrict the number of results returned.
+
+7. Return matching requirements with their similarity scores (up to the specified limit).
+
+**Note:** The model must be embedded in the binary and loaded lazily on first use, then reused for all subsequent operations (see G.R.15).
+
+## T.REQLIXF.4: Response format
+
+**Success response:**
+
+```json
+{
+  "success": true,
+  "data": {
+    "query": "user authentication",
+    "results": [
+      {
+        "index": "G.G.1",
+        "title": "User authentication",
+        "text": "All users must authenticate before accessing the system.",
+        "category": "general",
+        "chapter": "Security",
+        "similarity": 0.95
+      },
+      {
+        "index": "G.G.2",
+        "title": "Auth token format",
+        "text": "Authentication tokens must be JWT format.",
+        "category": "general",
+        "chapter": "Security",
+        "similarity": 0.87
+      }
+    ]
+  }
+}
+```
+
+**No matches found (still success, empty results):**
+
+```json
+{
+  "success": true,
+  "data": {
+    "query": "nonexistent concept",
+    "results": []
+  }
+}
+```
+
+**Error response** (validation error, file system error, embedding model error): Use error format from C.C.6.
+
+Each result includes a `similarity` field (float, 0.0 to 1.0) indicating how similar the requirement is to the query. Higher values indicate greater similarity. Results are ordered by similarity (highest first).
+
+## T.REQLIXF.5: Parameter validation
+
+Before executing the search algorithm, the tool must validate all input parameters according to the constraints defined in G.P.1. If any parameter violates these constraints, the tool must return an error as specified in G.P.2.
+
+Validation order:
+
+1. Validate `project_root` (required, max 1000 characters)
+2. Validate `operation_description` (required, max 10000 characters)
+3. Validate `query` (required, max 10000 characters)
+4. Validate `limit` (optional, default: 10, must be between 1 and 1000)
+
+This validation must occur before any file system operations or requirement processing.

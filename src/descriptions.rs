@@ -73,3 +73,13 @@ Search is case-insensitive. \
 Returns JSON with \"success\": true and \"data\": {\"keywords\": [...], \"results\": [...]}. \
 If keywords array is empty, returns success with empty results array. \
 On error, returns JSON with \"success\": false and \"error\": \"error message\".";
+
+// T.REQLIXF.1
+pub(crate) const FUZZY_SEARCH_REQUIREMENTS_DESC: &str =
+    "Searches for requirements using semantic similarity (fuzzy search) across all categories. \
+Uses embedding vectors to find requirements semantically similar to the query text. \
+Returns requirements ordered by similarity score (most similar first). \
+Accepts a query string (max 10000 characters) and optional limit parameter (default: 10, max: 1000). \
+Returns JSON with \"success\": true and \"data\": {\"query\": \"...\", \"results\": [...]}. \
+Each result includes a similarity score (0.0 to 1.0, higher is more similar). \
+On error, returns JSON with \"success\": false and \"error\": \"error message\".";

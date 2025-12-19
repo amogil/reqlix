@@ -345,3 +345,100 @@ fn test_single_update_requires_text() {
     assert_eq!(parsed["success"], false);
     assert!(parsed["error"].as_str().unwrap().contains("text"));
 }
+
+/// Test: update_requirement recalculates embedding even when only title changes (T.REQLIXU.7)
+/// Precondition: System has requirement with embedding
+/// Action: Update requirement with new title only
+/// Result: Embedding comment is updated
+/// Covers Requirement: T.REQLIXU.7
+#[test]
+fn test_update_requirement_recalculates_embedding_on_title_change() {
+    let temp_dir = TempDir::new().unwrap();
+    let req_dir = create_requirements_dir(&temp_dir);
+    create_agents_file_in_req_dir(&req_dir, "# Instructions\n");
+    let content = r#"# Chapter
+
+## G.C.1: Old Title
+<!--embedding:paraphrase-MiniLM-L3-v2:dGVzdA==-->
+
+Same content.
+"#;
+    create_category_file_in_req_dir(&req_dir, "general", content);
+
+    // Get original embedding
+    let file_before = std::fs::read_to_string(req_dir.join("general.md")).unwrap();
+    let embedding_before = file_before
+        .lines()
+        .find(|l| l.contains("<!--embedding:"))
+        .unwrap()
+        .to_string();
+
+    let params = reqlix::UpdateRequirementParams {
+        project_root: temp_dir.path().to_string_lossy().to_string(),
+        operation_description: "Test update".to_string(),
+        index: Some("G.C.1".to_string()),
+        text: Some("Same content.".to_string()), // Same text
+        title: Some("New Title".to_string()),     // Only title changes
+        items: None,
+    };
+    let result = RequirementsServer::handle_update_requirement(params);
+    let parsed: serde_json::Value = serde_json::from_str(&result).unwrap();
+
+    assert_eq!(parsed["success"], true);
+
+    // Verify embedding was recalculated (should be different)
+    let file_after = std::fs::read_to_string(req_dir.join("general.md")).unwrap();
+    let embedding_after = file_after
+        .lines()
+        .find(|l| l.contains("<!--embedding:"))
+        .unwrap()
+        .to_string();
+
+    // Embedding should be recalculated (will be different because title changed)
+    assert_ne!(embedding_before, embedding_after, "Embedding should be recalculated when title changes");
+    assert!(file_after.contains("New Title"), "Title should be updated");
+}
+
+/// Test: update_requirement updates embedding comment (T.REQLIXU.7)
+/// Precondition: System has requirement with embedding
+/// Action: Update requirement
+/// Result: Embedding comment is replaced
+/// Covers Requirement: T.REQLIXU.7
+#[test]
+fn test_update_requirement_updates_embedding() {
+    let temp_dir = TempDir::new().unwrap();
+    let req_dir = create_requirements_dir(&temp_dir);
+    create_agents_file_in_req_dir(&req_dir, "# Instructions\n");
+    let content = r#"# Chapter
+
+## G.C.1: Test
+<!--embedding:paraphrase-MiniLM-L3-v2:dGVzdA==-->
+
+Old content.
+"#;
+    create_category_file_in_req_dir(&req_dir, "general", content);
+
+    let params = reqlix::UpdateRequirementParams {
+        project_root: temp_dir.path().to_string_lossy().to_string(),
+        operation_description: "Test update".to_string(),
+        index: Some("G.C.1".to_string()),
+        text: Some("New content.".to_string()),
+        title: None,
+        items: None,
+    };
+    let result = RequirementsServer::handle_update_requirement(params);
+    let parsed: serde_json::Value = serde_json::from_str(&result).unwrap();
+
+    assert_eq!(parsed["success"], true);
+
+    // Verify embedding comment exists and is updated
+    let file_content = std::fs::read_to_string(req_dir.join("general.md")).unwrap();
+    assert!(
+        file_content.contains("<!--embedding:"),
+        "Embedding comment should be present"
+    );
+    assert!(
+        file_content.contains("New content"),
+        "Text should be updated"
+    );
+}

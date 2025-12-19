@@ -1,0 +1,12 @@
+This product includes the paraphrase-MiniLM-L3-v2 embedding model from sentence-transformers,
+which is licensed under the Apache License 2.0.
+
+Model: sentence-transformers/paraphrase-MiniLM-L3-v2
+Source: https://huggingface.co/sentence-transformers/paraphrase-MiniLM-L3-v2
+License: Apache License 2.0
+Copyright: Copyright (c) 2022 sentence-transformers
+
+The model files (model.safetensors, tokenizer.json, config.json) are embedded
+in the binary executable as per G.R.15 requirements.
+
+For the full Apache License 2.0 text, see LICENSE file in this directory.

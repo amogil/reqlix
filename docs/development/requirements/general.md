@@ -29,6 +29,8 @@ All tool parameters must satisfy the following constraints:
 - `keywords` - required for `reqlix_search_requirements`, max 200 characters per keyword. Can be:
     - Single string (e.g., "auth")
     - Array of strings (max 100 elements)
+- `query` - required for `reqlix_fuzzy_search_requirements`, max 10000 characters
+- `limit` - optional for `reqlix_fuzzy_search_requirements`, integer between 1 and 1000, default: 10
 
 ## G.P.2: Constraint violation error
 
@@ -214,14 +216,42 @@ parsing, not substring search.
 This prevents bugs where chapter "Foo" is incorrectly matched when searching in a file containing both "# Foobar" and "#
 Foo".
 
+## G.R.13: Embedding storage format
 
+Requirements may contain embedding vectors for fuzzy search functionality. Embeddings are stored as HTML comments immediately after the requirement heading (level-2 heading). Format: `<!--embedding:<model_name>:<base64_encoded_vector>-->`
 
+The embedding comment must be placed on a separate line right after the requirement heading line. Example:
 
+```markdown
+## G.G.1: Requirement title
+<!--embedding:paraphrase-MiniLM-L3-v2:<base64_vector>-->
 
+Requirement text content.
+```
 
+- The model name is stored in the comment for informational purposes, but is always ignored during fuzzy search. All embeddings are treated as if they were generated with paraphrase-MiniLM-L3-v2, regardless of the model name stored in the comment.
+- The vector is base64-encoded
+- This comment must not be included in requirement text when tools return requirement content
+- This comment must not be searched when performing keyword-based search
+- Only tools that insert or update requirements may modify this comment
+- Only the fuzzy search tool may read and use this comment for similarity search
 
+## G.R.14: Ignoring embedding comments in requirement content
 
+All tools that return requirement content (title and/or text) must ignore embedding comments when extracting requirement text. The embedding comment format is defined in G.R.13.
 
+When parsing requirements:
+- Tools must skip lines matching the embedding comment pattern `<!--embedding:...-->`
+- These lines must not appear in the `text` field of returned requirement objects
+- These lines must not be included when calculating requirement boundaries
+- The requirement text starts after the heading and any embedding comments, and ends at the next requirement heading or chapter heading
 
+This ensures that embedding metadata remains invisible to clients and does not interfere with requirement content display.
 
+## G.R.15: Embedding model requirements
 
+The embedding model (paraphrase-MiniLM-L3-v2) must be embedded in the binary executable. The model files must be included at compile time using Rust's `include_bytes!` or `include_str!` macros, or similar mechanisms.
+
+At runtime, the model must be loaded from the embedded data, not from external files. This ensures the MCP server is self-contained and does not require external model files.
+
+The model must be loaded lazily (on first use) and reused for all subsequent embedding calculations. After the first load, the same model instance must be reused for the entire application lifetime. The model must be loaded only once per application run.
