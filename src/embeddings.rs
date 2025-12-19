@@ -48,7 +48,7 @@ fn init_model() -> Result<ModelComponents> {
     std::fs::write(temp_file.path(), TOKENIZER_JSON)
         .context("Failed to write tokenizer JSON to temp file")?;
     let tokenizer = Tokenizer::from_file(temp_file.path())
-        .map_err(|e| anyhow::anyhow!("Failed to load embedded tokenizer: {}", e))?;
+        .map_err(|e| anyhow::anyhow!("Failed to load embedded tokenizer: {e}"))?;
     
     // Parse config from embedded JSON string
     let config: Config = serde_json::from_str(CONFIG_JSON)
@@ -87,7 +87,7 @@ pub fn calculate_embedding(text: &str) -> Result<Vec<f32>> {
     // Tokenize input
     let encoding = components.tokenizer
         .encode(text, true)
-        .map_err(|e| anyhow::anyhow!("Tokenization failed: {}", e))?;
+        .map_err(|e| anyhow::anyhow!("Tokenization failed: {e}"))?;
     
     let token_ids: Vec<u32> = encoding.get_ids().to_vec();
     let token_ids_tensor = Tensor::new(&token_ids[..], &components.device)
@@ -111,7 +111,7 @@ pub fn calculate_embedding(text: &str) -> Result<Vec<f32>> {
         .context("Failed to sum embeddings")?;
     // Divide by sequence length to get mean - use affine method for scalar division
     let seq_len_f32 = seq_len as f32;
-    let sentence_embedding = sum_embeddings.affine(1.0 / seq_len_f32 as f64, 0.0)
+    let sentence_embedding = sum_embeddings.affine(1.0 / f64::from(seq_len_f32), 0.0)
         .context("Failed to normalize embeddings")?;
     
     // Extract as Vec<f32> - sentence_embedding is now (batch_size, hidden_size)
@@ -161,7 +161,7 @@ pub fn decode_embedding(encoded: &str) -> Result<Vec<f32>> {
 /// Format embedding comment (G.R.11)
 pub fn format_embedding_comment(model_name: &str, embedding: &[f32]) -> String {
     let encoded = encode_embedding(embedding);
-    format!("<!--embedding:{}:{}-->", model_name, encoded)
+    format!("<!--embedding:{model_name}:{encoded}-->")
 }
 
 /// Parse embedding comment (T.REQLIXF.3)

@@ -891,15 +891,10 @@ pub fn handle_fuzzy_search_requirements(params: FuzzySearchRequirementsParams) -
         let similarity = crate::embeddings::cosine_similarity(&query_embedding, req_embedding);
         
         // Get full requirement
-        match get_single_requirement(&params.project_root, index) {
-            Ok(requirement) => {
-                results_with_similarity.push((requirement, similarity));
-            }
-            Err(_) => {
-                // Skip requirements that can't be found
-                continue;
-            }
+        if let Ok(requirement) = get_single_requirement(&params.project_root, index) {
+            results_with_similarity.push((requirement, similarity));
         }
+        // Skip requirements that can't be found
     }
 
     // T.REQLIXF.3 step 5: Sort by similarity (highest first)

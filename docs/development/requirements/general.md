@@ -8,6 +8,27 @@ All requirements must be written in English.
 
 Requirement text must be formatted so that each line does not exceed 120 characters.
 
+## G.G.3: Code architecture separation
+
+All business logic must be implemented in the `lib.rs` module and its submodules. The `main.rs` file must contain only entry point code and MCP server wrapper implementations that delegate to functions in `lib.rs`. 
+
+The `main.rs` file must not contain any business logic implementations such as:
+- Requirement parsing or validation logic
+- File system operations
+- Data transformation logic
+- Tool handler implementations
+
+All such logic must be implemented in appropriate modules within `lib.rs` (e.g., `handlers`, `parsing`, `validation`, `filesystem`). The `main.rs` file should only:
+- Initialize the MCP server
+- Route tool calls to handlers in `lib.rs`
+- Handle MCP protocol-specific concerns
+
+This separation ensures that:
+- All logic is testable through the library API
+- Tests cover the same code paths used in production
+- Code duplication between library and server is prevented
+- The library can be reused independently of the MCP server implementation
+
 # Parameter Constraints
 
 ## G.P.1: Parameter constraints

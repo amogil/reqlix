@@ -46,6 +46,9 @@ mod tool_fuzzy_search_requirements_tests;
 #[path = "unit/tool_get_version_tests.rs"]
 mod tool_get_version_tests;
 
+#[path = "unit/tool_mcp_search_tests.rs"]
+mod tool_mcp_search_tests;
+
 // Embedding and fuzzy search tests
 #[path = "unit/embeddings_tests.rs"]
 mod embeddings_tests;
