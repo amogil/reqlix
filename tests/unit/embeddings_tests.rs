@@ -1,8 +1,8 @@
-// Tests for Embeddings functionality (G.R.13, G.R.14, G.R.15)
+// Tests for Embeddings functionality (G.R.11, G.R.12, G.R.13)
 // Covers embedding encoding/decoding, comment parsing, similarity calculation
 
 // =============================================================================
-// Tests for embedding encoding/decoding (G.R.13)
+// Tests for embedding encoding/decoding (G.R.11)
 // =============================================================================
 
 #[test]
@@ -91,7 +91,7 @@ fn test_encode_embedding_extreme_values() {
 }
 
 // =============================================================================
-// Tests for embedding comment parsing (G.R.13, T.REQLIXF.3)
+// Tests for embedding comment parsing (G.R.11, T.REQLIXF.3)
 // =============================================================================
 
 #[test]
@@ -257,7 +257,7 @@ fn test_cosine_similarity_single_element() {
 }
 
 // =============================================================================
-// Tests for format_embedding_comment (G.R.13)
+// Tests for format_embedding_comment (G.R.11)
 // =============================================================================
 
 #[test]

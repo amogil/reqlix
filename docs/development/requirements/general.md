@@ -139,13 +139,12 @@ When parsing requirements from markdown files, tools must correctly identify req
 A requirement starts with a level-2 ATX-style heading (see [G.R.3](#gr3-requirement-definition)). The requirement body
 is the content of this markdown section. The markdown parser automatically determines section boundaries (section ends
 at the next heading of the same or higher level, or at end of file).
-
-## G.R.8: File encoding
+## G.R.6: File encoding
 
 All requirement files must be encoded in UTF-8. All tools must read and write files using UTF-8 encoding. If a file
 cannot be read as UTF-8, the tool must return an error indicating encoding issues.
 
-## G.R.9: File system error handling
+## G.R.7: File system error handling
 
 All tools must handle file system errors gracefully. Common errors include:
 
@@ -158,7 +157,7 @@ All tools must handle file system errors gracefully. Common errors include:
 
 All file system errors must be returned in the JSON error format specified in [C.C.6](#cc6-error-response-format).
 
-## G.R.10: Empty file handling
+## G.R.8: Empty file handling
 
 Empty files must be handled as follows:
 
@@ -175,7 +174,7 @@ Empty files must be handled as follows:
 - **File creation**: When creating a new category file, it must be created as an empty file (or with only the initial
   chapter heading if a chapter is being added).
 
-## G.R.11: Blank line before headings
+## G.R.9: Blank line before headings
 
 When writing requirements to files, there must always be a blank line between the requirement text and the next
 heading (level-1 or level-2).
@@ -198,7 +197,7 @@ Requirement text content.
 
 This ensures proper markdown rendering and readability.
 
-## G.R.12: Exact heading match
+## G.R.10: Exact heading match
 
 When searching for chapters or requirements by name/index, tools must use exact heading match after proper markdown
 parsing, not substring search.
@@ -216,7 +215,7 @@ parsing, not substring search.
 This prevents bugs where chapter "Foo" is incorrectly matched when searching in a file containing both "# Foobar" and "#
 Foo".
 
-## G.R.13: Embedding storage format
+## G.R.11: Embedding storage format
 
 Requirements may contain embedding vectors for fuzzy search functionality. Embeddings are stored as HTML comments immediately after the requirement heading (level-2 heading). Format: `<!--embedding:<model_name>:<base64_encoded_vector>-->`
 
@@ -236,9 +235,9 @@ Requirement text content.
 - Only tools that insert or update requirements may modify this comment
 - Only the fuzzy search tool may read and use this comment for similarity search
 
-## G.R.14: Ignoring embedding comments in requirement content
+## G.R.12: Ignoring embedding comments in requirement content
 
-All tools that return requirement content (title and/or text) must ignore embedding comments when extracting requirement text. The embedding comment format is defined in G.R.13.
+All tools that return requirement content (title and/or text) must ignore embedding comments when extracting requirement text. The embedding comment format is defined in G.R.11.
 
 When parsing requirements:
 - Tools must skip lines matching the embedding comment pattern `<!--embedding:...-->`
@@ -248,7 +247,7 @@ When parsing requirements:
 
 This ensures that embedding metadata remains invisible to clients and does not interfere with requirement content display.
 
-## G.R.15: Embedding model requirements
+## G.R.13: Embedding model requirements
 
 The embedding model (paraphrase-MiniLM-L3-v2) must be embedded in the binary executable. The model files must be included at compile time using Rust's `include_bytes!` or `include_str!` macros, or similar mechanisms.
 

@@ -1,4 +1,4 @@
-// Embedding functionality for fuzzy search (G.R.13, G.R.15, T.REQLIXF.3)
+// Embedding functionality for fuzzy search (G.R.11, G.R.13, T.REQLIXF.3)
 
 use anyhow::{Context, Result};
 use base64::{engine::general_purpose::STANDARD, Engine};
@@ -8,17 +8,17 @@ use std::sync::{LazyLock, Mutex};
 
 pub const MODEL_NAME: &str = "paraphrase-MiniLM-L3-v2";
 
-// Model components cache (G.R.15: lazy loading on first use, reused afterwards)
-// Using Candle for embedding calculation as per G.R.15
+// Model components cache (G.R.13: lazy loading on first use, reused afterwards)
+// Using Candle for embedding calculation as per G.R.13
 use candle_core::{Device, Tensor};
 use candle_nn::VarBuilder;
 use candle_transformers::models::bert::{BertModel, Config};
 use tokenizers::Tokenizer;
 
-// G.R.15: Model files embedded in binary at compile time
+// G.R.13: Model files embedded in binary at compile time
 // Model files are embedded using include_bytes!/include_str! macros
 
-// Embedded model files (G.R.15)
+// Embedded model files (G.R.13)
 const MODEL_SAFETENSORS: &[u8] = include_bytes!("../models/model.safetensors");
 const TOKENIZER_JSON: &str = include_str!("../models/tokenizer.json");
 const CONFIG_JSON: &str = include_str!("../models/config.json");
@@ -30,18 +30,18 @@ struct ModelComponents {
     _temp_file: tempfile::NamedTempFile, // Keep temp file alive for tokenizer
 }
 
-// Global model cache (lazy initialization) - G.R.15: loaded lazily on first use, reused afterwards
+// Global model cache (lazy initialization) - G.R.13: loaded lazily on first use, reused afterwards
 static MODEL_CACHE: LazyLock<Mutex<Option<ModelComponents>>> = LazyLock::new(|| Mutex::new(None));
 
-/// Initialize the embedding model (G.R.15: lazy loading on first use)
-/// G.R.15: Model must be loaded from embedded data, not external files
+/// Initialize the embedding model (G.R.13: lazy loading on first use)
+/// G.R.13: Model must be loaded from embedded data, not external files
 fn init_model() -> Result<ModelComponents> {
     let device = Device::Cpu;
     
-    // G.R.15: Load from embedded model files
+    // G.R.13: Load from embedded model files
     
     // Load tokenizer from embedded JSON string (tokenizers 0.20 API: requires file)
-    // G.R.15: We use a temporary file to load the embedded tokenizer
+    // G.R.13: We use a temporary file to load the embedded tokenizer
     // Keep the temp file alive by storing it in ModelComponents
     let temp_file = tempfile::NamedTempFile::new()
         .context("Failed to create temporary file for tokenizer")?;
@@ -68,7 +68,7 @@ fn init_model() -> Result<ModelComponents> {
     })
 }
 
-/// Get or initialize the embedding model (G.R.15: lazy loading, singleton pattern)
+/// Get or initialize the embedding model (G.R.13: lazy loading, singleton pattern)
 /// Loads the model on first use and reuses it for all subsequent calls
 fn get_model() -> Result<std::sync::MutexGuard<'static, Option<ModelComponents>>> {
     let mut cache = MODEL_CACHE.lock().unwrap();
@@ -79,7 +79,7 @@ fn get_model() -> Result<std::sync::MutexGuard<'static, Option<ModelComponents>>
 }
 
 /// Calculate embedding for requirement text (T.REQLIXI.6, T.REQLIXU.7, T.REQLIXF.3)
-/// Uses paraphrase-MiniLM-L3-v2 model as per G.R.15
+/// Uses paraphrase-MiniLM-L3-v2 model as per G.R.13
 pub fn calculate_embedding(text: &str) -> Result<Vec<f32>> {
     let model_guard = get_model()?;
     let components = model_guard.as_ref().unwrap();
@@ -131,7 +131,7 @@ pub fn calculate_embedding(text: &str) -> Result<Vec<f32>> {
     }
 }
 
-/// Encode embedding to base64 string for storage (G.R.13)
+/// Encode embedding to base64 string for storage (G.R.11)
 pub fn encode_embedding(embedding: &[f32]) -> String {
     // Convert f32 to bytes
     let bytes: Vec<u8> = embedding
@@ -158,7 +158,7 @@ pub fn decode_embedding(encoded: &str) -> Result<Vec<f32>> {
     Ok(embedding)
 }
 
-/// Format embedding comment (G.R.13)
+/// Format embedding comment (G.R.11)
 pub fn format_embedding_comment(model_name: &str, embedding: &[f32]) -> String {
     let encoded = encode_embedding(embedding);
     format!("<!--embedding:{}:{}-->", model_name, encoded)
@@ -174,7 +174,7 @@ pub fn parse_embedding_comment(comment: &str) -> Option<(String, String)> {
     Some((model_name, encoded_vector))
 }
 
-/// Check if a line is an embedding comment (G.R.14)
+/// Check if a line is an embedding comment (G.R.12)
 pub fn is_embedding_comment(line: &str) -> bool {
     line.trim().starts_with("<!--embedding:") && line.trim().ends_with("-->")
 }
@@ -184,7 +184,8 @@ pub fn collect_embeddings(
     requirements_dir: &std::path::PathBuf,
 ) -> Result<HashMap<String, Vec<f32>>> {
     let mut embeddings: HashMap<String, Vec<f32>> = HashMap::new();
-    let embedding_regex = Regex::new(r"<!--embedding:([^:]+):([^>]+)-->")?;
+    // Allow empty model name and empty vector (G.R.11: model name can be empty)
+    let embedding_regex = Regex::new(r"<!--embedding:([^:]*):([^>]*)-->")?;
     
     // Iterate over all category files
     for entry in std::fs::read_dir(requirements_dir)? {
@@ -201,7 +202,7 @@ pub fn collect_embeddings(
         let lines: Vec<&str> = content.lines().collect();
         
         // Find embedding comments and their preceding requirement headings
-        // T.REQLIXF.3: Ignore model name from comment, always use paraphrase-MiniLM-L3-v2
+        // T.REQLIXF.3: Ignore model name from comment, always use paraphrase-MiniLM-L3-v2 (G.R.11)
         for (i, line) in lines.iter().enumerate() {
             if let Some(caps) = embedding_regex.captures(line) {
                 // Look backwards for the requirement heading

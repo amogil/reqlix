@@ -202,7 +202,7 @@ More content.
 /// Precondition: System has category file with chapter
 /// Action: Call reqlix_insert_requirement
 /// Result: Requirement includes embedding comment after heading
-/// Covers Requirement: T.REQLIXI.6, G.R.13
+/// Covers Requirement: T.REQLIXI.6, G.R.11
 #[test]
 fn test_insert_requirement_creates_embedding() {
     let temp_dir = TempDir::new().unwrap();

@@ -443,7 +443,7 @@ This validation must occur before any file system operations or requirement proc
 
 ## T.REQLIXI.6: Embedding calculation and storage
 
-When inserting a new requirement, the tool must calculate an embedding vector from the requirement text (title + text combined) using the paraphrase-MiniLM-L3-v2 model and store it as an embedding comment immediately after the requirement heading according to G.R.13.
+When inserting a new requirement, the tool must calculate an embedding vector from the requirement text (title + text combined) using the paraphrase-MiniLM-L3-v2 model and store it as an embedding comment immediately after the requirement heading according to G.R.11.
 
 The embedding must be calculated from the combined text: "{title}: {text}" (title, colon, space, then text).
 
@@ -594,7 +594,7 @@ If more than 100 items are provided, return error: "Batch update exceeds maximum
 
 ## T.REQLIXU.7: Embedding recalculation and update
 
-When updating a requirement, the tool must recalculate the embedding vector from the updated requirement text (new title + new text combined) using the paraphrase-MiniLM-L3-v2 model and update the embedding comment according to G.R.13.
+When updating a requirement, the tool must recalculate the embedding vector from the updated requirement text (new title + new text combined) using the paraphrase-MiniLM-L3-v2 model and update the embedding comment according to G.R.11.
 
 The embedding must be recalculated whenever the requirement is updated, even if only the title changes and the text remains unchanged.
 
@@ -851,10 +851,10 @@ This validation must occur before any file system operations or requirement proc
 
 ## T.REQLIXS.7: Ignoring embedding comments in keyword search
 
-The keyword search tool must ignore embedding comments when searching for keywords in requirement content. Embedding comments (format defined in G.R.13) must not be included in the searchable text.
+The keyword search tool must ignore embedding comments when searching for keywords in requirement content. Embedding comments (format defined in G.R.11) must not be included in the searchable text.
 
 When checking if a requirement matches keywords:
-- Extract requirement text according to G.R.14 (which excludes embedding comments)
+- Extract requirement text according to G.R.12 (which excludes embedding comments)
 - Search only in the title and text fields, excluding any embedding comments
 - Embedding comments must not be matched by keyword search
 
@@ -926,14 +926,14 @@ Search algorithm:
 1. Collect all embedding comments from all requirement files efficiently without parsing markdown structure. Use regex or string matching to find lines matching the pattern `<!--embedding:<model_name>:<base64_vector>-->`.
 
 2. For each embedding comment found:
-   - Extract the base64-encoded vector (ignore the model name from the comment, as per G.R.13)
+   - Extract the base64-encoded vector (ignore the model name from the comment, as per G.R.11)
    - Decode the vector
    - If decoding fails (invalid base64, wrong length, etc.), silently ignore the error and treat the requirement as if it has no embedding (skip it, do not include in search results)
    - If decoding succeeds, store mapping: vector -> requirement index (extracted from the requirement heading immediately preceding the embedding comment)
    
    **Note:** Requirements without embedding comments are excluded from search results. Requirements with invalid or unparseable embedding vectors are also excluded (parsing errors are silently ignored).
 
-3. Calculate embedding vector for the query text using the paraphrase-MiniLM-L3-v2 model. The model name stored in embedding comments is ignored - always use paraphrase-MiniLM-L3-v2 for query embedding calculation (see G.R.13).
+3. Calculate embedding vector for the query text using the paraphrase-MiniLM-L3-v2 model. The model name stored in embedding comments is ignored - always use paraphrase-MiniLM-L3-v2 for query embedding calculation (see G.R.11).
 
 4. Calculate cosine similarity between query embedding and each requirement embedding.
 
@@ -943,7 +943,7 @@ Search algorithm:
 
 7. Return matching requirements with their similarity scores (up to the specified limit).
 
-**Note:** The model must be embedded in the binary and loaded lazily on first use, then reused for all subsequent operations (see G.R.15).
+**Note:** The model must be embedded in the binary and loaded lazily on first use, then reused for all subsequent operations (see G.R.13).
 
 ## T.REQLIXF.4: Response format
 

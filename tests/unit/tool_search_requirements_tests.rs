@@ -496,11 +496,11 @@ fn test_search_all_empty_strings_filtered() {
     assert!(json["data"]["keywords"].as_array().unwrap().is_empty());
 }
 
-/// Test: search_requirements ignores embedding comments (T.REQLIXS.7, G.R.14)
+/// Test: search_requirements ignores embedding comments (T.REQLIXS.7, G.R.12)
 /// Precondition: System has requirement with embedding comment
 /// Action: Search for keyword that appears in embedding comment
 /// Result: Requirement is NOT found (embedding comments are ignored)
-/// Covers Requirement: T.REQLIXS.7, G.R.14
+/// Covers Requirement: T.REQLIXS.7, G.R.12
 #[test]
 fn test_search_requirements_ignores_embedding_comments() {
     let temp_dir = TempDir::new().unwrap();

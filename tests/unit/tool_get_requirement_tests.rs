@@ -114,11 +114,11 @@ Content of second chapter requirement.
     );
 }
 
-/// Test: get_requirement ignores embedding comments in requirement text (G.R.14)
+/// Test: get_requirement ignores embedding comments in requirement text (G.R.12)
 /// Precondition: System has requirement with embedding comment
 /// Action: Call get_requirement
 /// Result: Requirement text does NOT include embedding comment
-/// Covers Requirement: G.R.14, T.REQLIXGETREQUIREMENT.4
+/// Covers Requirement: G.R.12, T.REQLIXGETREQUIREMENT.4
 #[test]
 fn test_get_requirement_ignores_embedding_comment() {
     let temp_dir = TempDir::new().unwrap();
@@ -141,7 +141,7 @@ This is the requirement text.
     assert_eq!(requirement.index, "G.T.1");
     assert_eq!(requirement.title, "Test Requirement");
     assert!(requirement.text.contains("This is the requirement text"));
-    // Embedding comment should NOT be in text (G.R.14)
+    // Embedding comment should NOT be in text (G.R.12)
     assert!(
         !requirement.text.contains("<!--embedding:"),
         "Embedding comment should not be included in requirement text"

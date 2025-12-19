@@ -1,5 +1,5 @@
 // Integration tests for embeddings with insert/update/get operations
-// Covers Requirements: T.REQLIXI.6, T.REQLIXU.7, G.R.14
+// Covers Requirements: T.REQLIXI.6, T.REQLIXU.7, G.R.12
 
 use reqlix::RequirementsServer;
 use tempfile::TempDir;
@@ -489,7 +489,7 @@ Content2.
 }
 
 // =============================================================================
-// Tests for get_requirement ignoring embeddings (G.R.14)
+// Tests for get_requirement ignoring embeddings (G.R.12)
 // =============================================================================
 
 #[test]

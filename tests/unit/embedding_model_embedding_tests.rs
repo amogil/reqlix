@@ -1,5 +1,5 @@
-// Tests for embedded model functionality (G.R.15)
-// Covers Requirement: G.R.15
+// Tests for embedded model functionality (G.R.13)
+// Covers Requirement: G.R.13
 
 use reqlix::RequirementsServer;
 use tempfile::TempDir;
@@ -9,17 +9,17 @@ use super::common::{
 };
 
 // =============================================================================
-// Tests for G.R.15: Embedded model requirements
+// Tests for G.R.13: Embedded model requirements
 // =============================================================================
 
-/// Test: Model should be loadable from embedded data (G.R.15)
+/// Test: Model should be loadable from embedded data (G.R.13)
 /// Precondition: System has requirements directory, model files are embedded
 /// Action: Call calculate_embedding
 /// Result: Function succeeds (model loads from embedded data)
-/// Covers Requirement: G.R.15
+/// Covers Requirement: G.R.13
 #[test]
 fn test_model_loads_from_embedded_data() {
-    // This test verifies that model loads from embedded data, not external files (G.R.15)
+    // This test verifies that model loads from embedded data, not external files (G.R.13)
     
     let temp_dir = TempDir::new().unwrap();
     let req_dir = create_requirements_dir(&temp_dir);
@@ -35,7 +35,7 @@ fn test_model_loads_from_embedded_data() {
         text: "Content".to_string(),
     };
     
-    // This should work with embedded model (G.R.15)
+    // This should work with embedded model (G.R.13)
     let result = RequirementsServer::handle_insert_requirement(params);
     let parsed: serde_json::Value = serde_json::from_str(&result).unwrap();
     
@@ -43,14 +43,14 @@ fn test_model_loads_from_embedded_data() {
     assert_eq!(parsed["success"], true);
 }
 
-/// Test: Model loading should not require internet connection (G.R.15)
+/// Test: Model loading should not require internet connection (G.R.13)
 /// Precondition: Model is embedded in binary
 /// Action: Call calculate_embedding
 /// Result: Function succeeds (uses embedded model, no network required)
-/// Covers Requirement: G.R.15
+/// Covers Requirement: G.R.13
 #[test]
 fn test_embedded_model_works_offline() {
-    // This test verifies G.R.15: model must be self-contained
+    // This test verifies G.R.13: model must be self-contained
     // Model is embedded, so it should work without internet
     let temp_dir = TempDir::new().unwrap();
     let req_dir = create_requirements_dir(&temp_dir);
@@ -73,11 +73,11 @@ fn test_embedded_model_works_offline() {
     assert_eq!(parsed["success"], true, "Model should load from embedded data without internet");
 }
 
-/// Test: Model should be loaded once and reused (G.R.15)
+/// Test: Model should be loaded once and reused (G.R.13)
 /// Precondition: System has requirements directory
 /// Action: Call calculate_embedding multiple times
 /// Result: Model is loaded once, reused for all calls
-/// Covers Requirement: G.R.15
+/// Covers Requirement: G.R.13
 #[test]
 fn test_model_loaded_once_and_reused() {
     let temp_dir = TempDir::new().unwrap();
@@ -122,14 +122,14 @@ fn test_model_loaded_once_and_reused() {
     assert_eq!(embeddings.len(), 2);
 }
 
-/// Test: Model should be loaded lazily on first use, not at startup (G.R.15)
+/// Test: Model should be loaded lazily on first use, not at startup (G.R.13)
 /// Precondition: System has requirements directory
 /// Action: Call calculate_embedding for the first time
 /// Result: Model loads on first use, not before
-/// Covers Requirement: G.R.15
+/// Covers Requirement: G.R.13
 #[test]
 fn test_model_loads_lazily_on_first_use() {
-    // G.R.15: Model must be loaded lazily (on first use)
+    // G.R.13: Model must be loaded lazily (on first use)
     // This test verifies that model is not loaded until first embedding calculation
     
     let temp_dir = TempDir::new().unwrap();
@@ -150,7 +150,7 @@ fn test_model_loads_lazily_on_first_use() {
         text: "Content".to_string(),
     };
     
-    // This should trigger lazy loading (G.R.15)
+    // This should trigger lazy loading (G.R.13)
     let result = RequirementsServer::handle_insert_requirement(params);
     let parsed: serde_json::Value = serde_json::from_str(&result).unwrap();
     
@@ -162,14 +162,14 @@ fn test_model_loads_lazily_on_first_use() {
     assert!(content.contains("<!--embedding:"), "Embedding should be created after lazy load");
 }
 
-/// Test: Model should be reused across different operations (G.R.15)
+/// Test: Model should be reused across different operations (G.R.13)
 /// Precondition: System has requirements directory
 /// Action: Call insert, update, and fuzzy_search operations
 /// Result: Model is loaded once and reused for all operations
-/// Covers Requirement: G.R.15
+/// Covers Requirement: G.R.13
 #[test]
 fn test_model_reused_across_different_operations() {
-    // G.R.15: After first load, same model instance must be reused for entire application lifetime
+    // G.R.13: After first load, same model instance must be reused for entire application lifetime
     
     let temp_dir = TempDir::new().unwrap();
     let req_dir = create_requirements_dir(&temp_dir);
@@ -213,20 +213,20 @@ fn test_model_reused_across_different_operations() {
     let fuzzy_parsed: serde_json::Value = serde_json::from_str(&fuzzy_result).unwrap();
     assert_eq!(fuzzy_parsed["success"], true, "Model should be reused for fuzzy search operation");
     
-    // All operations should succeed using the same model instance (G.R.15)
+    // All operations should succeed using the same model instance (G.R.13)
     assert_eq!(insert_parsed["success"], true);
     assert_eq!(update_parsed["success"], true);
     assert_eq!(fuzzy_parsed["success"], true);
 }
 
-/// Test: Model should be loaded only once per application run (G.R.15)
+/// Test: Model should be loaded only once per application run (G.R.13)
 /// Precondition: System has requirements directory
 /// Action: Call calculate_embedding many times
 /// Result: Model is loaded only once, reused for all calls
-/// Covers Requirement: G.R.15
+/// Covers Requirement: G.R.13
 #[test]
 fn test_model_loaded_only_once_per_application_run() {
-    // G.R.15: Model must be loaded only once per application run
+    // G.R.13: Model must be loaded only once per application run
     
     let temp_dir = TempDir::new().unwrap();
     let req_dir = create_requirements_dir(&temp_dir);
